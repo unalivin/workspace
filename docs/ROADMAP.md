@@ -5,7 +5,7 @@ This page states what exists in the workspace and what does not. The project tab
 ## Present
 
 - Workspace tooling: the registry, the scripts in `scripts/`, the repository checks and the generated workflows, with tests. Checked by the workflow `Root checks`.
-- The Go template `templates/go`: a complete application with a dashboard, a terminal UI and commands over one service layer, its scripts, documentation and tests. Checked by the workflow `CI template-go`.
+- The Go template `templates/go`: a complete application with a dashboard, a terminal UI and commands over one service layer, its scripts, documentation and tests. Built, tested and packaged by the workflow `CI template-go` on Linux, macOS and Windows runners.
 - Workflow templates for Go projects: CI and tag-triggered release.
 
 ## Not present
@@ -22,9 +22,8 @@ This page states what exists in the workspace and what does not. The project tab
 
 ## Order of work
 
-1. Go template verified on the three CI runners.
-2. Rust template and C++ template with the same capabilities and checks.
-3. One pilot project per language: `certwatch` (Go), `secretsentry` (Rust), `netgraph` (C++).
-4. The remaining projects in table order.
+1. Rust template and C++ template with the same capabilities and checks as the Go template.
+2. One pilot project per language: `certwatch` (Go), `secretsentry` (Rust), `netgraph` (C++).
+3. The remaining projects in table order.
 
 A project becomes `Complete` only when its CI is green on Linux, macOS and Windows and its documentation matches what is implemented.
