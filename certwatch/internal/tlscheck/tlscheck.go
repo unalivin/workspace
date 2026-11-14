@@ -115,9 +115,9 @@ func ClampTimeout(timeout time.Duration) time.Duration {
 }
 
 func shorten(text string) string {
-	text = strings.Join(strings.Fields(text), " ")
-	if len(text) > maxErrorLength {
-		return text[:maxErrorLength] + "…"
+	text = Printable(strings.Join(strings.Fields(text), " "))
+	if runes := []rune(text); len(runes) > maxErrorLength {
+		return string(runes[:maxErrorLength]) + "…"
 	}
 	return text
 }

@@ -1,6 +1,8 @@
 # CertWatch usage guide
 
-CertWatch keeps a list of records in one SQLite file on your computer. It has three interfaces over the same data: a dashboard window, a full-screen terminal UI and commands. This guide is built into the application: open About, Usage guide, or run `certwatch guide`.
+CertWatch keeps an inventory of TLS certificates in one SQLite file on your computer. It connects to the hosts you list, records the certificate chain each one presents, and tells you what expires soon, what fails validation and what changed. It has three interfaces over the same data: a dashboard window, a full-screen terminal UI and commands. This guide is built into the application: open About, Usage guide, or run `certwatch guide`.
+
+Check only hosts you are authorized to test. CertWatch connects to a host only after you have confirmed that for the host, and it shows every connection before it makes one.
 
 ## Getting started
 
@@ -11,42 +13,114 @@ Start the application without a command. It asks how you want to open it:
 
 Select **Remember my choice** to skip the question next time. Change the answer later in Settings, Open with, or ask again once with `certwatch --ask`.
 
-On the first start the application creates its database and tells you where the file is. Choose **Load demo data** to look around with sample records. Demo records have names that start with `Demo:` and are removed with one action in Settings.
+On the first start the application creates its database and tells you where the file is. Then either add your first endpoint or choose **Load demo data** to look around.
+
+Demo data is 11 endpoints with generated certificates. Their hosts end in `.demo.invalid`, every demo row is labeled `(demo)`, and demo endpoints are never contacted. Remove them with one action: Settings, Data, Remove demo data, or `certwatch demo remove`.
 
 ## Overview
 
-Overview shows what needs attention: open records, urgent records (open with high or critical severity), unread notifications and disabled records, followed by a table of enabled records by status and severity. The dashboard, the terminal UI and `certwatch overview` read the same numbers from the same database views.
+Overview answers what needs attention now. Each count opens the list behind it:
 
-## Records
+- **Expired**, **Expiring in 7 days**, **Expiring in 30 days**, **Expiring in 90 days**: tracked certificates by time left. A certificate that expires in 5 days is counted in all three expiring counts.
+- **Chain failures**: endpoints whose chain does not lead to a trusted root.
+- **Name mismatches**: endpoints whose certificate is not valid for the name you monitor.
+- **Failed checks**: endpoints that did not answer or did not complete a TLS handshake at the last check.
+- **Not checked yet**: enabled endpoints without an observation.
 
-A record has a name, a status (Open, In progress, Done), a severity (Info, Low, Medium, High, Critical), an optional note and an enabled switch. Disabled records are kept but not counted.
+Below the counts are the certificates that expire soonest and the most recent alerts. The dashboard, the terminal UI and `certwatch overview` read the same numbers from the same database views. Disabled endpoints are left out of every count.
 
-- **Add**: Add record in the dashboard, `n` in the terminal UI, `certwatch records add --name "..."`.
-- **Edit**: select a row and choose Edit, `e`, or `certwatch records edit <id>`.
-- **Enable or disable**: the switch in the detail panel, `x`, or `certwatch records enable|disable <id>`.
-- **Remove**: Remove in the detail panel, `d`, or `certwatch records remove <id>`. The application states what is removed and asks first. The command needs `--yes` when it cannot ask, and `--dry-run` shows what would happen.
-- **Search**: type in the search box, press `/` in the terminal UI, or add `--search` to `records list`. Search covers names and notes.
-- **Filter and sort**: by status and severity, with disabled records hidden until you show them. The sort column and direction are remembered and are the same in the dashboard and the terminal UI.
-- **Columns**: choose Columns in the dashboard or press `c` in the terminal UI to show or hide the ID, Status, Severity, Updated and State columns. The name is always shown. The choice is remembered.
-- **Copy**: Copy in the detail panel of the dashboard puts the record on the clipboard as text.
+## Endpoints
 
-If two windows edit the same record, the second save is refused with an explanation and your text stays in the form. Nothing is overwritten silently.
+An endpoint is a host name or IP address and a port, by default 443. Optional fields are the server name to ask for and to verify when it differs from the host (for example when the host is an IP address) and a note for your own reference.
 
-## Import and export
+- **Add**: Add endpoint in the dashboard, `n` in the terminal UI, `certwatch endpoints add --host www.example.org --authorized`. You must confirm that you are authorized to test the host. Without the confirmation nothing is saved.
+- **Check now**: select a row and choose Check now, `c`, or `certwatch endpoints check <id>`. **Check all** (`C`, `certwatch endpoints check-all`) checks every enabled endpoint.
+- **Edit**: Edit, `e`, or `certwatch endpoints edit <id>`. Changing the host or the port needs the authorization confirmation again.
+- **Enable or disable**: `x` and `X` in the terminal UI, the buttons in the detail panel, or `certwatch endpoints enable|disable <id>`. A disabled endpoint is kept but is not checked, not counted and raises no alerts.
+- **Remove**: Remove, `d`, or `certwatch endpoints remove <id>`. The endpoint and its observation history are removed. The application states what is removed and asks first.
+- **Search and filter**: type in the search box, press `/` in the terminal UI, or add `--search` and `--filter` to `endpoints list`. Filters: All, Enabled, Disabled, Not checked yet, Failed checks, Chain failures, Name mismatches, Changed certificate.
+- **Columns and sort order**: the settings `table.endpoints.columns` and `table.endpoints.sort` apply to the dashboard, the terminal UI and `endpoints list`.
 
-Export writes every record to CSV or JSON. The file is readable only by your user account. Import reads CSV or JSON, matches rows by name, adds new names and updates known ones. The dashboard and the terminal UI always show a dry run first: how many rows would be created, updated, left unchanged and rejected, with the reason for each rejected row. Nothing is written until you confirm. Files larger than 5 MB or 10000 rows are refused.
+The detail of an endpoint shows the last result, the findings, the chain as the server sent it, the latest observations and the history of certificate changes.
 
-CSV columns: `name`, `status`, `severity`, `note`, `enabled`. Only `name` is required.
+If two windows edit the same endpoint, the second save is refused with an explanation and your text stays in the form. Nothing is overwritten silently.
 
-## Notifications
+## What a check does
 
-The application raises a notification when an open record has high or critical severity and when a record is completed. Notifications appear in the Notifications category with a severity icon and label, a time and a link to the record.
+A check resolves the host name, opens one TCP connection to the host and port and performs a TLS handshake. It sends no request after the handshake and closes the connection. With the setting `checks.probe_protocols` on, or with Probe TLS versions in Configuration, it opens up to three more connections to see which of TLS 1.0, 1.1, 1.2 and 1.3 the server accepts.
 
-Each event type has a rule: enabled or not, a minimum severity, optional quiet hours and a de-duplication window in minutes. Change rules in Notifications, Rules or with `certwatch notifications rules set`.
+Before any connection the application lists exactly what it will connect to and asks. This question is asked even when confirmations for destructive actions are turned off. Commands need `--yes`, and `--dry-run` prints the connections without making them.
+
+Certificate verification is never turned off. When a chain is not trusted, CertWatch still records the certificates the server presented, marks the chain as not trusted and says why. It never treats an untrusted certificate as valid.
+
+A check records:
+
+- the leaf certificate and the chain: subject, issuer, subject alternative names, validity, key, signature algorithm, SHA-256 fingerprint
+- whether the chain leads to a trusted root, and whether the certificate is valid for the monitored name
+- the negotiated TLS version and cipher suite, and the accepted versions when probing is on
+- findings: expired, not yet valid, self-signed, untrusted chain, name mismatch, weak key, weak signature, validity longer than 398 days, old TLS versions accepted, TLS 1.3 not accepted, weak cipher suite
+
+Trusted roots are those of the operating system. To trust a private certificate authority as well, set `checks.trust_file` to a PEM file with its root certificate.
+
+### Automatic checks
+
+Automatic checks are off by default. Set `checks.interval_minutes` to a number of minutes and every enabled endpoint is checked at that interval while the dashboard, the terminal UI or `certwatch watch` is running. CertWatch installs no service: nothing is checked while none of them runs.
+
+`certwatch watch` runs in a terminal until you interrupt it. `certwatch watch --once --yes` checks every endpoint that is due once and exits, which suits a scheduler you control.
+
+## Certificates
+
+Certificates lists every certificate that an enabled endpoint presents and every certificate you imported from a file. Filters: Tracked, Expiring in 7, 30 or 90 days, Expired, Authorities, All stored.
+
+- **Import PEM file**: `i`, or `certwatch certificates import --file chain.pem`. A preview shows what would be added before anything is written. Private keys in the file are ignored and never stored. Files larger than 4 MB or with more than 500 certificates are refused.
+- **Save as PEM**: `o`, or `certwatch certificates export <id> --file out.pem`. The file is readable only by your user account. An existing file is not overwritten unless you say so.
+- **Stop tracking**: `d`, or `certwatch certificates stop-tracking <id>`, removes an imported certificate from the inventory. A certificate that an endpoint presents stays tracked for as long as the endpoint presents it.
+
+The detail of a certificate shows its fields, its subject alternative names, its chain, the endpoints that present it and its change history across observations.
+
+## Expiry Timeline
+
+The timeline lists tracked certificates in the order in which they expire, with a bar for the time left. The zoom sets how far ahead it looks: 30, 90 or 180 days, a year, or everything. Change the zoom with the Zoom box in the dashboard, `f` and `F` in the terminal UI, or `certwatch timeline list --zoom 30`.
+
+## Chains
+
+Chains shows for every enabled endpoint whether its chain leads to a trusted root, how long the chain is, who issued the certificate, and the reason when validation failed. Filters: All, Failed validation, Valid.
+
+## Configuration
+
+Configuration shows the TLS version and cipher suite each endpoint negotiated, the versions it accepts when they were probed, and the number and worst severity of its findings. **Probe TLS versions** (`c`, or `certwatch configuration probe <id>`) connects once per TLS version; it is a network action and asks first.
+
+## Alerts
+
+The application raises an alert when:
+
+- a certificate crosses an expiry threshold. The thresholds are the days in the setting `alerts.expiry_days`, by default 30, 14, 7 and 1. Each threshold raises one alert per certificate, and an expired certificate always raises one.
+- chain validation or host name validation fails. The alert is raised when the result turns from good to bad, not at every check.
+- an endpoint presents a different certificate than at its last successful check.
+
+Alerts appear in the Alerts category with a severity icon and label, a time and a link to the endpoint or the certificate. Mark one as read, or all at once.
+
+Each event type has a rule: enabled or not, a minimum severity, optional quiet hours and a de-duplication window in minutes. Change rules in Alerts, Rules or with `certwatch alerts rules set`.
 
 ### System notifications while the application is closed
 
-This is off until you turn it on. Settings, Notifications, Start at sign-in adds a per-user entry that runs `certwatch notifier run` when you sign in. It needs no administrator rights, opens the database read-only and makes no network requests. By default a system notification shows only a count. Turn on Show titles in system notifications to add the notification title. Record names and notes are never shown.
+This is off until you turn it on. Settings, Notifications, Start at sign-in (Notifier at sign-in in the terminal UI) adds a per-user entry that runs `certwatch notifier run` when you sign in. It needs no administrator rights, opens the database read-only and makes no network connection: it shows alerts that a check has already raised and does not check endpoints itself.
+
+By default a system notification shows only a count. Turn on Show titles in system notifications to add the alert title, which names the host or the certificate.
+
+## Reports
+
+A report is a snapshot of the current data: the certificate inventory, the certificates expiring within 90 days, or the validation and configuration findings. Formats are Markdown, CSV and JSON. Reports are stored in the database with a SHA-256 digest and can be saved as files.
+
+- **Generate report**: `n`, or `certwatch reports generate --kind expiry --format csv`.
+- **Save as file**: `o`, or `certwatch reports export <id> --file report.csv`.
+- **Remove**: `d`, or `certwatch reports remove <id>`. Files you saved stay.
+
+In CSV reports a cell that starts with `=`, `+`, `-` or `@` is prefixed with an apostrophe so a spreadsheet does not run it as a formula.
+
+## Import and export of the endpoint list
+
+Export list writes every endpoint to a CSV or JSON file that is readable only by your user account. Import list reads a CSV or JSON file with the columns `host`, `port`, `server_name`, `note` and `enabled`; only `host` is required. A preview shows how many endpoints would be added, how many are already monitored and which rows are rejected, with the reason for each. Nothing is written until you confirm, and the import needs the same authorization confirmation as adding an endpoint. Files larger than 4 MB or with more than 5000 rows are refused.
 
 ## Settings
 
@@ -72,11 +146,15 @@ Every action is reachable from the keyboard. About, Shortcuts lists the keys for
 
 ## Privacy
 
-The application makes no network requests. Nothing is collected or sent. Links to the project page open in your browser only when you choose them, and a bug report shows its exact text before the browser opens.
+CertWatch has no telemetry, no update check and no account. It makes network connections only for checks: to the hosts you added and confirmed, after showing you the list. On macOS and Windows the operating system validates chains against its trust store and may fetch a missing intermediate certificate or revocation data on its own while it does so.
+
+Links to the project page open in your browser only when you choose them, and a bug report shows its exact text before the browser opens.
 
 ## Troubleshooting
 
 - **The dashboard does not open**: on a computer without a display the application opens the terminal UI and says why. `certwatch --ui tui` asks for the terminal UI directly.
+- **A check fails with a name lookup or connection error**: the host did not resolve or did not answer within `checks.timeout_seconds`. The endpoint is listed under Failed checks with the reason.
+- **The chain of an internal host is not trusted**: add the root certificate of your certificate authority with `checks.trust_file`.
 - **The database is busy**: another window is writing. The application waits, retries and tells you. Nothing is lost.
 - **A file is not a database**: the application refuses to open or overwrite it. Choose another location.
 - **Check the database**: About, Diagnostics or `certwatch db check`.

@@ -13,23 +13,24 @@ import (
 	"github.com/NexzaDev/certwatch/internal/meta"
 	"github.com/NexzaDev/certwatch/internal/notify"
 	"github.com/NexzaDev/certwatch/internal/theme"
+	"github.com/NexzaDev/certwatch/internal/words"
 )
 
 func notificationsCommand() *command {
 	return &command{name: "alerts", summary: "Read alerts and manage their rules", sub: []*command{
-		{name: "list", summary: "List notifications, newest first", flags: func(set *flag.FlagSet) {
-			set.Bool("unread", false, "only unread notifications")
+		{name: "list", summary: "List alerts, newest first", flags: func(set *flag.FlagSet) {
+			set.Bool("unread", false, "only unread alerts")
 			set.String("severity", "", "only this severity")
 			set.String("event", "", "only this event type")
 			set.Int("limit", 200, "largest number of rows")
 			set.String("format", "table", "table or json")
 		}, run: runNotificationsList},
-		{name: "read", summary: "Mark one notification, or all of them, as read", args: "<id|all>", run: runNotificationsRead},
+		{name: "read", summary: "Mark one alert, or all of them, as read", args: "<id|all>", run: runNotificationsRead},
 		{name: "rules", summary: "Show or change the rule of each event type", sub: []*command{
 			{name: "list", summary: "List the rule of every event type", run: runRulesList},
 			{name: "set", summary: "Change the rule of an event type", args: "<event>", flags: func(set *flag.FlagSet) {
 				set.String("enabled", "", "true or false")
-				set.String("min-severity", "", "lowest severity that raises a notification")
+				set.String("min-severity", "", "lowest severity that raises an alert")
 				set.String("quiet-start", "", "start of quiet hours as HH:MM, empty for none")
 				set.String("quiet-end", "", "end of quiet hours as HH:MM, empty for none")
 				set.String("dedup-minutes", "", "minutes in which a repeated event is not raised again, 0 for off")
@@ -70,7 +71,7 @@ func runNotificationsList(ctx context.Context, in *invocation) error {
 		return usagef("unknown format %q: use table or json", in.text("format"))
 	}
 	if len(list) == 0 {
-		in.printf("No notifications. They appear when a record needs attention or is completed.\n")
+		in.printf("No alerts. They appear when a certificate nears its expiry, fails validation or changes.\n")
 		return nil
 	}
 	rows := make([][]string, 0, len(list))
@@ -90,24 +91,24 @@ func runNotificationsList(ctx context.Context, in *invocation) error {
 
 func runNotificationsRead(ctx context.Context, in *invocation) error {
 	if len(in.args) != 1 {
-		return usagef("give one notification identifier or the word all")
+		return usagef("give one alert identifier or the word all")
 	}
 	if in.args[0] == "all" {
 		changed, err := in.app.Notices.MarkAllRead(ctx)
 		if err != nil {
 			return err
 		}
-		in.printf("Marked %d alerts as read\n", changed)
+		in.printf("Marked %s as read\n", words.Count(int(changed), "alert", "alerts"))
 		return nil
 	}
 	id, err := strconv.ParseInt(in.args[0], 10, 64)
 	if err != nil || id <= 0 {
-		return usagef("%q is not a notification identifier: use the number from the ID column or the word all", in.args[0])
+		return usagef("%q is not an alert identifier: use the number from the ID column or the word all", in.args[0])
 	}
 	if err := in.app.Notices.MarkRead(ctx, id); err != nil {
 		return err
 	}
-	in.printf("Marked notification %d as read\n", id)
+	in.printf("Marked alert %d as read\n", id)
 	return nil
 }
 
@@ -225,7 +226,7 @@ func notifierCommand() *command {
 		set.Bool("dry-run", false, "show what would change without changing it")
 	}
 	return &command{name: "notifier", summary: "Show system notifications while the application is closed (opt-in)", sub: []*command{
-		{name: "run", summary: "Check for new notifications on an interval until stopped", flags: func(set *flag.FlagSet) {
+		{name: "run", summary: "Look for new alerts on an interval until stopped", flags: func(set *flag.FlagSet) {
 			set.Bool("once", false, "check one time and exit")
 		}, run: runNotifier},
 		{name: "install", summary: "Start the notifier when you sign in (per-user entry, no administrator rights)", flags: dryRun, noApp: true, run: runNotifierInstall},
@@ -253,7 +254,7 @@ func runNotifier(ctx context.Context, in *invocation) error {
 		if err != nil {
 			return err
 		}
-		in.printf("Checked once: %d new notifications shown\n", shown)
+		in.printf("Checked once: %s shown\n", words.Count(shown, "new alert", "new alerts"))
 		return nil
 	}
 	runner.Log = func(line string) { in.note("notifier: %s", line) }

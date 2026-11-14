@@ -19,6 +19,7 @@ import (
 	"github.com/NexzaDev/certwatch/internal/inventory"
 	"github.com/NexzaDev/certwatch/internal/meta"
 	"github.com/NexzaDev/certwatch/internal/settings"
+	"github.com/NexzaDev/certwatch/internal/words"
 )
 
 func parseID(in *invocation, what string) (int64, error) {
@@ -266,7 +267,9 @@ func actionFlags(action app.Action) func(*flag.FlagSet) {
 			if help == "" {
 				help = field.Label
 			}
-			help = strings.ToLower(help[:1]) + help[1:]
+			if !strings.HasPrefix(help, "TCP") {
+				help = strings.ToLower(help[:1]) + help[1:]
+			}
 			if field.Kind == app.FieldChoice {
 				ids := make([]string, len(field.Options))
 				for i, option := range field.Options {
@@ -443,7 +446,7 @@ func watchCommand() *command {
 			probe = value.Bool()
 		}
 		network := app.Disclosure(targets, probe)
-		statement := fmt.Sprintf("Check %d enabled endpoints over the network every %s until interrupted.", len(network), interval)
+		statement := fmt.Sprintf("Check %s over the network every %s until interrupted.", words.Count(len(network), "enabled endpoint", "enabled endpoints"), interval)
 		if once {
 			statement = fmt.Sprintf("Check the enabled endpoints that are due over the network once (%d enabled).", len(network))
 		}
@@ -521,7 +524,7 @@ func demoCommand() *command {
 			if err != nil {
 				return err
 			}
-			statement := fmt.Sprintf("This removes %d demo endpoints and certificates with their alerts. Entries you added yourself stay.", count)
+			statement := fmt.Sprintf("This removes %s with their alerts. Entries you added yourself stay.", words.Count(count, "demo endpoint or certificate", "demo endpoints and certificates"))
 			if in.truth("dry-run") {
 				in.printf("Dry run: %s Nothing was changed.\n", statement)
 				return nil
@@ -537,7 +540,7 @@ func demoCommand() *command {
 			if err != nil {
 				return err
 			}
-			in.printf("Removed %d demo endpoints and certificates\n", removed)
+			in.printf("Removed %s\n", words.Count(removed, "demo endpoint or certificate", "demo endpoints and certificates"))
 			return nil
 		}},
 	}}

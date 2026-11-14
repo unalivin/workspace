@@ -17,6 +17,7 @@ import (
 	"github.com/NexzaDev/certwatch/internal/settings"
 	"github.com/NexzaDev/certwatch/internal/store"
 	"github.com/NexzaDev/certwatch/internal/theme"
+	"github.com/NexzaDev/certwatch/internal/words"
 )
 
 const (
@@ -311,7 +312,7 @@ func (m *Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		case message.done.Report.Checked > 0:
 			m.say(noticeInfo, "Automatic check: %s", message.done.Report.Summary())
 		case message.done.Alerts > 0:
-			m.say(noticeInfo, "%d new expiry alerts", message.done.Alerts)
+			m.say(noticeInfo, "%s", words.Count(message.done.Alerts, "new expiry alert", "new expiry alerts"))
 		}
 		return m, nil
 	case tea.KeyMsg:

@@ -171,7 +171,7 @@ func TestCheckRunsOnlyAfterAnAuthorizedEndpointAndDisclosesTheConnection(t *test
 		t.Fatalf("network checks must always ask for confirmation")
 	}
 	checked := f.run(ViewEndpoints, "check", added.Select, nil)
-	if !strings.Contains(checked.Message, "Checked 1 endpoint: 0 failed, 0 changed certificates, 1 new alerts") || len(checked.Lines) != 1 || !strings.Contains(checked.Lines[0], "app.fixture.test:8443: ok") {
+	if !strings.Contains(checked.Message, "Checked 1 endpoint: 0 failed, 0 changed certificates, 1 new alert") || len(checked.Lines) != 1 || !strings.Contains(checked.Lines[0], "app.fixture.test:8443: ok") {
 		t.Fatalf("outcome: %+v", checked)
 	}
 	if dialed := f.server.dialed(); len(dialed) != 1 || dialed[0] != "app.fixture.test:8443" {
@@ -188,7 +188,7 @@ func TestCheckRunsOnlyAfterAnAuthorizedEndpointAndDisclosesTheConnection(t *test
 		t.Fatalf("probe plan: %+v %v", probe, err)
 	}
 	probed := f.run(ViewConfiguration, "probe", added.Select, nil)
-	if !strings.Contains(probed.Message, "1 failed, 1 changed certificates, 2 new alerts") || !strings.Contains(probed.Lines[0], "name mismatch") {
+	if !strings.Contains(probed.Message, "1 failed, 1 changed certificate, 2 new alerts") || !strings.Contains(probed.Lines[0], "name mismatch") {
 		t.Fatalf("outcome: %+v", probed)
 	}
 	configuration := f.table(ViewConfiguration, ViewQuery{Filter: "findings"})
@@ -372,7 +372,7 @@ func TestEveryActionIsPlannedExecutedAndListedAsACapability(t *testing.T) {
 	}
 	added := f.run(ViewEndpoints, "add", 0, map[string]string{"host": "app.fixture.test", "authorized": "true"})
 	imported := f.run(ViewCertificates, "import", 0, map[string]string{"file": pemFile})
-	if !strings.Contains(imported.Message, "Imported 1 certificates") {
+	if !strings.Contains(imported.Message, "Imported 1 certificate") {
 		t.Fatalf("import: %+v", imported)
 	}
 	certificate := f.table(ViewCertificates, ViewQuery{}).Rows[0].ID

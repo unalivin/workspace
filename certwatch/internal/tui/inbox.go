@@ -10,6 +10,7 @@ import (
 	"github.com/NexzaDev/certwatch/internal/inventory"
 	"github.com/NexzaDev/certwatch/internal/notify"
 	"github.com/NexzaDev/certwatch/internal/theme"
+	"github.com/NexzaDev/certwatch/internal/words"
 )
 
 const listLimit = 500
@@ -90,7 +91,7 @@ func (p *inboxPage) key(m *Model, key string) {
 		if m.fail(err) {
 			return
 		}
-		m.changed("Marked %d alerts as read", changed)
+		m.changed("Marked %s as read", words.Count(int(changed), "alert", "alerts"))
 	case "m", "enter":
 		if p.cursor >= len(p.list) {
 			return

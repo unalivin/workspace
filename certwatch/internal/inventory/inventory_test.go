@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -169,6 +170,16 @@ func TestEndpointLifecycleNeedsAuthorization(t *testing.T) {
 	}
 	if _, err := f.service.CreateEndpoint(f.ctx, EndpointInput{Host: "www.example.org", Port: 8443, Enabled: true}, true); err == nil || !strings.Contains(err.Error(), "already monitored") {
 		t.Fatalf("a duplicate was accepted: %v", err)
+	}
+	noted, err := f.service.CreateEndpoint(f.ctx, EndpointInput{Host: "notes.example.org", Note: "first\nsecond\x1b[2J\u202e  end", Enabled: true}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if noted.Note != "first second\ufffd[2J\ufffd end" {
+		t.Fatalf("control characters reached the stored note: %q", noted.Note)
+	}
+	if err := f.service.DeleteEndpoint(f.ctx, noted.ID); err != nil {
+		t.Fatal(err)
 	}
 	in := created.Input()
 	in.Note = "changed"
@@ -550,7 +561,7 @@ func TestEndpointTransferRoundTripAndImportRules(t *testing.T) {
 		t.Fatalf("import without authorization: %v", err)
 	}
 	preview, err := f.service.ImportEndpoints(f.ctx, strings.NewReader(file), FormatCSV, true, false)
-	if err != nil || preview.Summary() != "would import 1 endpoints, 2 already monitored, 2 rejected" {
+	if err != nil || preview.Summary() != "would import 1 endpoint, 2 already monitored, 2 rejected" {
 		t.Fatalf("preview: %+v %v", preview, err)
 	}
 	if count, _ := f.service.EndpointCount(f.ctx); count != 2 {
@@ -656,5 +667,75 @@ func TestDemoDataIsLabeledAndRemovable(t *testing.T) {
 	}
 	if count, _ := f.service.EndpointCount(f.ctx); count != 1 {
 		t.Fatalf("the real endpoint was removed with the demo data")
+	}
+}
+
+func TestConcurrentWritersNeverCorruptData(t *testing.T) {
+	f := newFixture(t)
+	path := testkit.DatabasePath(t)
+	first := New(testkit.OpenAt(t, path).DB(), f.clock.Now)
+	second := New(testkit.OpenAt(t, path).DB(), f.clock.Now)
+	shared, err := first.CreateEndpoint(f.ctx, EndpointInput{Host: "shared.example.org", Enabled: true}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	leaves := []*x509.Certificate{f.leaf("shared.example.org", 40), f.leaf("shared.example.org", 80)}
+	const steps = 30
+	var wait sync.WaitGroup
+	failures := make(chan error, 8*steps)
+	wins := make(chan int, 2)
+	for index, service := range []*Service{first, second} {
+		wait.Add(1)
+		go func(index int, service *Service) {
+			defer wait.Done()
+			won := 0
+			for step := 0; step < steps; step++ {
+				host := fmt.Sprintf("writer-%d-%d.example.org", index, step)
+				if _, err := service.CreateEndpoint(f.ctx, EndpointInput{Host: host, Enabled: true}, true); err != nil {
+					failures <- err
+				}
+				if _, err := service.Record(f.ctx, shared.ID, f.ok(shared, leaves[(index+step)%2]), Policy{Keep: 1000}); err != nil {
+					failures <- err
+				}
+				current, err := service.Endpoint(f.ctx, shared.ID)
+				if err != nil {
+					failures <- err
+					continue
+				}
+				change := current.Input()
+				change.Note = host
+				_, err = service.UpdateEndpoint(f.ctx, current.ID, current.Revision, change, false)
+				var conflict *ConflictError
+				if err == nil {
+					won++
+				} else if !errors.As(err, &conflict) {
+					failures <- err
+				}
+			}
+			wins <- won
+		}(index, service)
+	}
+	wait.Wait()
+	close(failures)
+	for err := range failures {
+		t.Errorf("writer failed: %v", err)
+	}
+	total := <-wins + <-wins
+	final, err := first.Endpoint(f.ctx, shared.ID)
+	if err != nil || total == 0 || final.Revision != int64(1+total) {
+		t.Fatalf("revision %d does not match %d successful updates: %v", final.Revision, total, err)
+	}
+	if count, err := second.EndpointCount(f.ctx); err != nil || count != 1+2*steps {
+		t.Fatalf("%d endpoints, want %d: %v", count, 1+2*steps, err)
+	}
+	if _, observed, err := first.History(f.ctx, shared.ID, 1000); err != nil || observed != 2*steps {
+		t.Fatalf("%d observations, want %d: %v", observed, 2*steps, err)
+	}
+	found, err := second.Endpoints(f.ctx, Query{Search: "writer", Limit: 1000})
+	if err != nil || len(found) != 1+2*steps {
+		t.Fatalf("the search over hosts and notes finds %d of %d endpoints: %v", len(found), 1+2*steps, err)
+	}
+	if err := testkit.OpenAt(t, path).IntegrityCheck(f.ctx); err != nil {
+		t.Fatalf("integrity check: %v", err)
 	}
 }

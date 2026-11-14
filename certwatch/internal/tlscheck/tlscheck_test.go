@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/NexzaDev/certwatch/internal/certgen"
 	"github.com/NexzaDev/certwatch/internal/theme"
@@ -364,6 +366,91 @@ func FuzzParsePEM(f *testing.F) {
 			if len(info.Fingerprint) != 64 || info.DisplayName() == "" {
 				t.Fatalf("incomplete description: %+v", info)
 			}
+			for _, text := range append([]string{info.Subject, info.Issuer, info.CommonName}, info.Names...) {
+				if unsafeText(text) {
+					t.Fatalf("certificate text is not printable: %q", text)
+				}
+			}
+		}
+	})
+}
+
+func unsafeText(text string) bool {
+	if !utf8.ValidString(text) {
+		return true
+	}
+	for _, r := range text {
+		if unicode.IsControl(r) || unicode.In(r, unicode.Cf, unicode.Zl, unicode.Zp, unicode.Co) {
+			return true
+		}
+	}
+	return false
+}
+
+func TestCheckNeutralizesHostileTextInCertificates(t *testing.T) {
+	p := newPKI(t)
+	hostile := "evil\x1b[2J\x1b]0;owned\x07\nsecond line\u202egnp.exe\u200b"
+	target := serve(t, &tls.Config{Certificates: []tls.Certificate{p.issue(t, certgen.Request{CommonName: hostile, Names: []string{"other\x1b[31m.fixture.test"}})}})
+	target.ServerName = "app.fixture.test"
+	result := Check(context.Background(), target, Options{Roots: p.root.Pool(), Timeout: 5 * time.Second})
+	if result.Outcome != OutcomeOK || len(result.Presented) == 0 || result.HostnameStatus != HostnameMismatch {
+		t.Fatalf("unexpected result: %+v", result)
+	}
+	if !strings.Contains(result.Presented[0].Subject.CommonName, "\x1b") {
+		t.Fatal("the fixture certificate does not carry the hostile text")
+	}
+	info := Describe(result.Presented[0])
+	texts := append([]string{info.Subject, info.Issuer, info.CommonName, info.DisplayName(), result.Error, result.ChainError, result.HostnameError}, info.Names...)
+	for _, finding := range Findings(result, p.now) {
+		texts = append(texts, finding.Detail)
+	}
+	for _, text := range texts {
+		if unsafeText(text) {
+			t.Errorf("text from the server reaches the interfaces unfiltered: %q", text)
+		}
+	}
+	if !strings.Contains(info.CommonName, "evil") || !strings.Contains(info.CommonName, "second line") {
+		t.Fatalf("the readable part of the name was lost: %q", info.CommonName)
+	}
+}
+
+func TestPrintableKeepsTextAndLimitsLength(t *testing.T) {
+	for in, want := range map[string]string{
+		"www.example.org":        "www.example.org",
+		"Zürich Ærø 東京, O=Näme":  "Zürich Ærø 東京, O=Näme",
+		"a\tb\r\nc":              "a\ufffdb\ufffd\ufffdc",
+		"\x1b[0m":                "\ufffd[0m",
+		"bad\xffbyte":            "bad\ufffdbyte",
+		"right\u202eleft\u2028x": "right\ufffdleft\ufffdx",
+		"":                       "",
+	} {
+		if got := Printable(in); got != want {
+			t.Errorf("Printable(%q) = %q, want %q", in, got, want)
+		}
+	}
+	long := Printable(strings.Repeat("é", MaxTextLength+50))
+	if utf8.RuneCountInString(long) != MaxTextLength+1 || !strings.HasSuffix(long, "…") {
+		t.Fatalf("long text is not cut at the limit: %d characters", utf8.RuneCountInString(long))
+	}
+	if got := shorten(strings.Repeat("é", maxErrorLength+50) + "\x1b"); !utf8.ValidString(got) || utf8.RuneCountInString(got) != maxErrorLength+1 {
+		t.Fatalf("a long error is not cut on a character boundary: %d characters", utf8.RuneCountInString(got))
+	}
+}
+
+func FuzzPrintable(f *testing.F) {
+	for _, seed := range []string{"www.example.org", "a\x1b[2Jb", "\xff\xfe", "x\u202ey", strings.Repeat("a", MaxTextLength+1)} {
+		f.Add(seed)
+	}
+	f.Fuzz(func(t *testing.T, text string) {
+		got := Printable(text)
+		if unsafeText(got) {
+			t.Fatalf("Printable(%q) = %q is not printable", text, got)
+		}
+		if utf8.RuneCountInString(got) > MaxTextLength+1 {
+			t.Fatalf("Printable(%q) has %d characters", text, utf8.RuneCountInString(got))
+		}
+		if again := Printable(got); utf8.RuneCountInString(got) <= MaxTextLength && again != got {
+			t.Fatalf("Printable is not stable: %q then %q", got, again)
 		}
 	})
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/NexzaDev/certwatch/internal/app"
 	"github.com/NexzaDev/certwatch/internal/theme"
+	"github.com/NexzaDev/certwatch/internal/words"
 )
 
 type actionDoneMsg struct {
@@ -598,7 +599,7 @@ func (m *Model) overviewView(width int) []string {
 			lines = append(lines, "  "+text)
 		}
 	}
-	lines = append(lines, "", m.st.muted.Render(fit(fmt.Sprintf("  %d tracked certificates · %d endpoints, %d disabled · %d unread alerts", o.Counts.Certificates, o.Counts.Endpoints, o.Counts.DisabledEndpoints, o.Counts.UnreadAlerts), width)))
+	lines = append(lines, "", m.st.muted.Render(fit("  "+fmt.Sprintf("%s · %s, %d disabled · %s", words.Count(o.Counts.Certificates, "tracked certificate", "tracked certificates"), words.Count(o.Counts.Endpoints, "endpoint", "endpoints"), o.Counts.DisabledEndpoints, words.Count(o.Counts.UnreadAlerts, "unread alert", "unread alerts")), width)))
 	if o.Empty {
 		lines = append(lines, "")
 		return append(lines, wrap("Nothing is monitored yet. Press 3 and then n to add a host you are authorized to test, press 2 and then i to import a PEM file, or press l to load labeled demo data.", width)...)

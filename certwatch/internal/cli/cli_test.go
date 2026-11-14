@@ -162,7 +162,7 @@ func TestEndpointLifecycleWithALiveCheck(t *testing.T) {
 	if code != ExitOK || !strings.Contains(stderr, "network: app.fixture.test:8443") {
 		t.Fatalf("check: %d\n%s\n%s", code, stdout, stderr)
 	}
-	expect(t, stdout, "Checked 1 endpoint: 0 failed, 0 changed certificates, 1 new alerts.", "app.fixture.test:8443: ok (expires ")
+	expect(t, stdout, "Checked 1 endpoint: 0 failed, 0 changed certificates, 1 new alert.", "app.fixture.test:8443: ok (expires ")
 	expect(t, strings.Join(strings.Fields(h.ok("endpoints", "list", "--filter", "enabled")), " "), "app.fixture.test 20", "20 days", "TLS 1.3 enabled")
 	shown := h.ok("endpoints", "show", "1")
 	expect(t, shown, "app.fixture.test:8443", "Authorization confirmed", "Findings (0)", "Chain", "Fixture Root", "Observations (latest 1 of 1)", "Note", "edge")
@@ -178,7 +178,7 @@ func TestEndpointLifecycleWithALiveCheck(t *testing.T) {
 	h.fails(ExitUsage, "unknown filter", "endpoints", "list", "--filter", "nonsense")
 	expect(t, h.ok("certificates", "list"), "app.fixture.test", "Fixture Root", "app.fixture.test:8443", "1 certificate")
 	expect(t, h.ok("certificates", "show", "1"), "Subject alternative names (1)", "SHA-256", "PRESENTED NOW", "yes")
-	expect(t, h.ok("timeline", "list", "--zoom", "30"), "█", "1 of 1 tracked certificates expire within 30 days")
+	expect(t, h.ok("timeline", "list", "--zoom", "30"), "█", "1 of 1 tracked certificate expires within 30 days")
 	h.fails(ExitUsage, "unknown zoom", "timeline", "list", "--zoom", "7")
 	expect(t, h.ok("chains", "list"), "valid", "system or added root")
 	expect(t, h.ok("chains", "show", "1"), "leaf", "root", "trust store")
@@ -227,9 +227,9 @@ func TestCertificateImportReportsAndFiles(t *testing.T) {
 	h.clock.Set(time.Now().UTC().Truncate(time.Second))
 	pem := testkit.PEMFile(t, h.clock.Now(), "file.fixture.test", 5)
 	dir := t.TempDir()
-	expect(t, h.ok("certificates", "import", "--file", pem, "--dry-run"), "Dry run: Import certificates from", "would import 1 certificates, 0 already tracked", "file.fixture.test", "Nothing was changed.")
+	expect(t, h.ok("certificates", "import", "--file", pem, "--dry-run"), "Dry run: Import certificates from", "would import 1 certificate, 0 already tracked", "file.fixture.test", "Nothing was changed.")
 	expect(t, h.ok("certificates", "list"), "No certificates yet")
-	expect(t, h.ok("certificates", "import", "--file", pem), "Imported 1 certificates, 0 already tracked.")
+	expect(t, h.ok("certificates", "import", "--file", pem), "Imported 1 certificate, 0 already tracked.")
 	h.fails(ExitUsage, "PEM file is missing", "certificates", "import")
 	h.fails(ExitFailure, "cannot open the file", "certificates", "import", "--file", filepath.Join(dir, "missing.pem"))
 	expect(t, h.ok("certificates", "list", "--filter", "expiring-7"), "file.fixture.test", "5 days", "imported")
@@ -256,9 +256,9 @@ func TestCertificateImportReportsAndFiles(t *testing.T) {
 	if err := os.WriteFile(list, []byte("host,port,note\na.fixture.test,,first\nbad host,,x\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	expect(t, h.ok("endpoints", "import", "--file", list, "--dry-run"), "would import 1 endpoints, 0 already monitored, 1 rejected", "a.fixture.test:443", "row 3")
+	expect(t, h.ok("endpoints", "import", "--file", list, "--dry-run"), "would import 1 endpoint, 0 already monitored, 1 rejected", "a.fixture.test:443", "row 3")
 	h.fails(ExitUsage, "--authorized", "endpoints", "import", "--file", list)
-	expect(t, h.ok("endpoints", "import", "--file", list, "--authorized"), "Imported 1 endpoints, 0 already monitored, 1 rejected.", "row 3")
+	expect(t, h.ok("endpoints", "import", "--file", list, "--authorized"), "Imported 1 endpoint, 0 already monitored, 1 rejected.", "row 3")
 	out := filepath.Join(dir, "out.json")
 	expect(t, h.ok("endpoints", "export", "--file", out), "Wrote 1 endpoint to "+out)
 	h.fails(ExitUsage, "choose csv or json", "endpoints", "export", "--file", filepath.Join(dir, "out.txt"))
@@ -284,17 +284,17 @@ func TestDemoOverviewAndAlerts(t *testing.T) {
 	expect(t, list, "ID", "SEVERITY", "unread", "Certificate for legacy.demo.invalid has expired (demo)", "Chain validation failed for staging.demo.invalid:443 (demo)", "Certificate changed on portal.demo.invalid:443 (demo)")
 	expect(t, h.ok("alerts", "list", "--severity", "critical"), "Critical")
 	h.fails(ExitUsage, "unknown severity", "alerts", "list", "--severity", "urgent")
-	expect(t, h.ok("alerts", "read", "1"), "Marked notification 1 as read")
+	expect(t, h.ok("alerts", "read", "1"), "Marked alert 1 as read")
 	expect(t, h.ok("alerts", "list", "--unread", "--format", "json"), `"read": false`)
 	h.fails(ExitFailure, "does not exist", "alerts", "read", "999")
-	h.fails(ExitUsage, "not a notification identifier", "alerts", "read", "x")
+	h.fails(ExitUsage, "not an alert identifier", "alerts", "read", "x")
 	expect(t, h.ok("alerts", "read", "all"), "alerts as read")
-	expect(t, h.ok("alerts", "list", "--unread"), "No notifications")
+	expect(t, h.ok("alerts", "list", "--unread"), "No alerts")
 	expect(t, h.ok("demo", "remove", "--dry-run"), "Dry run: This removes ", "demo endpoints and certificates")
 	h.fails(ExitUsage, "--yes", "demo", "remove")
 	expect(t, h.ok("demo", "remove", "--yes"), "demo endpoints and certificates")
 	expect(t, h.ok("demo", "remove", "--yes"), "no demo data")
-	expect(t, h.ok("alerts", "list"), "No notifications")
+	expect(t, h.ok("alerts", "list"), "No alerts")
 }
 
 func TestNotificationRules(t *testing.T) {
@@ -330,14 +330,14 @@ func TestNotifierCommands(t *testing.T) {
 	expect(t, h.ok("notifier", "uninstall", "--dry-run"), "Dry run: would remove")
 	expect(t, h.ok("notifier", "uninstall"), "Removed "+entry)
 	expect(t, h.ok("notifier", "uninstall"), "not set to start at sign-in")
-	expect(t, h.ok("notifier", "run", "--once"), "Checked once: 0 new notifications shown")
+	expect(t, h.ok("notifier", "run", "--once"), "Checked once: 0 new alerts shown")
 	h.clock.Set(time.Now().UTC().Truncate(time.Second))
 	h.ok("certificates", "import", "--file", testkit.PEMFile(t, h.clock.Now(), "secret.fixture.test", 5))
-	expect(t, h.ok("notifier", "run", "--once"), "Checked once: 1 new notifications shown")
-	if len(h.delivered) != 1 || h.delivered[0] != meta.AppName+" | 1 new notification" {
+	expect(t, h.ok("notifier", "run", "--once"), "Checked once: 1 new alert shown")
+	if len(h.delivered) != 1 || h.delivered[0] != meta.AppName+" | 1 new alert" {
 		t.Fatalf("delivered: %v", h.delivered)
 	}
-	expect(t, h.ok("notifier", "run", "--once"), "0 new notifications shown")
+	expect(t, h.ok("notifier", "run", "--once"), "0 new alerts shown")
 	h.ok("config", "set", settings.KeyNotifierTitles, "true")
 	h.ok("certificates", "import", "--file", testkit.PEMFile(t, h.clock.Now(), "another.fixture.test", 5))
 	h.ok("notifier", "run", "--once")

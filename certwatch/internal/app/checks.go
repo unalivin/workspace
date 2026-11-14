@@ -11,6 +11,7 @@ import (
 	"github.com/NexzaDev/certwatch/internal/inventory"
 	"github.com/NexzaDev/certwatch/internal/settings"
 	"github.com/NexzaDev/certwatch/internal/tlscheck"
+	"github.com/NexzaDev/certwatch/internal/words"
 )
 
 const checkWorkers = 4
@@ -33,7 +34,7 @@ type CheckReport struct {
 }
 
 func (r CheckReport) Summary() string {
-	text := fmt.Sprintf("checked %d %s: %d failed, %d changed certificates, %d new alerts", r.Checked, plural(r.Checked, "endpoint", "endpoints"), r.Failed, r.Changed, r.Alerts)
+	text := fmt.Sprintf("checked %s: %d failed, %s, %s", words.Count(r.Checked, "endpoint", "endpoints"), r.Failed, words.Count(r.Changed, "changed certificate", "changed certificates"), words.Count(r.Alerts, "new alert", "new alerts"))
 	if r.Skipped > 0 {
 		text += fmt.Sprintf(", %d demo %s skipped", r.Skipped, plural(r.Skipped, "endpoint", "endpoints"))
 	}

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/NexzaDev/certwatch/internal/words"
 	"io"
 	"strconv"
 	"strings"
@@ -183,7 +184,7 @@ func (r ImportResult) Summary() string {
 	if r.DryRun {
 		verb = "would import"
 	}
-	return fmt.Sprintf("%s %d endpoints, %d already monitored, %d rejected", verb, r.Created, r.Known, len(r.Errors))
+	return fmt.Sprintf("%s %s, %d already monitored, %d rejected", verb, words.Count(r.Created, "endpoint", "endpoints"), r.Known, len(r.Errors))
 }
 
 func (s *Service) ImportEndpoints(ctx context.Context, r io.Reader, format string, dryRun, authorized bool) (ImportResult, error) {

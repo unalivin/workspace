@@ -126,12 +126,12 @@ Exit codes: `0` success, `1` failure, `2` wrong usage.
 | `certwatch watch` | `--dry-run` `--interval` `--once` `--yes` | Check enabled endpoints at the configured interval until interrupted |
 | `certwatch demo load` | none | Add sample endpoints and certificates labeled as demo data |
 | `certwatch demo remove` | `--dry-run` `--yes` | Remove every demo endpoint, certificate and alert |
-| `certwatch alerts list` | `--event` `--format` `--limit` `--severity` `--unread` | List notifications, newest first |
-| `certwatch alerts read` | `<id\|all>` | Mark one notification, or all of them, as read |
+| `certwatch alerts list` | `--event` `--format` `--limit` `--severity` `--unread` | List alerts, newest first |
+| `certwatch alerts read` | `<id\|all>` | Mark one alert, or all of them, as read |
 | `certwatch alerts rules list` | none | List the rule of every event type |
 | `certwatch alerts rules set` | `<event>` `--dedup-minutes` `--enabled` `--min-severity` `--quiet-end` `--quiet-start` | Change the rule of an event type |
 | `certwatch alerts rules reset` | `<event>` | Return the rule of an event type to its defaults |
-| `certwatch notifier run` | `--once` | Check for new notifications on an interval until stopped |
+| `certwatch notifier run` | `--once` | Look for new alerts on an interval until stopped |
 | `certwatch notifier install` | `--dry-run` | Start the notifier when you sign in (per-user entry, no administrator rights) |
 | `certwatch notifier uninstall` | `--dry-run` | Remove the sign-in entry |
 | `certwatch notifier status` | none | Show whether the sign-in entry exists |

@@ -22,6 +22,7 @@ import (
 	"github.com/NexzaDev/certwatch/internal/settings"
 	"github.com/NexzaDev/certwatch/internal/store"
 	"github.com/NexzaDev/certwatch/internal/theme"
+	"github.com/NexzaDev/certwatch/internal/words"
 )
 
 const pollInterval = time.Second
@@ -213,7 +214,7 @@ func (d *dashboard) housekeep(done app.Housekeeping, err error) {
 	case done.Report.Checked > 0:
 		d.say(theme.SeverityInfo, "Automatic check: %s", done.Report.Summary())
 	case done.Alerts > 0:
-		d.say(theme.SeverityInfo, "%d new expiry alerts", done.Alerts)
+		d.say(theme.SeverityInfo, "%s", words.Count(done.Alerts, "new expiry alert", "new expiry alerts"))
 	}
 }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/NexzaDev/certwatch/internal/app"
 	"github.com/NexzaDev/certwatch/internal/inventory"
 	"github.com/NexzaDev/certwatch/internal/theme"
+	"github.com/NexzaDev/certwatch/internal/words"
 )
 
 const (
@@ -719,7 +720,7 @@ func (p *overviewPage) refresh() {
 		card.number.SetText(fmt.Sprintf("%d", tile.Value))
 		card.state.SetResource(p.d.severityIcon(tile.Severity))
 	}
-	p.summary.SetText(fmt.Sprintf("%d tracked certificates · %d endpoints, %d disabled · %d unread alerts", o.Counts.Certificates, o.Counts.Endpoints, o.Counts.DisabledEndpoints, o.Counts.UnreadAlerts))
+	p.summary.SetText(fmt.Sprintf("%s · %s, %d disabled · %s", words.Count(o.Counts.Certificates, "tracked certificate", "tracked certificates"), words.Count(o.Counts.Endpoints, "endpoint", "endpoints"), o.Counts.DisabledEndpoints, words.Count(o.Counts.UnreadAlerts, "unread alert", "unread alerts")))
 	p.soonest.Objects = []fyne.CanvasObject{p.d.staticTable(o.Soonest)}
 	p.alerts.Objects = []fyne.CanvasObject{p.d.staticTable(o.Alerts)}
 	if o.Empty {

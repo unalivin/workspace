@@ -14,11 +14,14 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 )
 
 const (
 	MaxPEMSize         = 4 << 20
 	MaxPEMCertificates = 500
+	MaxTextLength      = 512
 )
 
 type Info struct {
@@ -36,6 +39,23 @@ type Info struct {
 	IsCA               bool
 	SelfSigned         bool
 	PEM                string
+}
+
+func Clean(text string) string {
+	return strings.Map(func(r rune) rune {
+		if r == utf8.RuneError || unicode.IsControl(r) || unicode.In(r, unicode.Cf, unicode.Zl, unicode.Zp, unicode.Co, unicode.Cs) {
+			return unicode.ReplacementChar
+		}
+		return r
+	}, text)
+}
+
+func Printable(text string) string {
+	text = Clean(text)
+	if utf8.RuneCountInString(text) > MaxTextLength {
+		return string([]rune(text)[:MaxTextLength]) + "…"
+	}
+	return text
 }
 
 func Fingerprint(certificate *x509.Certificate) string {
@@ -63,7 +83,10 @@ func selfSigned(certificate *x509.Certificate) bool {
 }
 
 func Names(certificate *x509.Certificate) []string {
-	names := append([]string{}, certificate.DNSNames...)
+	names := make([]string, 0, len(certificate.DNSNames)+len(certificate.IPAddresses))
+	for _, name := range certificate.DNSNames {
+		names = append(names, Printable(name))
+	}
 	for _, address := range certificate.IPAddresses {
 		names = append(names, address.String())
 	}
@@ -75,9 +98,9 @@ func Describe(certificate *x509.Certificate) Info {
 	algorithm, bits := keyDetails(certificate)
 	return Info{
 		Fingerprint:        Fingerprint(certificate),
-		Subject:            certificate.Subject.String(),
-		Issuer:             certificate.Issuer.String(),
-		CommonName:         certificate.Subject.CommonName,
+		Subject:            Printable(certificate.Subject.String()),
+		Issuer:             Printable(certificate.Issuer.String()),
+		CommonName:         Printable(certificate.Subject.CommonName),
 		Serial:             certificate.SerialNumber.Text(16),
 		NotBefore:          certificate.NotBefore.UTC(),
 		NotAfter:           certificate.NotAfter.UTC(),

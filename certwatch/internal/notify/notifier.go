@@ -101,9 +101,9 @@ func Summary(items []Notification, showTitles bool) (string, string) {
 		if showTitles {
 			return title, SafeTitle(items[0].Title)
 		}
-		return title, "1 new notification"
+		return title, "1 new alert"
 	}
-	body := fmt.Sprintf("%d new notifications", len(items))
+	body := fmt.Sprintf("%d new alerts", len(items))
 	if showTitles {
 		top := items[0]
 		for _, item := range items[1:] {

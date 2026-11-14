@@ -2,7 +2,18 @@
 
 Local-first certificate inventory and TLS posture monitor: tracks expiry, validates hostnames, inspects chains and keeps an audit history, with expiry alerts. Desktop GUI, terminal UI and CLI. Checks only hosts you are authorized to test.
 
-CertWatch is a local-first desktop application. Your data stays in one SQLite file on your computer. The application makes no network requests and collects nothing.
+CertWatch is a local-first desktop application. Your data stays in one SQLite file on your computer. There is no account, no telemetry and no update check.
+
+It connects to the network for one purpose: a TLS handshake with the hosts you added. You confirm for every host that you are authorized to test it, and the application lists each connection before it makes one. Certificate verification is never turned off; an untrusted chain is recorded as untrusted.
+
+What it does:
+
+- Keeps an inventory of endpoints and of the certificates they present, with issuer, subject alternative names, validity, key and fingerprint.
+- Validates the chain against the trusted roots and the certificate against the host name.
+- Records the negotiated TLS version and cipher suite, and optionally which TLS versions a server accepts.
+- Keeps the history of observations and shows when a certificate changed.
+- Raises alerts at expiry thresholds, when validation starts to fail and when a certificate changes.
+- Shows an expiry timeline and writes reports as Markdown, CSV or JSON.
 
 It has three interfaces over the same data:
 
@@ -47,11 +58,21 @@ To build from source, see [docs/INSTALLATION.md](docs/INSTALLATION.md).
 Start the application without arguments and choose Dashboard or Terminal. Or use the commands:
 
 ```bash
-certwatch --ui tui
-certwatch records add --name "First record" --severity high
-certwatch records list
+certwatch endpoints add --host www.example.org --authorized
+certwatch endpoints check-all --dry-run
+certwatch endpoints check-all --yes
 certwatch overview
+certwatch timeline list --zoom 30
+certwatch reports generate --kind expiry --format csv
+certwatch --ui tui
 certwatch --help
+```
+
+`--dry-run` prints the connections a check would make without making them. To look around without touching the network, load the labeled demo data; demo hosts are never contacted:
+
+```bash
+certwatch demo load
+certwatch demo remove
 ```
 
 The usage guide is built into the application (About, Usage guide, or `certwatch guide`) and is also in [docs/USAGE.md](docs/USAGE.md).

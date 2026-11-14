@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"go/ast"
 	"go/parser"
 	"go/token"
 	"io/fs"
@@ -188,5 +189,50 @@ func TestConfigurationDocumentListsEverySetting(t *testing.T) {
 				t.Errorf("docs/CONFIGURATION.md does not mention the value %q of %s", option, definition.Key)
 			}
 		}
+	}
+}
+
+func TestNetworkAccessStaysInTheCheckPackage(t *testing.T) {
+	disabling := "Insecure" + "SkipVerify"
+	forbiddenImports := map[string]bool{"net/http": true, "net/rpc": true, "net/smtp": true, "net/mail": true, "crypto/tls": true}
+	checked := 0
+	for _, path := range projectFiles(t) {
+		slashed := filepath.ToSlash(path)
+		if filepath.Ext(path) != ".go" || strings.Contains(slashed, "/testdata/") {
+			continue
+		}
+		file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
+		if err != nil {
+			t.Errorf("%s: %v", path, err)
+			continue
+		}
+		checked++
+		allowed := strings.HasSuffix(path, "_test.go") || strings.Contains(slashed, "/internal/tlscheck/") || strings.Contains(slashed, "/internal/testkit/")
+		for _, spec := range file.Imports {
+			if name := strings.Trim(spec.Path.Value, `"`); !allowed && forbiddenImports[name] {
+				t.Errorf("%s imports %s; only internal/tlscheck may open connections", path, name)
+			}
+		}
+		ast.Inspect(file, func(node ast.Node) bool {
+			switch value := node.(type) {
+			case *ast.Ident:
+				if value.Name == disabling {
+					t.Errorf("%s turns certificate verification off", path)
+				}
+			case *ast.SelectorExpr:
+				owner, isName := value.X.(*ast.Ident)
+				if !isName || owner.Name != "net" || allowed {
+					return true
+				}
+				name := value.Sel.Name
+				if strings.HasPrefix(name, "Dial") || strings.HasPrefix(name, "Listen") || strings.HasPrefix(name, "Lookup") || name == "Resolver" || name == "DefaultResolver" {
+					t.Errorf("%s uses net.%s; only internal/tlscheck may open connections", path, name)
+				}
+			}
+			return true
+		})
+	}
+	if checked < 50 {
+		t.Fatalf("only %d source files were checked", checked)
 	}
 }

@@ -476,7 +476,7 @@ func TestEndpointWorkflowWithALiveCheck(t *testing.T) {
 		t.Fatal("a second action started while a check was running")
 	}
 	s.runPending()
-	s.shows("Result", "Checked 1 endpoint: 0 failed, 0 changed certificates, 1 new alerts.", "app.fixture.test:443: ok (expires ")
+	s.shows("Result", "Checked 1 endpoint: 0 failed, 0 changed certificates, 1 new alert.", "app.fixture.test:443: ok (expires ")
 	if s.d.busy != "" || s.d.busyBox.Visible() {
 		t.Fatal("the busy line stayed after the check")
 	}
@@ -537,7 +537,7 @@ func TestEndpointWorkflowWithALiveCheck(t *testing.T) {
 	if fraction := barFraction(timeline.data.Rows[0].Cells[position]); fraction <= 0.1 || fraction >= 0.4 {
 		t.Fatalf("a certificate with 20 of 90 days left fills %.2f of its bar", fraction)
 	}
-	s.shows("1 of 1 tracked certificates expire within 90 days")
+	s.shows("1 of 1 tracked certificate expires within 90 days")
 	timeline.filter.SetSelected("Next 30 days")
 	if fraction := barFraction(timeline.data.Rows[0].Cells[position]); fraction <= 0.5 {
 		t.Fatalf("the zoom did not change the bar: %.2f", fraction)
@@ -707,12 +707,12 @@ func TestImportExportAndReports(t *testing.T) {
 	s.d.form.set("file", source)
 	s.d.form.set("authorized", "true")
 	s.d.form.save()
-	s.shows("Endpoints, Import list", "would import 1 endpoints, 0 already monitored, 1 rejected", "alpha.example.org:443", "row 3")
+	s.shows("Endpoints, Import list", "would import 1 endpoint, 0 already monitored, 1 rejected", "alpha.example.org:443", "row 3")
 	if count, _ := s.d.app.Inventory.EndpointCount(ctx); count != 0 {
 		t.Fatal("the preview already imported rows")
 	}
 	s.d.confirm.accept()
-	s.shows("Imported 1 endpoints, 0 already monitored, 1 rejected.")
+	s.shows("Imported 1 endpoint, 0 already monitored, 1 rejected.")
 	s.d.confirm.accept()
 	if len(page.data.Rows) != 1 {
 		t.Fatalf("rows after the import: %d", len(page.data.Rows))
@@ -737,9 +737,9 @@ func TestImportExportAndReports(t *testing.T) {
 	s.tap("Import PEM file")
 	s.d.form.set("file", testkit.PEMFile(t, s.clock.Now(), "file.fixture.test", 5))
 	s.d.form.save()
-	s.shows("Certificates, Import PEM file", "would import 1 certificates, 0 already tracked", "file.fixture.test")
+	s.shows("Certificates, Import PEM file", "would import 1 certificate, 0 already tracked", "file.fixture.test")
 	s.d.confirm.accept()
-	s.shows("Imported 1 certificates, 0 already tracked.")
+	s.shows("Imported 1 certificate, 0 already tracked.")
 	s.d.confirm.accept()
 	certificates.list.Select(0)
 	s.shows("file.fixture.test", "5 days", "imported")
@@ -1249,7 +1249,7 @@ func TestTopBarSearchChipBellAndHelp(t *testing.T) {
 	if s.d.current != app.ViewEndpoints || endpoints.search.Text != "portal" || len(endpoints.data.Rows) != 1 {
 		t.Fatalf("search opened %s with %q and %d rows", s.d.current, endpoints.search.Text, len(endpoints.data.Rows))
 	}
-	s.shows("1 endpoints, ", "certificates and")
+	s.shows("1 endpoint, ", "certificates and")
 	s.d.search.SetText("Private Lab")
 	s.d.search.OnSubmitted(s.d.search.Text)
 	certificates := s.d.views[app.ViewCertificates]

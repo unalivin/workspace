@@ -17,6 +17,7 @@ import (
 	"github.com/NexzaDev/certwatch/internal/settings"
 	"github.com/NexzaDev/certwatch/internal/theme"
 	"github.com/NexzaDev/certwatch/internal/userconfig"
+	"github.com/NexzaDev/certwatch/internal/words"
 )
 
 type settingRow struct {
@@ -302,7 +303,7 @@ func (p *settingsPage) refresh() {
 	} else {
 		p.locSource.SetText("Change copies the database to a new place and uses it, or switches to another database. The old file is never deleted.")
 	}
-	p.demo.SetText(fmt.Sprintf("%d demo rows", p.d.overview.Counts.DemoRows))
+	p.demo.SetText(words.Count(p.d.overview.Counts.DemoRows, "demo row", "demo rows"))
 	if p.d.options.Autostart == nil {
 		p.notifier.Disable()
 		p.notifierL.SetText("This build cannot manage the sign-in entry.")
@@ -362,12 +363,12 @@ func (p *settingsPage) removeDemo() {
 		p.d.say(theme.SeverityInfo, "There is no demo data to remove")
 		return
 	}
-	p.d.ask("Remove demo data", fmt.Sprintf("This removes %d demo endpoints and certificates with their alerts. Entries you added yourself stay.", count), "Remove", func() (string, error) {
+	p.d.ask("Remove demo data", fmt.Sprintf("This removes %s with their alerts. Entries you added yourself stay.", words.Count(count, "demo endpoint or certificate", "demo endpoints and certificates")), "Remove", func() (string, error) {
 		removed, err := p.d.app.Inventory.RemoveDemo(p.d.ctx, false)
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("Removed %d demo endpoints and certificates", removed), nil
+		return "Removed " + words.Count(removed, "demo endpoint or certificate", "demo endpoints and certificates"), nil
 	})
 }
 

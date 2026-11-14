@@ -14,6 +14,7 @@ import (
 	"github.com/NexzaDev/certwatch/internal/inventory"
 	"github.com/NexzaDev/certwatch/internal/notify"
 	"github.com/NexzaDev/certwatch/internal/theme"
+	"github.com/NexzaDev/certwatch/internal/words"
 )
 
 func severityChoices() ([]string, []string) {
@@ -209,7 +210,7 @@ func (p *inboxPage) markAll() {
 	if p.d.fail(err) {
 		return
 	}
-	p.d.done("Marked %d alerts as read", changed)
+	p.d.done("Marked %s as read", words.Count(int(changed), "alert", "alerts"))
 }
 
 func (p *inboxPage) openRecord() {

@@ -15,6 +15,7 @@ import (
 	"github.com/NexzaDev/certwatch/internal/settings"
 	"github.com/NexzaDev/certwatch/internal/theme"
 	"github.com/NexzaDev/certwatch/internal/tlscheck"
+	"github.com/NexzaDev/certwatch/internal/words"
 )
 
 const (
@@ -157,7 +158,7 @@ type UsageError struct{ Message string }
 
 func (e *UsageError) Error() string { return e.Message }
 
-var authorizedField = Field{ID: "authorized", Label: "I am authorized to test this host", Help: "CertWatch connects only to hosts you confirm here. Testing hosts without permission can break rules or laws.", Kind: FieldBool, Default: "false", Required: true}
+var authorizedField = Field{ID: "authorized", Label: "I am authorized to test this host", Help: "Confirm that you may test this host. CertWatch connects only to confirmed hosts; testing a host without permission can break rules or laws.", Kind: FieldBool, Default: "false", Required: true}
 
 var endpointFields = []Field{
 	{ID: "host", Label: "Host", Help: "Host name or IP address, optionally with a port, for example www.example.org or mail.example.org:993.", Kind: FieldText, Required: true},
@@ -505,9 +506,9 @@ func (a *App) timelineTable(ctx context.Context, query ViewQuery) (Table, error)
 		table.Rows = append(table.Rows, Row{ID: c.ID, Severity: severity, Demo: c.Demo,
 			Cells: []string{labeled(c.Name, c.Demo), day(c.NotAfter), marked(severity, DaysText(c.NotAfter, now)), Bar(days, window), c.UsedBy}})
 	}
-	table.Footer = fmt.Sprintf("%d of %d tracked certificates expire within %d days; one block is about %d %s", len(table.Rows), len(list), window, (window+barWidth-1)/barWidth, plural((window+barWidth-1)/barWidth, "day", "days"))
+	table.Footer = fmt.Sprintf("%d of %s within %d days; one block is about %d %s", len(table.Rows), words.Count(len(list), "tracked certificate expires", "tracked certificates expire"), window, (window+barWidth-1)/barWidth, plural((window+barWidth-1)/barWidth, "day", "days"))
 	if hidden == 0 && zoom == "all" {
-		table.Footer = fmt.Sprintf("%d tracked certificates over %d days; one block is about %d %s", len(table.Rows), window, (window+barWidth-1)/barWidth, plural((window+barWidth-1)/barWidth, "day", "days"))
+		table.Footer = fmt.Sprintf("%s over %d days; one block is about %d %s", words.Count(len(table.Rows), "tracked certificate", "tracked certificates"), window, (window+barWidth-1)/barWidth, plural((window+barWidth-1)/barWidth, "day", "days"))
 	}
 	return table, nil
 }

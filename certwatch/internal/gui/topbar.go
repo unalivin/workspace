@@ -16,6 +16,7 @@ import (
 
 	"github.com/NexzaDev/certwatch/internal/app"
 	"github.com/NexzaDev/certwatch/internal/theme"
+	"github.com/NexzaDev/certwatch/internal/words"
 )
 
 const noticeFade = 180 * time.Millisecond
@@ -161,7 +162,7 @@ func (d *dashboard) searchEverywhere(text string) {
 	open := func(view string) {
 		d.openList(view, "all")
 		d.views[view].search.SetText(query)
-		d.say(theme.SeverityInfo, "%d endpoints, %d certificates and %d usage guide sections match \"%s\". The guide is under About, Usage guide.", len(endpoints.Rows), len(certificates.Rows), len(sections), query)
+		d.say(theme.SeverityInfo, "%s, %s and %s match \"%s\". The guide is under About, Usage guide.", words.Count(len(endpoints.Rows), "endpoint", "endpoints"), words.Count(len(certificates.Rows), "certificate", "certificates"), words.Count(len(sections), "usage guide section", "usage guide sections"), query)
 	}
 	switch {
 	case len(endpoints.Rows) > 0:

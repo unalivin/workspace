@@ -81,7 +81,7 @@ teardown() {
 @test "fuzz --list names every fuzz target with its package" {
   run "$REAL_PROJECT/scripts/fuzz.sh" --list
   [ "$status" -eq 0 ]
-  [[ "$output" == *"./internal/records FuzzParse"* ]]
+  [[ "$output" == *"./internal/settings FuzzNormalize"* ]]
   count="$(grep -rE --include='*_test.go' -c '^func Fuzz' "$REAL_PROJECT/internal" "$REAL_PROJECT/tests" | awk -F: '{ total += $2 } END { print total }')"
   [ "${#lines[@]}" -eq "$count" ]
 }

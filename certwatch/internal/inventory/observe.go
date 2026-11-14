@@ -12,6 +12,7 @@ import (
 	"github.com/NexzaDev/certwatch/internal/notify"
 	"github.com/NexzaDev/certwatch/internal/theme"
 	"github.com/NexzaDev/certwatch/internal/tlscheck"
+	"github.com/NexzaDev/certwatch/internal/words"
 )
 
 const (
@@ -353,7 +354,7 @@ func (r ImportedCertificates) Summary() string {
 	if r.DryRun {
 		verb = "would import"
 	}
-	return fmt.Sprintf("%s %d certificates, %d already tracked", verb, r.Added, r.Known)
+	return fmt.Sprintf("%s %s, %d already tracked", verb, words.Count(r.Added, "certificate", "certificates"), r.Known)
 }
 
 func (s *Service) ImportCertificates(ctx context.Context, data []byte, dryRun bool, policy Policy) (ImportedCertificates, error) {

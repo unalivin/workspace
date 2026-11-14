@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/NexzaDev/certwatch/internal/store"
+	"github.com/NexzaDev/certwatch/internal/tlscheck"
 )
 
 const (
@@ -274,7 +275,7 @@ func Normalize(in EndpointInput) (EndpointInput, error) {
 	} else {
 		in.ServerName = ""
 	}
-	in.Note = strings.TrimSpace(in.Note)
+	in.Note = tlscheck.Clean(strings.Join(strings.Fields(in.Note), " "))
 	if len(in.Note) > MaxNoteLength {
 		return in, &ValidationError{Field: "note", Problem: fmt.Sprintf("the note is longer than %d characters", MaxNoteLength), Fix: "Shorten the note"}
 	}

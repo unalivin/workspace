@@ -83,7 +83,7 @@ func TestNotifierSkipsHistoryThenReportsNewItemsOnce(t *testing.T) {
 	if shown, err := f.runner.Tick(ctx); err != nil || shown != 1 {
 		t.Fatalf("tick after one new item: %d, %v", shown, err)
 	}
-	if got := f.deliverer.messages; len(got) != 1 || got[0] != meta.AppName+" | 1 new notification" {
+	if got := f.deliverer.messages; len(got) != 1 || got[0] != meta.AppName+" | 1 new alert" {
 		t.Fatalf("default text must be minimal: %v", got)
 	}
 	if shown, _ := f.runner.Tick(ctx); shown != 0 || len(f.deliverer.messages) != 1 {
@@ -96,7 +96,7 @@ func TestNotifierSkipsHistoryThenReportsNewItemsOnce(t *testing.T) {
 	if shown, err := f.runner.Tick(ctx); err != nil || shown != 3 {
 		t.Fatalf("tick after three new items: %d, %v", shown, err)
 	}
-	if got := f.deliverer.messages[1]; got != meta.AppName+" | 3 new notifications, most severe: critical item" {
+	if got := f.deliverer.messages[1]; got != meta.AppName+" | 3 new alerts, most severe: critical item" {
 		t.Fatalf("summary: %q", got)
 	}
 	if f.opens != 5 {
@@ -261,7 +261,7 @@ func TestSummary(t *testing.T) {
 	if _, body := Summary([]Notification{secret}, true); strings.Contains(body, "ghp_") {
 		t.Fatalf("secret-like text reached the summary: %q", body)
 	}
-	if _, body := Summary([]Notification{secret}, false); body != "1 new notification" {
+	if _, body := Summary([]Notification{secret}, false); body != "1 new alert" {
 		t.Fatalf("minimal summary: %q", body)
 	}
 }

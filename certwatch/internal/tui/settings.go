@@ -12,6 +12,7 @@ import (
 	"github.com/NexzaDev/certwatch/internal/settings"
 	"github.com/NexzaDev/certwatch/internal/theme"
 	"github.com/NexzaDev/certwatch/internal/userconfig"
+	"github.com/NexzaDev/certwatch/internal/words"
 )
 
 type settingRow struct {
@@ -98,7 +99,7 @@ func (p *settingsPage) load(m *Model) {
 	}
 	byGroup["Data"] = append(byGroup["Data"],
 		settingRow{group: "Data", label: "Database location", value: location.Path, source: source, help: databaseHelp, action: actionDatabase},
-		settingRow{group: "Data", label: "Remove demo data", value: fmt.Sprintf("%d demo rows", m.overview.Counts.DemoRows), source: "action", help: "Enter removes the demo endpoints, their certificates and their alerts after confirmation. Entries you added yourself stay.", action: actionDemo})
+		settingRow{group: "Data", label: "Remove demo data", value: words.Count(m.overview.Counts.DemoRows, "demo row", "demo rows"), source: "action", help: "Enter removes the demo endpoints, their certificates and their alerts after confirmation. Entries you added yourself stay.", action: actionDemo})
 	notifier, notifierHelp := "Not available", ""
 	if m.options.Autostart != nil {
 		installed, path, err := m.options.Autostart().Status()
@@ -180,12 +181,12 @@ func (p *settingsPage) key(m *Model, key string) {
 			m.say(noticeInfo, "There is no demo data to remove")
 			return
 		}
-		m.ask("Remove demo data", fmt.Sprintf("This removes %d demo endpoints and certificates with their alerts. Entries you added yourself stay.", count), "remove them", func() (string, error) {
+		m.ask("Remove demo data", fmt.Sprintf("This removes %s with their alerts. Entries you added yourself stay.", words.Count(count, "demo endpoint or certificate", "demo endpoints and certificates")), "remove them", func() (string, error) {
 			removed, err := m.app.Inventory.RemoveDemo(m.ctx, false)
 			if err != nil {
 				return "", err
 			}
-			return fmt.Sprintf("Removed %d demo endpoints and certificates", removed), nil
+			return "Removed " + words.Count(removed, "demo endpoint or certificate", "demo endpoints and certificates"), nil
 		})
 	case row.action == actionNotifier && key == "enter":
 		p.toggleNotifier(m)
