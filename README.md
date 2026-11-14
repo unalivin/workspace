@@ -8,7 +8,7 @@ Every project lives in its own top-level folder, builds and tests on its own, ne
 
 The status column is generated from `scripts/projects.tsv` and checked in CI. A project is **Complete** only when its CI is green on Linux, macOS and Windows, its documentation matches the implementation and its quality report is honest. A folder that does not exist yet is **Not started**.
 
-Foundation status is tracked in [docs/ROADMAP.md](docs/ROADMAP.md).
+What exists and what does not is stated in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 <!-- projects:start -->
 | # | Folder | App | Language | Description | Status | Docs |
@@ -45,7 +45,7 @@ Foundation status is tracked in [docs/ROADMAP.md](docs/ROADMAP.md).
 | Path | Purpose |
 |---|---|
 | `scripts/` | Workspace tooling: project registry, checks, workflow generator, project creation, split and publish |
-| `templates/go`, `templates/rust`, `templates/cpp` | Reusable application skeleton per language, copied into each project |
+| `templates/go` | Reusable Go application skeleton, copied into each Go project. The Rust and C++ templates are not written yet. |
 | `templates/workflows/` | Workflow templates that `scripts/gen-workflows.sh` renders into `.github/workflows/` |
 | `docs/` | Workspace documentation |
 | `<project>/` | One independent application per folder |
@@ -80,7 +80,7 @@ scripts/split-project.sh certwatch
 - [docs/LANGUAGES.md](docs/LANGUAGES.md): language profiles, toolchains and tool versions
 - [docs/ADD_PROJECT.md](docs/ADD_PROJECT.md): creating a project from a template
 - [docs/RELEASING.md](docs/RELEASING.md): tag-triggered pre-releases and splitting a project
-- [docs/ROADMAP.md](docs/ROADMAP.md): phases, current state and known gaps
+- [docs/ROADMAP.md](docs/ROADMAP.md): what exists, what does not, and the order of work
 - [docs/SPECIFICATION.md](docs/SPECIFICATION.md): the requirements every project follows
 
 ## Security

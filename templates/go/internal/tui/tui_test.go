@@ -115,12 +115,16 @@ func flatten(view string) string {
 	return strings.Join(words, " ")
 }
 
+func dense(text string) string {
+	return strings.Join(strings.Fields(text), "")
+}
+
 func (s *screen) shows(parts ...string) {
 	s.t.Helper()
 	view := s.m.View()
 	flat := flatten(view)
 	for _, part := range parts {
-		if !strings.Contains(view, part) && !strings.Contains(flat, strings.Join(strings.Fields(part), " ")) {
+		if !strings.Contains(view, part) && !strings.Contains(flat, strings.Join(strings.Fields(part), " ")) && !strings.Contains(dense(flat), dense(part)) {
 			s.t.Fatalf("screen lacks %q:\n%s", part, view)
 		}
 	}
@@ -131,7 +135,7 @@ func (s *screen) hides(parts ...string) {
 	view := s.m.View()
 	flat := flatten(view)
 	for _, part := range parts {
-		if strings.Contains(view, part) || strings.Contains(flat, strings.Join(strings.Fields(part), " ")) {
+		if strings.Contains(view, part) || strings.Contains(flat, strings.Join(strings.Fields(part), " ")) || strings.Contains(dense(flat), dense(part)) {
 			s.t.Fatalf("screen contains %q:\n%s", part, view)
 		}
 	}
@@ -761,4 +765,30 @@ func TestLongHintLinesKeepTheWayOut(t *testing.T) {
 	}
 	s.press("5", "right", "right")
 	s.shows("Records: choose the table columns", "Records: next sort column, reverse the order")
+}
+
+func TestLongNoticesWrapInsteadOfLosingTheirEnd(t *testing.T) {
+	s := newScreen(t, nil)
+	s.start()
+	s.m.Update(tea.WindowSizeMsg{Width: 70, Height: 20})
+	ending := "the-last-word-of-the-notice"
+	s.m.say(noticeSuccess, "Exported 2 records to /a/rather/long/folder/name/that/does/not/fit/on/one/line/of/a/narrow/terminal/%s", ending)
+	s.shows(ending)
+	lines := strings.Split(s.m.View(), "\n")
+	if len(lines) != 19 {
+		t.Fatalf("the screen has %d lines with a wrapped notice", len(lines))
+	}
+	for _, line := range lines {
+		if lipgloss.Width(line) > 70 {
+			t.Fatalf("line wider than the terminal: %q", line)
+		}
+	}
+	s.m.say(noticeInfo, "%s", strings.Repeat("word ", 200))
+	if lines := strings.Split(s.m.View(), "\n"); len(lines) != 19 || !strings.Contains(lines[len(lines)-1], "…") {
+		t.Fatalf("a very long notice is not limited to %d lines", maxNoticeLines)
+	}
+	s.press("r")
+	if lines := strings.Split(s.m.View(), "\n"); len(lines) != 19 {
+		t.Fatalf("the screen has %d lines after the notice went away", len(lines))
+	}
 }

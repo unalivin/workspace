@@ -45,25 +45,34 @@ jobs:
       - name: Install prerequisites
         run: scripts/ci-step.sh --command "install prerequisites" scripts/dev-setup.sh --install
       - name: Format
+        if: ${{ !cancelled() }}
         run: scripts/ci-step.sh fmt-check
       - name: Lint
+        if: ${{ !cancelled() }}
         run: scripts/ci-step.sh lint
       - name: Test
+        if: ${{ !cancelled() }}
         run: scripts/ci-step.sh test
       - name: Race detector
+        if: ${{ !cancelled() }}
         run: scripts/ci-step.sh race-or-sanitize
       - name: Build dashboard
+        if: ${{ !cancelled() }}
         run: scripts/ci-step.sh build
       - name: Build and test without GUI
+        if: ${{ !cancelled() }}
         run: scripts/ci-step.sh build-nogui test-nogui
       - name: Vulnerability scan
+        if: ${{ !cancelled() }}
         run: scripts/ci-step.sh vuln
       - name: Shell scripts
-        if: runner.os == 'Linux'
+        if: ${{ !cancelled() && runner.os == 'Linux' }}
         run: scripts/ci-step.sh shell
       - name: Render dashboard screens
+        if: ${{ !cancelled() }}
         run: scripts/ci-step.sh screenshots
       - name: Package
+        if: ${{ !cancelled() }}
         run: scripts/ci-step.sh package
       - name: Upload rendered screens
         if: always()

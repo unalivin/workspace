@@ -21,8 +21,9 @@ import (
 )
 
 const (
-	minWidth  = 60
-	minHeight = 16
+	minWidth       = 60
+	minHeight      = 16
+	maxNoticeLines = 3
 )
 
 type Options struct {
@@ -479,7 +480,8 @@ func (m *Model) View() string {
 	if m.width < minWidth || m.height < minHeight {
 		return fmt.Sprintf("%s needs a terminal of at least %d columns and %d rows.\nThis one is %d by %d. Enlarge the window, or use the commands: %s --help\n", meta.AppName, minWidth, minHeight, m.width, m.height, meta.Slug)
 	}
-	bodyHeight := m.height - 3
+	status := m.statusLines()
+	bodyHeight := m.height - 2 - len(status)
 	sidebarWidth := 20
 	if m.sidebar {
 		sidebarWidth = 4
@@ -529,7 +531,7 @@ func (m *Model) View() string {
 		builder.WriteString(fit(right, contentWidth))
 		builder.WriteString("\n")
 	}
-	builder.WriteString(m.statusView())
+	builder.WriteString(strings.Join(status, "\n"))
 	return builder.String()
 }
 
@@ -556,22 +558,33 @@ func shortHints(hints string, width int) string {
 	return kept + " · " + tail
 }
 
-func (m *Model) statusView() string {
-	text := shortHints(m.hints(), m.width-2)
-	style := m.st.status
-	if m.notice != "" {
-		glyph := "ℹ"
-		switch m.kind {
-		case noticeSuccess:
-			glyph = "✔"
-		case noticeWarning:
-			glyph = "▲"
-		case noticeFailure:
-			glyph = "✖"
-		}
-		text = glyph + " " + m.notice
+func (m *Model) statusLines() []string {
+	if m.notice == "" {
+		return []string{m.st.status.Render(fit(" "+shortHints(m.hints(), m.width-2), m.width))}
 	}
-	return style.Render(fit(" "+text, m.width))
+	glyph := "ℹ"
+	switch m.kind {
+	case noticeSuccess:
+		glyph = "✔"
+	case noticeWarning:
+		glyph = "▲"
+	case noticeFailure:
+		glyph = "✖"
+	}
+	wrapped := wrap(m.notice, m.width-4)
+	if len(wrapped) > maxNoticeLines {
+		wrapped = wrapped[:maxNoticeLines]
+		wrapped[maxNoticeLines-1] = fit(wrapped[maxNoticeLines-1]+"…", m.width-4)
+	}
+	lines := make([]string, 0, len(wrapped))
+	for index, line := range wrapped {
+		lead := "   "
+		if index == 0 {
+			lead = " " + glyph + " "
+		}
+		lines = append(lines, m.st.status.Render(fit(lead+line, m.width)))
+	}
+	return lines
 }
 
 func (m *Model) sidebarView(width, height int) []string {

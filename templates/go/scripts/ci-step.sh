@@ -9,16 +9,37 @@ Usage: scripts/ci-step.sh <make-target>...
        scripts/ci-step.sh --command <label> <program> [arguments]
 
 Runs make targets (or one command) from the project root, keeps the complete
-output in the log and, when a step fails inside GitHub Actions, prints the last
-lines of that step as an error annotation so the failure can be read from the
-check run without opening the log.
+output in the log and, when a step fails inside GitHub Actions, prints the
+failing tests, compiler errors and last lines of that step as an error
+annotation so the failure can be read from the check run without opening the
+log.
 
   --command <label>  Run a program instead of make targets
   --help             Show this help
 USAGE
 }
 
-tail_lines=25
+tail_lines=12
+finding_lines=24
+line_width=240
+
+findings() {
+  grep -E -A 3 -- '^[[:space:]]*--- FAIL|^panic:|^not ok |_test\.go:[0-9]+:|\.go:[0-9]+:[0-9]+:|^FAIL[[:space:]]|[Ee]rror:|undefined reference|cannot find' "$1" |
+    grep -v -- '^--$' | sed -e 's/[[:space:]]*$//' | grep -v '^$' | cut -c "1-$line_width" | head -n "$finding_lines" || true
+}
+
+ending() {
+  sed -e 's/[[:space:]]*$//' "$1" | grep -v '^$' | cut -c "1-$line_width" | tail -n "$tail_lines" || true
+}
+
+summary() {
+  local found
+  found="$(findings "$1")"
+  if [ -n "$found" ]; then
+    printf '%s\n...\n' "$found"
+  fi
+  ending "$1"
+}
 
 escape_annotation() {
   local text="$1"
@@ -40,7 +61,7 @@ run_step() {
   if [ "$status" != "0" ]; then
     printf 'step failed: %s (exit %s)\n' "$label" "$status" >&2
     if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
-      printf '::error title=%s: %s failed (%s)::%s\n' "$APP_SLUG" "$label" "$(host_os)" "$(escape_annotation "$(tail -n "$tail_lines" "$log")")"
+      printf '::error title=%s: %s failed (%s)::%s\n' "$APP_SLUG" "$label" "$(host_os)" "$(escape_annotation "$(summary "$log")")"
     fi
     rm -f "$log"
     return "$status"

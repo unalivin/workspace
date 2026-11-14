@@ -101,15 +101,30 @@ teardown() {
 }
 
 @test "ci-step reports a failing command with its exit status and an annotation" {
-  export GITHUB_ACTIONS=true
-  run "$REAL_PROJECT/scripts/ci-step.sh" --command "break things" bash -c 'printf "first line\nsecond 100%% line\n"; exit 7'
+  GITHUB_ACTIONS=true run "$REAL_PROJECT/scripts/ci-step.sh" --command "break things" bash -c 'printf "first line\nsecond 100%% line\n"; exit 7'
   [ "$status" -eq 7 ]
   [[ "$output" == *"step failed: break things (exit 7)"* ]]
   [[ "$output" == *"::error title="*"break things failed"*"::first line%0Asecond 100%25 line"* ]]
 }
 
+@test "ci-step puts the failing test before the last lines of a long log" {
+  {
+    printf 'ok  \texample/first\t0.1s\n'
+    printf -- '--- FAIL: TestWidget (0.00s)\n'
+    printf '    widget_test.go:12: got 3, want 4\n'
+    for number in $(seq 1 40); do
+      printf 'ok  \texample/package%s\t0.1s\n' "$number"
+    done
+  } >"$SANDBOX/long.log"
+  GITHUB_ACTIONS=true run "$REAL_PROJECT/scripts/ci-step.sh" --command "long test" bash -c "cat '$SANDBOX/long.log'; exit 1"
+  [ "$status" -eq 1 ]
+  annotation="${output##*::error}"
+  [[ "$annotation" == *"--- FAIL: TestWidget"*"widget_test.go:12: got 3, want 4"*"...%0A"*"example/package40"* ]]
+  [[ "$annotation" != *"example/package20"* ]]
+}
+
 @test "ci-step prints no annotation outside GitHub Actions" {
-  run "$REAL_PROJECT/scripts/ci-step.sh" --command "break things" false
+  GITHUB_ACTIONS="" run "$REAL_PROJECT/scripts/ci-step.sh" --command "break things" false
   [ "$status" -eq 1 ]
   [[ "$output" != *"::error"* ]]
 }
