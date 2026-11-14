@@ -27,7 +27,7 @@ Version `0.1.0-dev`. This is an early development build ("dev beta"). Not every 
 
 ## Download
 
-Pre-releases are published on the [releases page](https://github.com/NexzaDev/workspace/releases). Each one has exactly three files:
+No pre-release has been published yet; until one is, build from source as [docs/INSTALLATION.md](docs/INSTALLATION.md) describes. Pre-releases will appear on the [releases page](https://github.com/NexzaDev/workspace/releases), each with exactly three files:
 
 | File | For |
 |---|---|
@@ -87,6 +87,8 @@ The usage guide is built into the application (About, Usage guide, or `certwatch
 - [Configuration](docs/CONFIGURATION.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 - [Platform support](docs/PLATFORM_SUPPORT.md)
+- [Requirements and their audit](docs/REQUIREMENTS.md)
+- [Roadmap and known gaps](docs/ROADMAP.md)
 
 ## Security
 

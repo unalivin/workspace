@@ -114,6 +114,32 @@ type Detail struct {
 	Subtitle string
 	Severity theme.Severity
 	Sections []Section
+	Unusable []string
+}
+
+func (d Detail) Usable(action string) bool {
+	for _, id := range d.Unusable {
+		if id == action {
+			return false
+		}
+	}
+	return true
+}
+
+func endpointMark(e inventory.Endpoint, now time.Time) (string, theme.Severity, string) {
+	status, severity := EndpointStatus(e)
+	if status != "ok" {
+		return status, severity, status
+	}
+	if _, expiry := inventory.ExpiryState(e.NotAfter, now); expiry != theme.SeverityInfo {
+		left := DaysText(e.NotAfter, now)
+		text := "ok, the certificate expires in " + left
+		if !e.NotAfter.After(now) || left == "today" {
+			text = "ok, the certificate expires today"
+		}
+		return status, expiry, text
+	}
+	return status, severity, status
 }
 
 type ViewQuery struct {
@@ -374,13 +400,7 @@ func (a *App) endpointTable(ctx context.Context, query ViewQuery) (Table, error)
 	}
 	now := a.Now()
 	for _, e := range list {
-		status, severity := EndpointStatus(e)
-		if status == "ok" {
-			_, expiry := inventory.ExpiryState(e.NotAfter, now)
-			if expiry != theme.SeverityInfo {
-				severity = expiry
-			}
-		}
+		status, severity, _ := endpointMark(e, now)
 		cells := []string{e.Address(), marked(severity, status), e.CertificateName, day(e.NotAfter), DaysText(e.NotAfter, now), a.when(ctx, e.ObservedAt), e.Version, stateText(e.Enabled, e.Demo)}
 		row := Row{ID: e.ID, Severity: severity, Demo: e.Demo, Muted: !e.Enabled}
 		for _, index := range indexes {
@@ -740,8 +760,11 @@ func (a *App) endpointDetail(ctx context.Context, id int64, focus string) (Detai
 		return Detail{}, err
 	}
 	now := a.Now()
-	status, severity := EndpointStatus(e)
-	detail := Detail{Title: e.Address(), Subtitle: status, Severity: severity}
+	status, severity, summary := endpointMark(e, now)
+	detail := Detail{Title: e.Address(), Subtitle: summary, Severity: severity, Unusable: []string{"enable"}}
+	if !e.Enabled {
+		detail.Unusable = []string{"disable"}
+	}
 	facts := [][2]string{{"Verified name", e.VerifiedName()}, {"State", stateText(e.Enabled, e.Demo)}, {"Authorization confirmed", a.FormatTime(ctx, e.AuthorizedAt)}, {"Last check", a.when(ctx, e.ObservedAt)}, {"Result", status}}
 	if e.Error != "" {
 		facts = append(facts, [2]string{"Problem", e.Error})

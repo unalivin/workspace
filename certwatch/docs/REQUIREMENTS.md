@@ -58,3 +58,55 @@ Monitor the TLS certificates of hosts the user is responsible for. Record expiry
 | Q3 | No SQL from strings | The static scan passes; hot queries use their indexes |
 | Q4 | Honest documents | Tests named in documents exist; the command reference is generated; unverified areas are listed |
 | Q5 | Reproducible checks | `make check` runs formatting, static analysis, the tests with the seed inputs of every fuzz target, the race detector, the builds and the document checks; `make fuzz` runs every fuzz target for a set time |
+
+## Audit
+
+Status of every requirement above, with the tests that prove it. "Implemented" means the tests named here pass; run them with `make test-nogui` (service layer, commands, terminal UI) and `make test` (the same plus the dashboard). Whether they pass on Linux, macOS and Windows for a given commit is shown by the CI run of that commit, not by this page.
+
+| No. | Status | Proof |
+|---|---|---|
+| F1 | implemented | `TestEndpointLifecycleNeedsAuthorization`, `TestEndpointLifecycleWithALiveCheck`, `TestEveryActionIsPlannedExecutedAndListedAsACapability` |
+| F2 | implemented | `TestCheckAcceptsATrustedChain`, `TestRecordStoresTheChainAndAlertsOnceForEachThreshold` |
+| F3 | implemented | `TestCheckKeepsVerificationOnAndStillRecordsAnUntrustedChain`, `TestCheckReportsASelfSignedCertificateAndAWeakKey`, `TestCheckReportsAnExpiredCertificate`, `TestCheckReportsAHostnameMismatch` |
+| F4 | implemented | `TestCheckObservesAcceptedProtocolVersions` |
+| F5 | implemented | `TestRecordDetectsChangesAndValidationTransitions`, `TestRecordPrunesHistoryAndRemovesUnreferencedCertificates` |
+| F6 | implemented | `TestImportCertificatesTracksFilesAndStopTrackingReleasesThem`, `TestCertificateImportReportsAndFiles` |
+| F7 | implemented | `TestOverviewBucketsMatchTheCertificateFilters`, `TestOverviewTilesAndEveryViewShowTheSameNumbers`, `TestViewsMatchTheFixture`, `TestFirstStartAndOverview` |
+| F8 | partial | A list in the order of expiry with a bar and a zoom: `TestBarAndDaysText`, `TestEndpointColumnsFollowTheSettingAndBarsAreDrawn`. There is no month grid |
+| F9 | implemented | `TestRecordStoresTheChainAndAlertsOnceForEachThreshold`, `TestRecordDetectsChangesAndValidationTransitions`, `TestPublishAppliesRulesAndDeduplicates`, `TestAlertsAndRules` |
+| F10 | implemented | `TestReportsRenderTheSameRowsInEveryFormat`, `TestRenderGuardsSpreadsheetFormulasAndTableSyntax`, `TestImportExportAndReports` |
+| F11 | implemented | `TestEndpointTransferRoundTripAndImportRules`, `TestImportExportAndReports` |
+| F12 | implemented | `TestHousekeepingChecksDueEndpointsAndRaisesExpiryAlerts`, `TestWatchChecksDueEndpointsOnlyAfterConfirmation` |
+| F13 | implemented | `TestAdditionalTrustedRootsComeFromTheConfiguredFile` |
+| F14 | implemented | `TestDemoDataIsLabeledAndRemovable`, `TestDemoEndpointsAreNeverContacted`, `TestDemoOverviewAndAlerts` |
+| S1 | implemented | `TestEndpointLifecycleNeedsAuthorization`, `TestEndpointTransferRoundTripAndImportRules` |
+| S2 | implemented | `TestCheckRunsOnlyAfterAnAuthorizedEndpointAndDisclosesTheConnection`, `TestWatchChecksDueEndpointsOnlyAfterConfirmation`, `TestRemoveWithoutConfirmationWhenTheSettingIsOffButChecksStillAsk`, `TestNetworkChecksAskEvenWhenConfirmationsAreOff` |
+| S3 | implemented | `TestNetworkAccessStaysInTheCheckPackage`, `TestCheckKeepsVerificationOnAndStillRecordsAnUntrustedChain` |
+| S4 | implemented | `TestNetworkAccessStaysInTheCheckPackage`, `TestCheckUsesTheGivenDialerAndNothingElse` |
+| S5 | implemented | `TestCheckNeutralizesHostileTextInCertificates`, `TestPrintableKeepsTextAndLimitsLength`, `FuzzPrintable` |
+| S6 | implemented | `TestCheckStopsAtTheTimeout`, `TestClampTimeout`, `TestParsePEM`, `TestEndpointTransferRoundTripAndImportRules` |
+| S7 | implemented for the application; the display of system notifications by the desktop is not verified | `TestDatabaseFileIsCreatedWithRestrictivePermissions`, `TestSummary`, `TestDiagnosticsAndIssueReportCarryNoPrivateData` |
+| S8 | implemented | `TestEveryActionIsPlannedExecutedAndListedAsACapability`, `TestMoveDatabase`, `TestSettingsActions` |
+| I1 | implemented | `TestCapabilityMatrixIsComplete`, `TestEveryCapabilityHasACommand`, `TestEveryTerminalCapabilityIsReachable`, `TestEveryDashboardCapabilityIsReachable` |
+| I2 | implemented | `TestChangesMadeInOneFrontEndReachTheOther`, `TestExternalChangesKeepSelectionAndInput`, `TestExternalChangesAppearOnTheNextTick`, `TestConflictingEditKeepsTheForm` |
+| I3 | implemented | `TestNavigationShortcutsAndEmbeddedDocuments`, `TestNavigationAndFrame`, `TestNavigationMenuAndShortcuts` |
+| I4 | implemented | `TestSeverityColorsIgnoreTheAccentAndStayDistinct`, `TestStylesFollowTheTerminalProfile` |
+| I5 | implemented in the tests' headless driver; not verified with a real keyboard on a real display | `TestEveryViewActionKeyStartsItsAction`, `TestNavigationMenuAndShortcuts` |
+| I6 | implemented | `TestAboutGuideAndLinks`, `TestAbout`, `TestDiagnosticsGuideAboutAndLicenses` |
+| Q1 | implemented | no paid service appears in `go.mod`, the scripts or the workflows |
+| Q2 | see the CI run of the commit | `.github/workflows/certwatch-ci.yml` in the workspace |
+| Q3 | implemented | `TestNoSQLIsBuiltFromStrings`, `TestHotQueriesUseTheirIndexes` |
+| Q4 | implemented | `TestTestsNamedInDocumentsExist`, `TestGeneratedCommandTablesAreCurrent`, `TestConfigurationDocumentListsEverySetting` |
+| Q5 | implemented | `scripts/check.sh`, `scripts/tests/scripts.bats` |
+
+### Parts of the common application shell that are partial
+
+| Area | Status |
+|---|---|
+| Tables | Filter, search, row detail, keyboard navigation, density, and export of the endpoint list, of certificates and of reports exist in every view. Sort order and a column choice exist for the endpoint table only, as settings. Copy exists in the dashboard only |
+| Window state | Size and sidebar state are saved. The position is not |
+| Icons | One consistent set of original drawings defined in code, not a third-party icon set. See [adr/0004-fyne-with-own-skin.md](adr/0004-fyne-with-own-skin.md) |
+| Reduced motion | The setting turns off the fade of the notice bar and the moving progress bar of a running check. The toolkit's own widget animations are compiled out of every build |
+| Accessibility | Keyboard operation, text scaling and contrast are tested. Visible focus on a real display and screen readers are not verified |
+| Release | The release workflow and its checks exist and the checks are tested with `scripts/tests/release.bats`. The workflow has not been run; no pre-release exists |
+| Real desktops | The dashboard, the native chooser, system notifications and start at sign-in have not been tried on a real desktop of any of the three systems |

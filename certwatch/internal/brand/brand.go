@@ -17,6 +17,7 @@ var (
 	Background = color.NRGBA{R: 0x1F, G: 0x3A, B: 0x5F, A: 0xFF}
 	Foreground = color.NRGBA{R: 0xF5, G: 0xF7, B: 0xFA, A: 0xFF}
 	Accent     = color.NRGBA{R: 0x4F, G: 0xC3, B: 0xA1, A: 0xFF}
+	Ink        = color.NRGBA{R: 0x7A, G: 0x90, B: 0xAB, A: 0xFF}
 )
 
 type shape struct {
@@ -25,19 +26,22 @@ type shape struct {
 }
 
 var motif = []shape{
-	{0.22, 0.26, 0.10, 0.10, 0.05, Accent},
-	{0.40, 0.26, 0.38, 0.10, 0.05, Foreground},
-	{0.22, 0.45, 0.10, 0.10, 0.05, Accent},
-	{0.40, 0.45, 0.38, 0.10, 0.05, Foreground},
-	{0.22, 0.64, 0.10, 0.10, 0.05, Accent},
-	{0.40, 0.64, 0.24, 0.10, 0.05, Foreground},
+	{0.20, 0.20, 0.46, 0.60, 0.05, Foreground},
+	{0.27, 0.29, 0.32, 0.055, 0.0275, Ink},
+	{0.27, 0.40, 0.22, 0.055, 0.0275, Ink},
+	{0.27, 0.51, 0.13, 0.055, 0.0275, Ink},
+	{0.545, 0.72, 0.075, 0.19, 0.02, Accent},
+	{0.68, 0.72, 0.075, 0.19, 0.02, Accent},
+	{0.45, 0.43, 0.40, 0.40, 0.20, Accent},
+	{0.515, 0.495, 0.27, 0.27, 0.135, Foreground},
+	{0.635, 0.535, 0.03, 0.11, 0.015, Background},
+	{0.635, 0.615, 0.105, 0.03, 0.015, Background},
 }
 
 var smallMotif = []shape{
-	{0.19, 0.25, 0.16, 0.19, 0.06, Accent},
-	{0.44, 0.25, 0.37, 0.19, 0.06, Foreground},
-	{0.19, 0.56, 0.16, 0.19, 0.06, Accent},
-	{0.44, 0.56, 0.37, 0.19, 0.06, Foreground},
+	{0.1875, 0.1875, 0.5, 0.625, 0.06, Foreground},
+	{0.4375, 0.4375, 0.4375, 0.4375, 0.21875, Accent},
+	{0.5625, 0.5625, 0.1875, 0.1875, 0.09375, Foreground},
 }
 
 var plate = shape{0.04, 0.04, 0.92, 0.92, 0.20, Background}

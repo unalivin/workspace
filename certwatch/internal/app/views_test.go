@@ -17,6 +17,7 @@ import (
 	"github.com/NexzaDev/certwatch/internal/inventory"
 	"github.com/NexzaDev/certwatch/internal/settings"
 	"github.com/NexzaDev/certwatch/internal/theme"
+	"github.com/NexzaDev/certwatch/internal/tlscheck"
 )
 
 type liveServer struct {
@@ -622,5 +623,35 @@ func TestSplitMarkUndoesMarked(t *testing.T) {
 	}
 	if severity, text := SplitMark("-"); severity != "" || text != "-" {
 		t.Fatalf("a dash cell was read as a mark: %q %q", severity, text)
+	}
+}
+
+func TestEndpointRowAndDetailAgreeOnSeverityAndOfferOnlyUsableActions(t *testing.T) {
+	now := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
+	checked := inventory.Endpoint{Outcome: tlscheck.OutcomeOK, Enabled: true}
+	cases := []struct {
+		days     int
+		severity theme.Severity
+		summary  string
+	}{
+		{200, "", "ok"},
+		{60, theme.SeverityLow, "ok, the certificate expires in 60 days"},
+		{20, theme.SeverityMedium, "ok, the certificate expires in 20 days"},
+		{3, theme.SeverityHigh, "ok, the certificate expires in 3 days"},
+	}
+	for _, c := range cases {
+		checked.NotAfter = now.Add(time.Duration(c.days)*24*time.Hour + time.Hour)
+		status, severity, summary := endpointMark(checked, now)
+		if status != "ok" || severity != c.severity || summary != c.summary {
+			t.Errorf("%d days left: %q, %q, %q", c.days, status, severity, summary)
+		}
+	}
+	failed := inventory.Endpoint{Outcome: tlscheck.OutcomeUnreachable, NotAfter: now.Add(24 * time.Hour)}
+	if status, severity, summary := endpointMark(failed, now); status != "unreachable" || severity != theme.SeverityMedium || summary != status {
+		t.Errorf("a failed check must not be described by the old certificate: %q, %q, %q", status, severity, summary)
+	}
+	enabled := Detail{Unusable: []string{"enable"}}
+	if enabled.Usable("enable") || !enabled.Usable("disable") || !enabled.Usable("check") {
+		t.Errorf("usable actions of an enabled endpoint are wrong")
 	}
 }

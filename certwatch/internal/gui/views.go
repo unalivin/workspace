@@ -231,6 +231,8 @@ type viewPage struct {
 	side     fyne.CanvasObject
 	shown    app.Detail
 	loading  bool
+
+	rowButtons map[string]*widget.Button
 }
 
 func (d *dashboard) actionButton(view app.View, action app.Action, id func() int64) *widget.Button {
@@ -242,7 +244,7 @@ func (d *dashboard) actionButton(view app.View, action app.Action, id func() int
 }
 
 func newViewPage(d *dashboard, view app.View) *viewPage {
-	p := &viewPage{d: d, view: view}
+	p := &viewPage{d: d, view: view, rowButtons: map[string]*widget.Button{}}
 	reload := func() {
 		if !p.loading {
 			p.refresh()
@@ -276,7 +278,9 @@ func newViewPage(d *dashboard, view app.View) *viewPage {
 	first := true
 	for _, action := range view.Actions {
 		if action.Row {
-			chosen.Add(d.actionButton(view, action, func() int64 { return p.selected }))
+			button := d.actionButton(view, action, func() int64 { return p.selected })
+			p.rowButtons[action.ID] = button
+			chosen.Add(button)
 			continue
 		}
 		button := d.actionButton(view, action, func() int64 { return 0 })
@@ -430,6 +434,13 @@ func (p *viewPage) showDetail() {
 	_, subtitle := app.SplitMark(detail.Subtitle)
 	p.subtitle.SetText(subtitle)
 	p.state.SetResource(p.d.severityIcon(detail.Severity))
+	for id, button := range p.rowButtons {
+		if detail.Usable(id) {
+			button.Show()
+		} else {
+			button.Hide()
+		}
+	}
 	p.sections.RemoveAll()
 	for _, section := range detail.Sections {
 		p.sections.Add(heading(section.Title))

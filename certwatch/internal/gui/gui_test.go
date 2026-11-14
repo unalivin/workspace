@@ -1153,6 +1153,19 @@ func TestEveryViewActionHasAButtonAndACapability(t *testing.T) {
 			if action.Row && len(page.data.Rows) == 0 {
 				continue
 			}
+			if action.Row {
+				for index := 0; index < len(page.data.Rows) && !page.shown.Usable(action.ID); index++ {
+					page.list.Select(index)
+				}
+				if !page.shown.Usable(action.ID) {
+					t.Fatalf("%s %s: no demo row offers the action", view.ID, action.ID)
+				}
+				for other, button := range page.rowButtons {
+					if button.Visible() != page.shown.Usable(other) {
+						t.Errorf("%s: the button %q is shown for a row it does not apply to", view.ID, button.Text)
+					}
+				}
+			}
 			s.d.notice.SetText("")
 			s.tap(action.Label)
 			switch {
