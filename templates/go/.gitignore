@@ -1,0 +1,10 @@
+dist/
+*.db
+*.db-wal
+*.db-shm
+*.log
+*.syso
+*.test
+.env
+.DS_Store
+Thumbs.db
