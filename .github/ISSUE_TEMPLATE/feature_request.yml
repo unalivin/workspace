@@ -1,0 +1,22 @@
+name: Feature request
+description: Suggest an improvement to one project or to the workspace tooling
+labels: [enhancement]
+body:
+  - type: input
+    id: project
+    attributes:
+      label: Project folder or "workspace"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+    validations:
+      required: true

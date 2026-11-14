@@ -1,0 +1,18 @@
+* text=auto eol=lf
+*.sh text eol=lf
+*.bats text eol=lf
+*.sql text eol=lf
+*.go text eol=lf
+*.rs text eol=lf
+*.cpp text eol=lf
+*.hpp text eol=lf
+*.h text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.tsv text eol=lf
+Makefile text eol=lf
+*.png binary
+*.ico binary
+*.icns binary
+*.ttf binary
+*.db binary

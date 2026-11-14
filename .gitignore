@@ -1,0 +1,17 @@
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+.idea/
+.vscode/
+dist/
+build/
+target/
+out/
+node_modules/
+coverage/
+*.db
+*.db-wal
+*.db-shm
+*.log
+.env
