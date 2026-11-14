@@ -229,6 +229,8 @@ func ExternalLink(label, url string) Link {
 	return link
 }
 
+const PrivacyNote = "The application connects only to the endpoints you added, after listing each connection. It has no telemetry and no update check."
+
 func SourceLink() Link {
 	return ExternalLink("Source Code", meta.SourceURL())
 }

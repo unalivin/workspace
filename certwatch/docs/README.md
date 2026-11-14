@@ -8,6 +8,7 @@
 | [CONFIGURATION.md](CONFIGURATION.md) | Every setting, where values are stored, overrides |
 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Problems and their fixes |
 | [PLATFORM_SUPPORT.md](PLATFORM_SUPPORT.md) | What is tested on which operating system and what is not verified |
+| [REQUIREMENTS.md](REQUIREMENTS.md) | Requirements and acceptance criteria |
 | [SECURITY.md](SECURITY.md) | Security properties of the application |
 | [THREAT_MODEL.md](THREAT_MODEL.md) | Assets, trust boundaries, threats and mitigations |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Packages, data flow, database schema |

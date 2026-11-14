@@ -2,11 +2,13 @@
 
 Local-first certificate inventory and TLS posture monitor: tracks expiry, validates hostnames, inspects chains and keeps an audit history, with expiry alerts. Desktop GUI, terminal UI and CLI. Checks only hosts you are authorized to test.
 
-CertWatch keeps its data in one SQLite file on your computer and makes no network requests. It has a dashboard window, a full-screen terminal UI and commands for scripts, all over the same data.
+CertWatch keeps its data in one SQLite file on your computer. It has no account, no telemetry and no update check. It connects to the network only for TLS handshakes with the hosts you added and confirmed, and it lists every connection before it makes one. It has a dashboard window, a full-screen terminal UI and commands for scripts, all over the same data.
 
 ## This is an early dev beta
 
-Version `0.1.0-dev` is a pre-release for testing. Not every planned feature exists; [docs/ROADMAP.md](https://github.com/NexzaDev/workspace/blob/HEAD/certwatch/docs/ROADMAP.md) lists what is missing and what has not been verified on real desktops. The database format may change before `0.1.0`. Export your records before you update.
+Version `0.1.0-dev` is a pre-release for testing. Not every planned feature exists; [docs/ROADMAP.md](https://github.com/NexzaDev/workspace/blob/HEAD/certwatch/docs/ROADMAP.md) lists what is missing and what has not been verified on real desktops. The database format may change before `0.1.0`. Export your endpoint list before you update (`certwatch endpoints export --file endpoints.csv`).
+
+Checks have been tested against local servers with generated certificates, not yet against servers on the internet. Services that need STARTTLS and revocation checks are not supported.
 
 ## Downloads
 
@@ -39,4 +41,4 @@ The files are not signed and not notarized.
 
 ## Getting started
 
-Start the application and choose Dashboard or Terminal. The usage guide is built in: About, Usage guide, or `certwatch guide`. Report problems from About, "Found a bug? Please report it on GitHub."
+Start the application and choose Dashboard or Terminal. Add an endpoint you are authorized to test and run a check, or load the demo data, whose hosts are never contacted. The usage guide is built in: About, Usage guide, or `certwatch guide`. Report problems from About, "Found a bug? Please report it on GitHub."

@@ -11,9 +11,11 @@
               \    |     /
               internal/app             one service layer for all three interfaces
         /      |       |       \
-  records  settings  notify   theme    domain packages
-        \      |       |
-           internal/store              SQLite, migrations, data_version polling
+ inventory settings  notify   theme    domain packages
+     |  \      |       |
+     |     internal/store              SQLite, migrations, data_version polling
+     |
+ internal/tlscheck                     the only package that opens connections
 ```
 
 The dashboard, the terminal UI and the commands call the same functions of `internal/app`. None of them contains business rules or SQL. That is what keeps them in step.
@@ -28,11 +30,15 @@ The dashboard, the terminal UI and the commands call the same functions of `inte
 | `internal/store` | Opening SQLite with the required pragmas, migrations, read-only mode, busy retries, `PRAGMA data_version` |
 | `internal/settings` | Setting definitions, validation, stored values, overrides and their source |
 | `internal/theme` | Design tokens, the seven themes, contrast math, severity colors, the terminal palette |
-| `internal/records` | Records, full-text search, overview numbers, demo data, import and export |
-| `internal/notify` | Notification rules, the inbox, the background notifier, start at sign-in, delivery to the operating system |
+| `internal/tlscheck` | The TLS handshake, chain and name validation, protocol probing, findings, PEM parsing, and the filter for text that comes from servers. The only package that opens connections |
+| `internal/inventory` | Endpoints, certificates, observations, findings, expiry alerts, reports, demo data, import and export of the endpoint list |
+| `internal/notify` | Alert rules, the alert inbox, the background notifier, start at sign-in, delivery to the operating system |
+| `internal/certgen` | A certificate authority generated at run time for tests and for the demo data |
+| `internal/testkit` | Test helpers: temporary databases, a settable clock, a local TLS server |
+| `internal/words` | Singular and plural forms of counted nouns |
 | `internal/launcher` | The decision which interface to open, session detection, the terminal prompt |
 | `internal/guide` | Parsing and searching the embedded usage guide |
-| `internal/app` | Service layer: opening and moving the database, appearance, diagnostics, links, the capability matrix |
+| `internal/app` | Service layer: opening and moving the database, the views and their actions, checks and the scheduler, appearance, diagnostics, links, the capability matrix |
 | `internal/cli` | Commands, flags, help, the generated command reference |
 | `internal/tui` | Terminal UI on Bubble Tea |
 | `internal/gui` | Dashboard on Fyne: the skin that replaces the toolkit look, widgets, pages, the window host |
@@ -51,11 +57,21 @@ One SQLite database in WAL mode with foreign keys on and a busy timeout.
 | Object | Content |
 |---|---|
 | `settings` | key, value, time of change |
-| `records` | name (unique), status, severity, note, enabled, demo flag, revision, timestamps |
-| `records_fts` | FTS5 index over name and note, kept current by triggers |
+| `endpoints` | host, port, optional server name, note, enabled, demo flag, revision, time of the authorization confirmation, the latest observation |
+| `certificates` | one row per distinct certificate, keyed by SHA-256 fingerprint: subject, issuer, names, validity, key, signature, the PEM text, whether it was imported |
+| `observations` | one row per check of an endpoint: outcome, error, leaf certificate, chain and name status, TLS version, cipher suite, accepted versions, and the previous certificate when it changed |
+| `observation_certificates` | the chain of an observation in order, and whether each certificate was sent by the server or came from the trust store |
+| `findings` | the findings of an observation with code, severity and detail |
+| `expiry_alerts` | which expiry threshold has already raised an alert for which certificate |
+| `reports` | generated reports with kind, format, row count, SHA-256 digest and content |
 | `notification_rules` | one optional row per event type; absent means the default rule |
-| `notifications` | event type, severity, safe title, link to a record, de-duplication key, read time |
-| `overview_record_counts`, `overview_attention` | views that produce the Overview numbers for every interface |
+| `notifications` | the alerts: event type, severity, safe title, link to an endpoint or a certificate, de-duplication key, read time |
+| `endpoint_status` | view: every endpoint joined with its latest observation and leaf certificate |
+| `tracked_certificates` | view: certificates that an enabled endpoint presents now, plus imported ones |
+| `latest_findings` | view: the findings of the latest observation of every enabled endpoint |
+| `overview_attention` | view: the Overview counts for every interface |
+
+Observations beyond `checks.history_keep` per endpoint are removed after a check, and certificates that nothing refers to any more are removed with them.
 
 `testdata/schema.snapshot` is the expected schema; a test fails when a migration changes it without updating the snapshot. Migrations are applied in one transaction each and are never edited after release; a change is a new numbered file.
 
@@ -64,8 +80,23 @@ One SQLite database in WAL mode with foreign keys on and a busy timeout.
 - Every write goes through the service layer into the database. There is no in-memory state shared between interfaces.
 - The dashboard polls `PRAGMA data_version` about every two seconds. When another connection has written, it reloads the visible page, keeps the selected row and any open form, and shows "Updated by another window".
 - The terminal UI reloads on its refresh interval and on `r`.
-- An edit carries the revision it was based on. If the record changed in the meantime the save is refused and the form keeps the user's text.
+- An edit carries the revision it was based on. If the endpoint changed in the meantime the save is refused and the form keeps the user's text.
 - A busy database is retried a bounded number of times and then reported.
+
+## A check
+
+1. An interface asks the service layer for the plan of a network action. The plan names every connection.
+2. The interface shows the plan and asks. Commands need `--yes`.
+3. `internal/app` reads the timeout, the probing switch and the trust file from the settings and calls `tlscheck.Check` for each endpoint that is enabled and not demo data.
+4. `tlscheck` makes one handshake with verification on. If verification fails it takes the presented chain from the verification error and evaluates chain and name separately. With probing on it makes one more handshake per TLS version.
+5. `inventory.Record` stores the observation, the chain and the findings in one transaction, compares the leaf with the previous successful observation, and raises alerts: expiry thresholds once per certificate, validation failures on the transition from good to bad, and certificate changes.
+6. The interface reloads; other open windows notice through `data_version`.
+
+The dashboard and the terminal UI run checks off their event loop and show a busy state. The scheduler in both, and `certwatch watch`, call the same function for the endpoints whose last check is older than the interval.
+
+## Views
+
+Certificates, Endpoints, Expiry Timeline, Chains, Configuration and Reports are described as data in `internal/app/views.go`: filters, columns, and actions with their form fields. The commands, the keys of the terminal UI and the buttons of the dashboard are generated from that description. Overview and Alerts have layouts of their own. See [adr/0010-views-as-data.md](adr/0010-views-as-data.md).
 
 ## Launching
 

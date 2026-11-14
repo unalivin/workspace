@@ -412,6 +412,7 @@ func runAbout(ctx context.Context, in *invocation) error {
 		{"Report a bug", meta.RepositoryURL + "/issues/new"},
 		{"Report a vulnerability", app.AdvisoryLink().URL},
 	})
+	in.printf("\n%s\n", app.PrivacyNote)
 	in.printf("\nRun \"%s about --issue\" to preview a bug report. Nothing is opened or sent by this command.\n", meta.Slug)
 	return nil
 }

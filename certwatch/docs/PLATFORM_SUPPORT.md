@@ -19,6 +19,7 @@ A platform counts as verified for a commit only when the CI run of that commit i
 | Area | How it is tested | Not covered |
 |---|---|---|
 | Service layer, database, commands | Unit and integration tests on all three runners | |
+| TLS checks | Tests start local TLS servers with certificates from a test authority: trusted, untrusted, expired, self-signed, wrong name, weak key, old protocol versions, a stalled handshake and a server that does not speak TLS | Servers on the internet; validation by the trust store of the operating system (the tests pass their own roots) |
 | Terminal UI | Tests drive the model with key presses and compare the rendered screen | A real terminal emulator; mouse input is not used |
 | Dashboard | Tests drive the real widgets through the toolkit's headless test driver and render screenshots | A real window on a real display, real pointer and keyboard input, high-DPI scaling, screen readers |
 | Launcher decision | Table-driven tests for desktop, terminal, headless, CI and piped sessions on each operating system | The native chooser on a real desktop |
@@ -31,6 +32,9 @@ A platform counts as verified for a commit only when the CI run of that commit i
 
 ## Known differences and limits
 
+- **Chain validation**: with the default trust store, Linux validates inside the application. macOS and Windows hand validation to the operating system, which uses its own trust store and may fetch a missing intermediate certificate or revocation data. The same server can therefore validate on one system and fail on another. This path is not covered by the automated tests.
+- **Trusted roots on Linux** come from the certificate bundle of the distribution. A minimal container without that bundle trusts nothing until `checks.trust_file` is set.
+- **TLS 1.0 and 1.1 probing** uses the Go TLS library, which still offers these versions to a server when asked. SSL 3.0 and older cannot be probed.
 - **Window position** is not saved or restored on any platform; the window toolkit does not report it. Size and sidebar state are saved.
 - **Animations**: packaged builds are compiled without the toolkit's animations. The reduced motion setting controls the fade of the notice bar.
 - **Windows console**: the release executable is a window application. Started from a console it attaches to that console for output; the prompt returns before the output is complete. Started by double-click with a remembered Terminal choice it opens its own console window. This console handling has no automated test.

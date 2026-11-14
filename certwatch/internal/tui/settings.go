@@ -564,6 +564,8 @@ func (p *aboutPage) view(m *Model, width, height int) []string {
 		lines = append(lines, m.st.heading.Render(meta.AppName+" "+meta.Version), "")
 		lines = append(lines, wrap(meta.Tagline, width)...)
 		lines = append(lines, "", "License: "+meta.License, "")
+		lines = append(lines, wrap(app.PrivacyNote, width)...)
+		lines = append(lines, "")
 		for index, link := range p.links() {
 			text := fit(link.label, 42) + m.st.muted.Render(shorten(link.link.URL, width-46))
 			if index == p.cursor {
@@ -572,7 +574,10 @@ func (p *aboutPage) view(m *Model, width, height int) []string {
 				lines = append(lines, "  "+text)
 			}
 		}
-		lines = append(lines, "", m.st.muted.Render("Enter opens the selected link in your browser. Nothing is sent by the application."))
+		lines = append(lines, "")
+		for _, line := range wrap("Enter opens the selected link in your browser. The application itself sends nothing to GitHub.", width) {
+			lines = append(lines, m.st.muted.Render(line))
+		}
 		return lines
 	case aboutGuide:
 		if p.reading {

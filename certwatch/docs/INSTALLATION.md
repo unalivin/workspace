@@ -60,7 +60,7 @@ Unpack the archive and move `CertWatch.app` to Applications. For the commands, c
 Put `certwatch-windows-x64.exe` where you want to keep it and start it. From PowerShell or the command prompt the same file runs the commands:
 
 ```powershell
-.\certwatch-windows-x64.exe records list
+.\certwatch-windows-x64.exe endpoints list
 ```
 
 The executable is built as a window application, so the prompt returns before the output is complete. Add `| more` or redirect to a file when a script needs to wait for the output.

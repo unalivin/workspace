@@ -15,7 +15,7 @@ make check                      # the full local suite
 - **No comments** in Go, SQL or Bash source files. Use names, small functions and tests; put reasons into `docs/` or an ADR. Build constraints (`//go:build`) and the script interpreter line are the only exceptions.
 - **No email address** anywhere. Commit with your GitHub noreply address.
 - **One service layer.** The dashboard, the terminal UI and the commands call `internal/app`. A feature is added to all three in the same change and gets a row in the capability matrix (`internal/app/capabilities.go`); `make docs` regenerates the tables in `docs/COMMANDS.md`.
-- **SQL** lives in `internal/store`, `internal/settings`, `internal/records` and `internal/notify`, always with bound parameters. Schema changes are a new numbered file in `migrations/` and an updated `testdata/schema.snapshot`.
+- **SQL** lives in `internal/store`, `internal/settings`, `internal/inventory` and `internal/notify`, always with bound parameters. Schema changes are a new numbered file in `migrations/` and an updated `testdata/schema.snapshot`.
 - **Settings** are added in `internal/settings/settings.go` with validation and a default, and documented in `docs/CONFIGURATION.md`.
 - **Dependencies** need a reason. After a change run `make notices`; it fails for a license outside the allowed list.
 - **Documents** describe what is implemented. What is missing goes into `docs/ROADMAP.md`.
@@ -27,12 +27,12 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.
 
 | Type | Use for | Example |
 |---|---|---|
-| `feat` | a new capability | `feat(certwatch/records): add a column chooser` |
+| `feat` | a new capability | `feat(certwatch/inventory): record the key usage of a certificate` |
 | `fix` | a bug fix | `fix(certwatch/store): retry when the database is busy during open` |
 | `docs` | documentation only | `docs(certwatch): describe the digest check` |
 | `test` | tests only | `test(certwatch/launcher): cover piped sessions on windows` |
-| `refactor` | no change in behavior | `refactor(certwatch/gui): split the records page` |
-| `perf` | a measured speed-up | `perf(certwatch/records): use the status index for the overview` |
+| `refactor` | no change in behavior | `refactor(certwatch/gui): split the view page` |
+| `perf` | a measured speed-up | `perf(certwatch/inventory): use the expiry index for the timeline` |
 | `build` | build system or dependencies | `build(certwatch): update the sqlite driver` |
 | `ci` | workflows | `ci(certwatch): upload rendered screens` |
 | `chore` | maintenance | `chore(certwatch): regenerate the notices` |
@@ -42,16 +42,16 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.
 
 In the workspace the scope starts with the project folder name, `certwatch`. A module name may follow after a slash. The allowed module names are the package names:
 
-`app`, `brand`, `cli`, `gui`, `guide`, `launcher`, `licenses`, `meta`, `notify`, `platform`, `records`, `settings`, `sqlscan`, `store`, `theme`, `tui`, `userconfig`, plus `migrations`, `scripts`, `docs` and `release`.
+`app`, `brand`, `certgen`, `cli`, `gui`, `guide`, `inventory`, `launcher`, `licenses`, `meta`, `notify`, `platform`, `settings`, `sqlscan`, `store`, `testkit`, `theme`, `tlscheck`, `tui`, `userconfig`, `words`, plus `migrations`, `scripts`, `docs` and `release`.
 
-In a repository that contains only this project, the folder name is dropped: `feat(records): add a column chooser`.
+In a repository that contains only this project, the folder name is dropped: `feat(inventory): record the key usage of a certificate`.
 
 ### Breaking changes
 
 Add `!` after the scope and a `BREAKING CHANGE:` footer that says what users must do:
 
 ```text
-feat(certwatch/store)!: rename the records table
+feat(certwatch/store)!: rename the observations table
 
 BREAKING CHANGE: databases created before this change are migrated by 0002 on first start and can no longer be opened by older builds.
 ```

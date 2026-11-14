@@ -12,7 +12,7 @@ Users want to hear about urgent items while the application is closed. A system 
 
 Start at sign-in is opt-in and per user: an XDG autostart entry on Linux, a LaunchAgent on macOS, a Startup folder entry on Windows. Turning it off removes the entry.
 
-The text is a count by default. Titles are added only when the user turns that on, and never record names or notes.
+The text is a count by default. Titles are added only when the user turns that on; a title names the host or the certificate, never a note. The notifier shows alerts that a check has already stored. It opens no network connection and checks nothing itself.
 
 ## Consequences
 

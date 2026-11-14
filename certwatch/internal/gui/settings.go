@@ -441,7 +441,7 @@ func newAboutPage(d *dashboard) *aboutPage {
 		container.NewHBox(source), muted(app.SourceLink().URL),
 		container.NewHBox(bug), muted("The exact text of the report is shown before your browser opens."),
 		container.NewHBox(advisory), muted(app.AdvisoryLink().URL),
-		widget.NewSeparator(), muted("The application makes no network requests. Links open in your browser only when you choose them."))
+		widget.NewSeparator(), muted(app.PrivacyNote+" Links open in your browser only when you choose them."))
 	p.search = widget.NewEntry()
 	p.search.SetPlaceHolder("Search the guide")
 	p.search.OnChanged = func(string) { p.filter() }

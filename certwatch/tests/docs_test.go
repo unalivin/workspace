@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -41,5 +42,36 @@ func TestGeneratedCommandTablesAreCurrent(t *testing.T) {
 	}
 	if err := os.WriteFile(path, []byte(wanted), 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestTestsNamedInDocumentsExist(t *testing.T) {
+	declared := map[string]bool{}
+	declaration := regexp.MustCompile(`(?m)^func ((?:Test|Fuzz)[A-Za-z0-9_]+)\(`)
+	for _, path := range projectFiles(t) {
+		if strings.HasSuffix(path, "_test.go") {
+			for _, match := range declaration.FindAllStringSubmatch(read(t, path), -1) {
+				declared[match[1]] = true
+			}
+		}
+	}
+	if len(declared) < 50 {
+		t.Fatalf("only %d tests were found", len(declared))
+	}
+	mention := regexp.MustCompile("`((?:Test|Fuzz)[A-Z][A-Za-z0-9_]+)`")
+	mentioned := 0
+	for _, path := range projectFiles(t) {
+		if filepath.Ext(path) != ".md" {
+			continue
+		}
+		for _, match := range mention.FindAllStringSubmatch(read(t, path), -1) {
+			mentioned++
+			if !declared[match[1]] {
+				t.Errorf("%s names the test %s, which does not exist", path, match[1])
+			}
+		}
+	}
+	if mentioned == 0 {
+		t.Fatal("no document names a test")
 	}
 }

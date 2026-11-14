@@ -445,6 +445,10 @@ func TestEveryActionIsPlannedExecutedAndListedAsACapability(t *testing.T) {
 		info, err := os.Stat(filepath.Join(dir, name))
 		if err != nil || info.Size() == 0 {
 			t.Errorf("%s was not written: %v", name, err)
+			continue
+		}
+		if os.PathSeparator == '/' && info.Mode().Perm() != 0o600 {
+			t.Errorf("%s is readable by other users: mode %v", name, info.Mode().Perm())
 		}
 	}
 	var exists *ExistsError

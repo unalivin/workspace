@@ -70,17 +70,19 @@ A flag or an environment variable can override a setting for one run. The stored
 
 A flag wins over an environment variable, and both win over the stored value. An override with an invalid value is ignored and reported. [.env.example](../.env.example) lists the variables.
 
-## Notification rules
+## Alert rules
 
 Each event type has a rule with four fields: enabled, minimum severity, quiet hours (a start and an end as `HH:MM`; the range may cross midnight) and a de-duplication window in minutes.
 
 ```bash
-certwatch notifications rules list
-certwatch notifications rules set record.urgent --min-severity critical --quiet-start 22:00 --quiet-end 07:00
-certwatch notifications rules reset record.urgent
+certwatch alerts rules list
+certwatch alerts rules set certificate.expiring --min-severity high --quiet-start 22:00 --quiet-end 07:00
+certwatch alerts rules reset certificate.expiring
 ```
 
-Run `certwatch notifications rules set --help` for the exact flags.
+The event types are `certificate.expiring`, `validation.failed` and `certificate.changed`. Run `certwatch alerts rules set --help` for the exact flags.
+
+The days at which an expiry alert is raised are the setting `alerts.expiry_days`, not a rule.
 
 ## Launcher
 
