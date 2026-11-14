@@ -488,7 +488,7 @@ func newAboutPage(d *dashboard) *aboutPage {
 		}
 	})
 	diagnostics := container.NewBorder(container.NewHBox(check, copyButton), muted("Diagnostics stay on this computer. A bug report includes only the lines shown in its preview."), nil, nil, container.NewVScroll(p.diagnostics))
-	licenses := widget.NewLabel(app.LicenseText() + "\n\n" + app.NoticesText())
+	licenses := widget.NewLabel("")
 	licenses.Wrapping = fyne.TextWrapWord
 	p.tabs = container.NewAppTabs(
 		container.NewTabItem("Overview", container.NewVScroll(overview)),
@@ -496,6 +496,11 @@ func newAboutPage(d *dashboard) *aboutPage {
 		container.NewTabItem("Shortcuts", container.NewVScroll(shortcuts)),
 		container.NewTabItem("Diagnostics", diagnostics),
 		container.NewTabItem("Licenses and notices", container.NewVScroll(licenses)))
+	p.tabs.OnSelected = func(*container.TabItem) {
+		if p.tabs.SelectedIndex() == aboutLicenses && licenses.Text == "" {
+			licenses.SetText(app.LicenseText() + "\n\n" + app.NoticesText())
+		}
+	}
 	p.root = p.tabs
 	p.filter()
 	p.read(0)
