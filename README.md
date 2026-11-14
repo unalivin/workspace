@@ -56,7 +56,7 @@ Each project and each template has a `Makefile` with the same targets: `fmt`, `f
 
 | Language | Toolchain | Build with GUI | Build without GUI | Full check |
 |---|---|---|---|---|
-| Go | Go 1.27.3, a C compiler for cgo | `make build` | `make build-nogui` | `make check` |
+| Go | Go 1.27.4, a C compiler for cgo | `make build` | `make build-nogui` | `make check` |
 | Rust | Pinned stable toolchain from `rust-toolchain.toml` | `make build` | `make build-nogui` | `make check` |
 | C++ | C++20 compiler, CMake, Ninja | `make build` | `make build-nogui` | `make check` |
 

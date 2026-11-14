@@ -14,7 +14,7 @@ Every project has one primary language. SQL and Bash are supporting languages in
 
 | | |
 |---|---|
-| Toolchain | Go `1.27.3`, cgo with a C compiler |
+| Toolchain | Go `1.27.4`, cgo with a C compiler |
 | Layout | `cmd/`, `internal/`, `migrations/`, `tests/`, `testdata/`, `scripts/` |
 | Dashboard | Fyne `v2.8.2`, with the toolkit look replaced by the template's design tokens |
 | Terminal UI | Bubble Tea `v1.3.10` with Lip Gloss `v1.1.0` |

@@ -11,17 +11,25 @@ import (
 	"github.com/NexzaDev/templateapp/internal/meta"
 )
 
+func rooted(parts ...string) string {
+	directory, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	return filepath.Join(append([]string{filepath.VolumeName(directory) + string(filepath.Separator)}, parts...)...)
+}
+
 func fakeEnv(goos string, values map[string]string) Environment {
 	return Environment{
 		Getenv:  func(key string) string { return values[key] },
-		HomeDir: func() (string, error) { return filepath.Join(string(filepath.Separator), "home", "tester"), nil },
+		HomeDir: func() (string, error) { return rooted("home", "tester"), nil },
 		GOOS:    goos,
 	}
 }
 
 func TestDirPerOperatingSystem(t *testing.T) {
-	home := filepath.Join(string(filepath.Separator), "home", "tester")
-	absolute := filepath.Join(string(filepath.Separator), "custom")
+	home := rooted("home", "tester")
+	absolute := rooted("custom")
 	cases := []struct {
 		name   string
 		env    Environment

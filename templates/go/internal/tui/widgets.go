@@ -324,8 +324,12 @@ func (f *form) view(st styles, width int) []string {
 	}
 	lines = append(lines, "")
 	if f.problem != "" {
-		for _, line := range wrap("Not saved: "+f.problem, width-2) {
-			lines = append(lines, st.failure.Render("✖ "+line))
+		for index, line := range wrap("Not saved: "+f.problem, width-2) {
+			lead := "  "
+			if index == 0 {
+				lead = "✖ "
+			}
+			lines = append(lines, st.failure.Render(lead+line))
 		}
 		lines = append(lines, "")
 	}

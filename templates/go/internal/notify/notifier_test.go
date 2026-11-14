@@ -298,7 +298,11 @@ func TestAutostartInstallUninstallStatus(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !strings.Contains(string(content), executable) || !strings.Contains(string(content), "notifier") || !strings.Contains(string(content), "run") {
+			written := executable
+			if goos == "linux" {
+				written = strings.ReplaceAll(executable, `\`, `\\`)
+			}
+			if !strings.Contains(string(content), written) || !strings.Contains(string(content), "notifier") || !strings.Contains(string(content), "run") {
 				t.Fatalf("entry does not start the notifier:\n%s", content)
 			}
 			if installed, _, err := entry.Status(); err != nil || !installed {
@@ -320,26 +324,39 @@ func TestAutostartInstallUninstallStatus(t *testing.T) {
 	}
 }
 
+func rooted(parts ...string) string {
+	directory, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	return filepath.Join(append([]string{filepath.VolumeName(directory) + string(filepath.Separator)}, parts...)...)
+}
+
 func TestAutostartPathsFollowPlatformConventions(t *testing.T) {
-	linux, _ := Autostart{GOOS: "linux", HomeDir: "/home/u", Executable: "/opt/app"}.Path()
-	if linux != filepath.Join("/home/u", ".config", "autostart", meta.Slug+"-notifier.desktop") {
+	home := rooted("home", "u")
+	linux, _ := Autostart{GOOS: "linux", HomeDir: home, Executable: rooted("opt", "app")}.Path()
+	if linux != filepath.Join(home, ".config", "autostart", meta.Slug+"-notifier.desktop") {
 		t.Fatalf("linux path %q", linux)
 	}
-	custom, _ := Autostart{GOOS: "linux", HomeDir: "/home/u", ConfigHome: "/cfg"}.Path()
-	if custom != filepath.Join("/cfg", "autostart", meta.Slug+"-notifier.desktop") {
+	custom, _ := Autostart{GOOS: "linux", HomeDir: home, ConfigHome: rooted("cfg")}.Path()
+	if custom != filepath.Join(rooted("cfg"), "autostart", meta.Slug+"-notifier.desktop") {
 		t.Fatalf("XDG path %q", custom)
 	}
-	relative, _ := Autostart{GOOS: "linux", HomeDir: "/home/u", ConfigHome: "relative"}.Path()
+	relative, _ := Autostart{GOOS: "linux", HomeDir: home, ConfigHome: "relative"}.Path()
 	if relative != linux {
 		t.Fatalf("a relative XDG_CONFIG_HOME must be ignored: %q", relative)
 	}
-	mac, _ := Autostart{GOOS: "darwin", HomeDir: "/Users/u"}.Path()
-	if !strings.HasPrefix(mac, filepath.Join("/Users/u", "Library", "LaunchAgents")) || !strings.HasSuffix(mac, ".plist") {
+	mac, _ := Autostart{GOOS: "darwin", HomeDir: home}.Path()
+	if !strings.HasPrefix(mac, filepath.Join(home, "Library", "LaunchAgents")) || !strings.HasSuffix(mac, ".plist") {
 		t.Fatalf("macOS path %q", mac)
 	}
 	windows, _ := Autostart{GOOS: "windows", AppData: "appdata"}.Path()
 	if !strings.Contains(windows, "Startup") || !strings.HasPrefix(windows, "appdata") {
 		t.Fatalf("windows path %q", windows)
+	}
+	fallback, _ := Autostart{GOOS: "windows", HomeDir: home}.Path()
+	if !strings.HasPrefix(fallback, filepath.Join(home, "AppData", "Roaming")) {
+		t.Fatalf("windows path without AppData %q", fallback)
 	}
 	if _, err := (Autostart{GOOS: "linux"}).Path(); err == nil {
 		t.Fatal("a missing home directory was accepted")
@@ -350,7 +367,12 @@ func TestAutostartPathsFollowPlatformConventions(t *testing.T) {
 }
 
 func TestAutostartRejectsUnsafeExecutablePaths(t *testing.T) {
-	for _, executable := range []string{"", "relative/app", "/opt/app\nExec=evil", "/opt/\"quoted\"/app", "/opt/$(touch x)/app", "/opt/`id`/app", "/opt/%TEMP%/app"} {
+	separator := string(filepath.Separator)
+	unsafe := []string{"", filepath.Join("relative", "app")}
+	for _, part := range []string{"app\nExec=evil", "\"quoted\"", "$(touch x)", "`id`", "%TEMP%"} {
+		unsafe = append(unsafe, rooted("opt")+separator+part+separator+"app")
+	}
+	for _, executable := range unsafe {
 		for _, goos := range []string{"linux", "darwin", "windows"} {
 			entry := Autostart{GOOS: goos, HomeDir: t.TempDir(), Executable: executable}
 			if _, err := entry.Content(); err == nil {
@@ -361,7 +383,12 @@ func TestAutostartRejectsUnsafeExecutablePaths(t *testing.T) {
 			}
 		}
 	}
-	plist, err := Autostart{GOOS: "darwin", HomeDir: "/Users/u", Executable: "/Applications/A&B <x>/app"}.Content()
+	for _, goos := range []string{"linux", "darwin", "windows"} {
+		if _, err := (Autostart{GOOS: goos, HomeDir: t.TempDir(), Executable: rooted("opt", "Apps and Tools", "app")}).Content(); err != nil {
+			t.Fatalf("%s rejected a plain absolute path: %v", goos, err)
+		}
+	}
+	plist, err := Autostart{GOOS: "darwin", HomeDir: rooted("Users", "u"), Executable: rooted("Applications", "A&B <x>", "app")}.Content()
 	if err != nil || !strings.Contains(plist, "A&amp;B &lt;x&gt;") {
 		t.Fatalf("plist is not escaped: %v\n%s", err, plist)
 	}

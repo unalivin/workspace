@@ -81,7 +81,7 @@ Delete the files you installed, then delete the two locations in the table above
 
 ## Build from source
 
-Requirements: Go 1.27.3 with cgo and a C compiler. The dashboard also needs OpenGL and windowing headers:
+Requirements: Go 1.27.4 with cgo and a C compiler. The dashboard also needs OpenGL and windowing headers:
 
 - **Debian or Ubuntu**: `gcc pkg-config libgl1-mesa-dev xorg-dev libxkbcommon-dev libwayland-dev libegl1-mesa-dev xz-utils`
 - **macOS**: the Xcode command line tools
