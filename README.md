@@ -13,7 +13,7 @@ What exists and what does not is stated in [docs/ROADMAP.md](docs/ROADMAP.md).
 <!-- projects:start -->
 | # | Folder | App | Language | Description | Status | Docs |
 |---|---|---|---|---|---|---|
-| 1 | `certwatch` | CertWatch | Go | TLS Certificate Monitoring | Not started | - |
+| 1 | [`certwatch`](certwatch/) | CertWatch | Go | TLS Certificate Monitoring | In progress | [docs](certwatch/docs/README.md) |
 | 2 | `dns-sentinel` | DNS Sentinel | Go | DNS Change Monitoring | Not started | - |
 | 3 | `netpulse` | NetPulse | Go | Network Observability | Not started | - |
 | 4 | `portwatch` | PortWatch | Go | Authorized Service Exposure Monitor | Not started | - |

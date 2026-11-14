@@ -1,0 +1,194 @@
+CREATE TABLE settings (
+  key TEXT PRIMARY KEY CHECK (length(key) BETWEEN 1 AND 120),
+  value TEXT NOT NULL CHECK (length(value) <= 4096),
+  updated_at TEXT NOT NULL
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE certificates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  fingerprint TEXT NOT NULL UNIQUE CHECK (length(fingerprint) = 64),
+  display_name TEXT NOT NULL CHECK (length(display_name) BETWEEN 1 AND 400),
+  subject TEXT NOT NULL,
+  issuer TEXT NOT NULL,
+  serial TEXT NOT NULL,
+  not_before TEXT NOT NULL,
+  not_after TEXT NOT NULL,
+  names TEXT NOT NULL DEFAULT '',
+  key_algorithm TEXT NOT NULL DEFAULT '',
+  key_bits INTEGER NOT NULL DEFAULT 0,
+  signature_algorithm TEXT NOT NULL DEFAULT '',
+  is_ca INTEGER NOT NULL DEFAULT 0 CHECK (is_ca IN (0, 1)),
+  self_signed INTEGER NOT NULL DEFAULT 0 CHECK (self_signed IN (0, 1)),
+  pem TEXT NOT NULL CHECK (length(pem) BETWEEN 1 AND 131072),
+  source TEXT NOT NULL DEFAULT 'observed' CHECK (source IN ('observed', 'imported')),
+  is_demo INTEGER NOT NULL DEFAULT 0 CHECK (is_demo IN (0, 1)),
+  first_seen_at TEXT NOT NULL,
+  last_seen_at TEXT NOT NULL
+) STRICT;
+
+CREATE INDEX certificates_not_after ON certificates (not_after);
+
+CREATE TABLE endpoints (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  host TEXT NOT NULL CHECK (length(host) BETWEEN 1 AND 253),
+  port INTEGER NOT NULL DEFAULT 443 CHECK (port BETWEEN 1 AND 65535),
+  server_name TEXT NOT NULL DEFAULT '' CHECK (length(server_name) <= 253),
+  note TEXT NOT NULL DEFAULT '' CHECK (length(note) <= 4000),
+  enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+  is_demo INTEGER NOT NULL DEFAULT 0 CHECK (is_demo IN (0, 1)),
+  revision INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1),
+  authorized_at TEXT NOT NULL,
+  last_observation_id INTEGER REFERENCES observations (id) ON DELETE SET NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE (host, port)
+) STRICT;
+
+CREATE INDEX endpoints_last_observation ON endpoints (last_observation_id);
+
+CREATE TABLE observations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  endpoint_id INTEGER NOT NULL REFERENCES endpoints (id) ON DELETE CASCADE,
+  observed_at TEXT NOT NULL,
+  outcome TEXT NOT NULL CHECK (outcome IN ('ok', 'unreachable', 'handshake_failed')),
+  error TEXT NOT NULL DEFAULT '' CHECK (length(error) <= 400),
+  duration_ms INTEGER NOT NULL DEFAULT 0 CHECK (duration_ms >= 0),
+  leaf_certificate_id INTEGER REFERENCES certificates (id),
+  previous_certificate_id INTEGER REFERENCES certificates (id),
+  chain_status TEXT NOT NULL DEFAULT 'unknown' CHECK (chain_status IN ('valid', 'invalid', 'unknown')),
+  chain_error TEXT NOT NULL DEFAULT '' CHECK (length(chain_error) <= 400),
+  hostname_status TEXT NOT NULL DEFAULT 'unknown' CHECK (hostname_status IN ('match', 'mismatch', 'unknown')),
+  hostname_error TEXT NOT NULL DEFAULT '' CHECK (length(hostname_error) <= 400),
+  tls_version TEXT NOT NULL DEFAULT '',
+  cipher_suite TEXT NOT NULL DEFAULT '',
+  accepted_versions TEXT NOT NULL DEFAULT '',
+  protocols_tested INTEGER NOT NULL DEFAULT 0 CHECK (protocols_tested IN (0, 1)),
+  changed INTEGER NOT NULL DEFAULT 0 CHECK (changed IN (0, 1)),
+  CHECK ((outcome = 'ok') = (leaf_certificate_id IS NOT NULL))
+) STRICT;
+
+CREATE INDEX observations_endpoint ON observations (endpoint_id, id DESC);
+CREATE INDEX observations_leaf ON observations (leaf_certificate_id, id DESC);
+CREATE INDEX observations_previous ON observations (previous_certificate_id) WHERE previous_certificate_id IS NOT NULL;
+
+CREATE TABLE observation_certificates (
+  observation_id INTEGER NOT NULL REFERENCES observations (id) ON DELETE CASCADE,
+  position INTEGER NOT NULL CHECK (position >= 0),
+  certificate_id INTEGER NOT NULL REFERENCES certificates (id),
+  origin TEXT NOT NULL CHECK (origin IN ('server', 'trust_store')),
+  PRIMARY KEY (observation_id, position)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX observation_certificates_certificate ON observation_certificates (certificate_id);
+
+CREATE TABLE findings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  observation_id INTEGER NOT NULL REFERENCES observations (id) ON DELETE CASCADE,
+  code TEXT NOT NULL CHECK (length(code) BETWEEN 1 AND 80),
+  severity TEXT NOT NULL CHECK (severity IN ('info', 'low', 'medium', 'high', 'critical')),
+  detail TEXT NOT NULL CHECK (length(detail) <= 1000)
+) STRICT;
+
+CREATE INDEX findings_observation ON findings (observation_id);
+
+CREATE TABLE expiry_alerts (
+  certificate_id INTEGER NOT NULL REFERENCES certificates (id) ON DELETE CASCADE,
+  threshold_days INTEGER NOT NULL CHECK (threshold_days BETWEEN 0 AND 3650),
+  alerted_at TEXT NOT NULL,
+  PRIMARY KEY (certificate_id, threshold_days)
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind TEXT NOT NULL CHECK (kind IN ('inventory', 'expiry', 'findings')),
+  format TEXT NOT NULL CHECK (format IN ('markdown', 'csv', 'json')),
+  title TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 200),
+  row_count INTEGER NOT NULL CHECK (row_count >= 0),
+  includes_demo INTEGER NOT NULL DEFAULT 0 CHECK (includes_demo IN (0, 1)),
+  sha256 TEXT NOT NULL CHECK (length(sha256) = 64),
+  content TEXT NOT NULL CHECK (length(content) <= 8388608),
+  created_at TEXT NOT NULL
+) STRICT;
+
+CREATE INDEX reports_created_at ON reports (created_at DESC);
+
+CREATE TABLE notification_rules (
+  event_type TEXT PRIMARY KEY CHECK (length(event_type) BETWEEN 1 AND 80),
+  enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+  min_severity TEXT NOT NULL DEFAULT 'info' CHECK (min_severity IN ('info', 'low', 'medium', 'high', 'critical')),
+  quiet_start TEXT NOT NULL DEFAULT '' CHECK (quiet_start = '' OR quiet_start GLOB '[0-2][0-9]:[0-5][0-9]'),
+  quiet_end TEXT NOT NULL DEFAULT '' CHECK (quiet_end = '' OR quiet_end GLOB '[0-2][0-9]:[0-5][0-9]'),
+  dedup_minutes INTEGER NOT NULL DEFAULT 60 CHECK (dedup_minutes BETWEEN 0 AND 10080),
+  updated_at TEXT NOT NULL
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE notifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_type TEXT NOT NULL CHECK (length(event_type) BETWEEN 1 AND 80),
+  severity TEXT NOT NULL CHECK (severity IN ('info', 'low', 'medium', 'high', 'critical')),
+  title TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 200),
+  record_kind TEXT NOT NULL DEFAULT '',
+  record_id INTEGER NOT NULL DEFAULT 0,
+  dedup_key TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  read_at TEXT
+) STRICT;
+
+CREATE INDEX notifications_unread ON notifications (created_at DESC) WHERE read_at IS NULL;
+CREATE INDEX notifications_dedup ON notifications (event_type, dedup_key, created_at DESC);
+CREATE INDEX notifications_created_at ON notifications (created_at DESC);
+
+CREATE VIEW endpoint_status AS
+SELECT
+  e.id AS endpoint_id, e.host, e.port, e.server_name, e.note, e.enabled, e.is_demo, e.revision, e.authorized_at, e.created_at, e.updated_at,
+  coalesce(o.id, 0) AS observation_id,
+  coalesce(o.observed_at, '') AS observed_at,
+  coalesce(o.outcome, 'never') AS outcome,
+  coalesce(o.error, '') AS error,
+  coalesce(o.leaf_certificate_id, 0) AS leaf_certificate_id,
+  coalesce(o.chain_status, 'unknown') AS chain_status,
+  coalesce(o.chain_error, '') AS chain_error,
+  coalesce(o.hostname_status, 'unknown') AS hostname_status,
+  coalesce(o.hostname_error, '') AS hostname_error,
+  coalesce(o.tls_version, '') AS tls_version,
+  coalesce(o.cipher_suite, '') AS cipher_suite,
+  coalesce(o.accepted_versions, '') AS accepted_versions,
+  coalesce(o.protocols_tested, 0) AS protocols_tested,
+  coalesce(o.changed, 0) AS changed,
+  coalesce(c.display_name, '') AS certificate_name,
+  coalesce(c.issuer, '') AS certificate_issuer,
+  coalesce(c.not_after, '') AS not_after
+FROM endpoints e
+LEFT JOIN observations o ON o.id = e.last_observation_id
+LEFT JOIN certificates c ON c.id = o.leaf_certificate_id;
+
+CREATE VIEW tracked_certificates AS
+SELECT
+  c.id AS certificate_id, c.fingerprint, c.display_name, c.subject, c.issuer, c.serial, c.not_before, c.not_after, c.names,
+  c.key_algorithm, c.key_bits, c.signature_algorithm, c.is_ca, c.self_signed, c.source, c.is_demo, c.first_seen_at, c.last_seen_at,
+  (SELECT count(*) FROM endpoints e JOIN observations o ON o.id = e.last_observation_id WHERE o.leaf_certificate_id = c.id AND e.enabled = 1) AS endpoint_count,
+  coalesce((SELECT group_concat(e.host || ':' || e.port, ', ') FROM endpoints e JOIN observations o ON o.id = e.last_observation_id WHERE o.leaf_certificate_id = c.id AND e.enabled = 1), '') AS used_by
+FROM certificates c
+WHERE c.source = 'imported'
+   OR c.id IN (SELECT o.leaf_certificate_id FROM endpoints e JOIN observations o ON o.id = e.last_observation_id WHERE e.enabled = 1);
+
+CREATE VIEW latest_findings AS
+SELECT f.id AS finding_id, f.code, f.severity, f.detail, s.endpoint_id, s.host, s.port, s.observation_id, s.observed_at, s.is_demo
+FROM endpoint_status s
+JOIN findings f ON f.observation_id = s.observation_id
+WHERE s.enabled = 1;
+
+CREATE VIEW overview_attention AS
+SELECT
+  (SELECT count(*) FROM endpoints) AS endpoints,
+  (SELECT count(*) FROM endpoints WHERE enabled = 0) AS disabled_endpoints,
+  (SELECT count(*) FROM endpoint_status WHERE enabled = 1 AND outcome = 'never') AS never_checked,
+  (SELECT count(*) FROM endpoint_status WHERE enabled = 1 AND outcome IN ('unreachable', 'handshake_failed')) AS failed_checks,
+  (SELECT count(*) FROM endpoint_status WHERE enabled = 1 AND chain_status = 'invalid') AS chain_failures,
+  (SELECT count(*) FROM endpoint_status WHERE enabled = 1 AND hostname_status = 'mismatch') AS hostname_mismatches,
+  (SELECT count(*) FROM tracked_certificates) AS certificates,
+  (SELECT count(*) FROM latest_findings) AS findings,
+  (SELECT count(*) FROM endpoints WHERE is_demo = 1) + (SELECT count(*) FROM certificates WHERE is_demo = 1) AS demo_rows,
+  (SELECT count(*) FROM notifications WHERE read_at IS NULL) AS unread_notifications;
+
+PRAGMA user_version = 1;
