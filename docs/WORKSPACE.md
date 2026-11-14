@@ -36,6 +36,7 @@ Every script starts with `#!/usr/bin/env bash` and `set -euo pipefail`, supports
 | `scripts/gen-workflows.sh` | Render `templates/workflows/` into `.github/workflows/`; `--check` verifies, `--standalone` renders for a split repository |
 | `scripts/new-project.sh <name> <go\|rust\|cpp>` | Create a project folder from its language template with metadata from the registry |
 | `scripts/split-project.sh <project>` | Extract a project with history into a standalone repository |
+| `scripts/init-main.sh` | Create the local branch `main` as one commit `chore: initial public release` with the files of the current commit |
 | `scripts/publish-github.sh` | Create and publish the public `workspace` repository with `gh` |
 | `scripts/sync-readme.sh` | Refresh the project table in `README.md` |
 | `scripts/verify-repo.sh [check...]` | Repository checks, described below |

@@ -70,8 +70,12 @@ The script uses `git subtree split` to extract the folder with its history into 
 ## Publishing the workspace repository
 
 ```bash
+scripts/init-main.sh --dry-run
+scripts/init-main.sh
 scripts/publish-github.sh --dry-run
 scripts/publish-github.sh
 ```
+
+`scripts/init-main.sh` creates the local branch `main` as one single commit named `chore: initial public release` that holds the files of the current commit. It carries no earlier history, checks nothing out and pushes nothing.
 
 The script checks the logged-in `gh` user against the owner, refuses a git email that is not a GitHub noreply address, requires the first commit on `main` to be `chore: initial public release`, creates the public repository, sets the description and exactly seven topics, pushes `main`, enables private vulnerability reporting and pushes a tag when `--tag` is given.

@@ -81,7 +81,6 @@ scripts/split-project.sh certwatch
 - [docs/ADD_PROJECT.md](docs/ADD_PROJECT.md): creating a project from a template
 - [docs/RELEASING.md](docs/RELEASING.md): tag-triggered pre-releases and splitting a project
 - [docs/ROADMAP.md](docs/ROADMAP.md): what exists, what does not, and the order of work
-- [docs/SPECIFICATION.md](docs/SPECIFICATION.md): the requirements every project follows
 
 ## Security
 
