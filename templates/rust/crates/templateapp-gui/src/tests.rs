@@ -4,7 +4,7 @@ use std::fs;
 use std::rc::Rc;
 
 use app_core::clock::{Clock, Zone};
-use app_core::launcher::MODE_TUI;
+use app_core::launcher::{MODE_GUI, MODE_TUI};
 use app_core::meta;
 use app_core::notifier::Autostart;
 use app_core::platform::{Env, Os};
@@ -16,9 +16,13 @@ use app_core::theme::Severity;
 use app_core::userconfig::FRONT_END_TUI;
 use egui::{Event, Key, Modifiers};
 
+use crate::chooser::{self, Choice};
+use crate::host::{CHOOSER_SIZE, chooser_tokens};
+use crate::icons::{Icons, PATHS};
 use crate::model::{AboutTab, Dashboard, NotifierState, Options, Shortcut};
 use crate::render::{Picture, Stage};
 use crate::shots;
+use crate::skin;
 use crate::view::{DEMO_NOTE, SEARCH_HINT};
 
 pub(crate) fn environment(home: &TempDir) -> Env {
@@ -856,4 +860,154 @@ fn a_collapsed_sidebar_explains_its_icons_on_hover() {
     assert!(!stage.text().contains("Overview: "), "the hint stayed after the pointer left");
     stage.click_at(icon, |ui| board.ui(ui));
     assert_eq!(board.page_id(), NAV_OVERVIEW);
+}
+
+#[test]
+fn record_table_columns_and_sort_are_saved_and_follow_other_windows() {
+    let home = TempDir::new("gui-columns");
+    let mut app = open_app(&home);
+    let other = open_app(&home);
+    let mut board = started(&mut app, options(&home));
+    for name in ["Alpha", "Bravo"] {
+        other.records().create(&Input { note: format!("rack {name}"), ..input(name, Severity::Low) }).unwrap();
+    }
+    board.show(NAV_RECORDS);
+    board.tick();
+    let mut stage = Stage::new(shots::WIDTH, shots::HEIGHT, 1.0);
+    let all = painted(&mut stage, &mut board);
+    for wanted in ["ID", "Name", "Columns", "2 records shown"] {
+        assert!(shown_line(&all, wanted), "the records page lacks {wanted:?}:\n{all}");
+    }
+    assert_eq!((board.rec.query.sort.as_str(), board.rec.query.descending), ("updated", true));
+    assert_eq!(board.rec.columns, settings::RECORD_COLUMNS);
+    assert!(stage.click("Columns", |ui| board.ui(ui)));
+    shows(&board, &["Columns of the record table", "Severity", "Updated"]);
+    let pinned = board.form.as_ref().unwrap().fields.iter().any(|field| field.key == "name");
+    assert!(!pinned, "the name column can be hidden");
+    fill(&mut board, &[("severity", "hide"), ("id", "hide")]);
+    board.submit();
+    shows(&board, &["Saved the columns of the record table"]);
+    assert_eq!(other.settings().get(settings::KEY_RECORD_COLUMNS).unwrap().raw, "name,status,updated,state");
+    assert_eq!(board.rec.columns, ["name", "status", "updated", "state"]);
+    let fewer = painted(&mut stage, &mut board);
+    assert!(shown_line(&fewer, "Name") && !shown_line(&fewer, "ID"), "a hidden column is still painted:\n{fewer}");
+    board.sort_by("name", false);
+    assert_eq!(other.settings().get(settings::KEY_RECORD_SORT).unwrap().raw, "name:asc");
+    assert_eq!(board.rec.list[0].name, "Alpha");
+    other.settings().set(settings::KEY_RECORD_SORT, "name:desc").unwrap();
+    other.settings().reset(settings::KEY_RECORD_COLUMNS).unwrap();
+    board.tick();
+    shows(&board, &["Updated by another window"]);
+    assert_eq!(board.rec.list[0].name, "Bravo");
+    assert_eq!((board.rec.query.sort.as_str(), board.rec.query.descending), ("name", true));
+    assert_eq!(board.rec.columns, settings::RECORD_COLUMNS);
+    let again = painted(&mut stage, &mut board);
+    assert!(shown_line(&again, "ID"), "the column stayed hidden after a reset in another window:\n{again}");
+}
+
+struct Asked {
+    stage: Stage,
+    tokens: app_core::theme::Tokens,
+    icons: Icons,
+    default_mode: &'static str,
+    remember: bool,
+}
+
+impl Asked {
+    fn new(default_mode: &'static str) -> Asked {
+        let stage = Stage::new(CHOOSER_SIZE[0], CHOOSER_SIZE[1], 1.0);
+        let tokens = chooser_tokens(false);
+        skin::apply(&stage.ctx, &tokens);
+        let mut asked = Asked { stage, tokens, icons: Icons::default(), default_mode, remember: false };
+        asked.picture();
+        asked
+    }
+
+    fn picture(&mut self) -> Picture {
+        let Asked { stage, tokens, icons, default_mode, remember } = self;
+        stage.settle(3, |ui| {
+            *ui.style_mut() = skin::style(tokens);
+            chooser::show(ui, tokens, icons, default_mode, remember, false);
+        })
+    }
+
+    fn click(&mut self, label: &str) -> Choice {
+        let Asked { stage, tokens, icons, default_mode, remember } = self;
+        let mut answer = Choice::Waiting;
+        let found = stage.click(label, |ui| {
+            *ui.style_mut() = skin::style(tokens);
+            let choice = chooser::show(ui, tokens, icons, default_mode, remember, false);
+            if choice != Choice::Waiting {
+                answer = choice;
+            }
+        });
+        assert!(found, "the chooser does not show {label:?}:\n{}", stage.text());
+        answer
+    }
+
+    fn marked(&mut self, label: &str) -> bool {
+        let picture = self.picture();
+        let row = self.stage.locate(label).unwrap().y.round() as usize;
+        let accent = self.tokens.palette.accent;
+        let pixel = picture.pixel(picture.width - 40, row);
+        [accent.r, accent.g, accent.b].iter().zip(pixel).all(|(wanted, got)| wanted.abs_diff(got) <= 2)
+    }
+}
+
+#[test]
+fn the_chooser_offers_both_front_ends_and_marks_the_default() {
+    let mut asked = Asked::new(MODE_GUI);
+    let text = asked.stage.text();
+    for wanted in [chooser::title().as_str(), chooser::DASHBOARD, chooser::TERMINAL, chooser::REMEMBER, "Quit", chooser::LATER] {
+        assert!(shown_line(&text, wanted), "the chooser lacks {wanted:?}:\n{text}");
+    }
+    assert_eq!(chooser::title(), format!("How do you want to open {}?", meta::APP_NAME));
+    assert_eq!((chooser::DASHBOARD, chooser::TERMINAL), ("Dashboard (graphical window)", "Terminal (text interface)"));
+    assert!(asked.marked(chooser::DASHBOARD) && !asked.marked(chooser::TERMINAL), "the default choice is not marked");
+    assert_eq!(asked.click(chooser::TERMINAL), Choice::Mode(MODE_TUI));
+    assert!(!asked.remember);
+    assert_eq!(asked.click(chooser::REMEMBER), Choice::Waiting);
+    assert!(asked.remember, "the checkbox did not react");
+    assert_eq!(asked.click(chooser::DASHBOARD), Choice::Mode(MODE_GUI));
+    assert_eq!(asked.click("Quit"), Choice::Quit);
+    assert!(asked.icons.drawn().is_empty(), "the chooser draws only the application icon");
+    let mut other = Asked::new(MODE_TUI);
+    assert!(other.marked(chooser::TERMINAL) && !other.marked(chooser::DASHBOARD), "the terminal default is not marked");
+    let dark = shots::chooser(true);
+    let light = shots::chooser(false);
+    assert_ne!(dark.pixel(4, 4), light.pixel(4, 4), "the chooser ignores the system's dark mode");
+}
+
+#[test]
+fn every_icon_the_dashboard_draws_comes_from_the_application_set() {
+    let home = TempDir::new("gui-icons");
+    let mut app = open_app(&home);
+    let mut board = started(&mut app, options(&home));
+    board.load_demo();
+    let mut stage = Stage::new(1280.0, 2600.0, 1.0);
+    for item in NAVIGATION {
+        board.show(item.id);
+        painted(&mut stage, &mut board);
+    }
+    board.show(NAV_RECORDS);
+    board.rec.selected = board.rec.list.first().map(|record| record.id);
+    painted(&mut stage, &mut board);
+    board.show(NAV_NOTIFICATIONS);
+    board.inbox.rules = true;
+    painted(&mut stage, &mut board);
+    for tab in [AboutTab::Overview, AboutTab::Guide, AboutTab::Shortcuts, AboutTab::Diagnostics] {
+        board.show_about(tab);
+        painted(&mut stage, &mut board);
+    }
+    board.toggle_sidebar();
+    painted(&mut stage, &mut board);
+    let drawn = board.icons.drawn();
+    assert!(drawn.len() >= 12, "only {drawn:?} were drawn");
+    for name in &drawn {
+        assert!(PATHS.iter().any(|(known, _)| known == name), "{name} is drawn but is not in the application set");
+    }
+    for item in NAVIGATION {
+        let name = crate::view::nav_icon(item.id);
+        assert!(drawn.iter().any(|known| known == name), "the icon {name} of {} was never drawn", item.id);
+    }
 }

@@ -50,6 +50,7 @@ pub const PATHS: &[(&str, &str)] = &[
 ];
 
 pub const FALLBACK: &str = "info";
+const LOGO: &str = "#logo";
 
 pub fn path(name: &str) -> &'static str {
     let found =
@@ -284,9 +285,17 @@ impl Icons {
         Image::from_texture(SizedTexture::new(texture.id(), vec2(points, points))).tint(tint)
     }
 
+    pub fn drawn(&self) -> Vec<String> {
+        let textures = self.textures.borrow();
+        let mut names: Vec<String> = textures.keys().map(|(name, _)| name.clone()).filter(|name| name != LOGO).collect();
+        names.sort();
+        names.dedup();
+        names
+    }
+
     pub fn logo(&self, ctx: &Context, points: f32) -> Image<'static> {
         let pixels = ((points * ctx.pixels_per_point()).round() as usize).clamp(16, 512);
-        let key = ("#logo".to_string(), pixels);
+        let key = (LOGO.to_string(), pixels);
         let mut textures = self.textures.borrow_mut();
         let texture = textures.entry(key).or_insert_with(|| {
             let picture = ColorImage::from_rgba_unmultiplied([pixels, pixels], &app_core::brand::icon(pixels));
