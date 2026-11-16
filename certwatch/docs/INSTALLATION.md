@@ -2,7 +2,7 @@
 
 ## Downloads
 
-No pre-release has been published yet; until one is, use [Build from source](#build-from-source). Pre-releases will be on the [releases page](https://github.com/unalivin/workspace/releases), each with exactly three files:
+Pre-releases are on the [releases page](https://github.com/unalivin/workspace/releases); look for the entries named CertWatch. If there is none, use [Build from source](#build-from-source). Each pre-release has exactly three files:
 
 | File | Platform | Content |
 |---|---|---|

@@ -92,6 +92,22 @@ verify() {
   [[ "$output" == *"RELEASE_NOTES.md is missing"* ]]
 }
 
+@test "release-verify writes notes whose links point at the released commit" {
+  printf 'See [the roadmap](https://example.test/o/r/blob/HEAD/docs/ROADMAP.md) and [docs](https://example.test/o/r/tree/HEAD/docs).\n' >"$RELEASE_REPO/docs/RELEASE_NOTES.md"
+  run verify --tag "$RELEASE_TAG" --commit "$RELEASE_COMMIT" --directory "$RELEASE_FILES" --skip-remote --notes-output "$SANDBOX/notes.md"
+  [ "$status" -eq 0 ]
+  grep -q "/blob/$RELEASE_COMMIT/docs/ROADMAP.md" "$SANDBOX/notes.md"
+  grep -q "/tree/$RELEASE_COMMIT/docs" "$SANDBOX/notes.md"
+  refute grep -q "HEAD" "$SANDBOX/notes.md"
+  grep -q "blob/HEAD" "$RELEASE_REPO/docs/RELEASE_NOTES.md"
+}
+
+@test "release-verify writes no notes when a check fails" {
+  run verify --tag "v9.9.9" --commit "$RELEASE_COMMIT" --directory "$RELEASE_FILES" --skip-remote --notes-output "$SANDBOX/notes.md"
+  [ "$status" -ne 0 ]
+  [ ! -e "$SANDBOX/notes.md" ]
+}
+
 @test "release-verify needs every argument" {
   run verify --tag "$RELEASE_TAG"
   [ "$status" -ne 0 ]

@@ -69,7 +69,7 @@ jobs:
           path: ${{ runner.temp }}/release
           merge-multiple: true
       - name: Verify tag, release and files
-        run: scripts/release-verify.sh --tag "$GITHUB_REF_NAME" --commit "$GITHUB_SHA" --directory "$RUNNER_TEMP/release"
+        run: scripts/release-verify.sh --tag "$GITHUB_REF_NAME" --commit "$GITHUB_SHA" --directory "$RUNNER_TEMP/release" --notes-output "$RUNNER_TEMP/release-notes.md"
       - name: Create pre-release
         run: |
           version="${GITHUB_REF_NAME##*/}"
@@ -79,4 +79,4 @@ jobs:
             "$RUNNER_TEMP/release/certwatch-windows-x64.exe" \
             --prerelease \
             --title "CertWatch ${version} (dev beta)" \
-            --notes-file docs/RELEASE_NOTES.md
+            --notes-file "$RUNNER_TEMP/release-notes.md"

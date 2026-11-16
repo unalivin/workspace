@@ -5,9 +5,11 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 usage() {
   cat <<'USAGE'
-Usage: scripts/release-verify.sh --tag <tag> --commit <sha> --directory <dir> [--skip-remote]
+Usage: scripts/release-verify.sh --tag <tag> --commit <sha> --directory <dir>
+                                 [--notes-output <file>] [--skip-remote]
 
-Checks that a pre-release may be created, without changing anything:
+Checks that a pre-release may be created. The only file it writes is the one
+named by --notes-output:
 
   1. the tag is <project>/v<version> (or v<version> in a standalone
      repository) and the version equals the application version
@@ -19,6 +21,9 @@ Checks that a pre-release may be created, without changing anything:
   --tag          Tag that triggered the release
   --commit       Commit the workflow runs on
   --directory    Directory with the downloaded build results
+  --notes-output File that receives docs/RELEASE_NOTES.md with every link to
+                 the default branch (/blob/HEAD/, /tree/HEAD/) pointed at the
+                 released commit, so the links match the release
   --skip-remote  Do not ask GitHub whether the release exists (for tests)
   --help         Show this help
 USAGE
@@ -27,15 +32,17 @@ USAGE
 tag=""
 commit=""
 directory=""
+notes_output=""
 skip_remote=0
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --tag | --commit | --directory)
+    --tag | --commit | --directory | --notes-output)
       [ "$#" -ge 2 ] || die "$1 needs a value"
       case "$1" in
         --tag) tag="$2" ;;
         --commit) commit="$2" ;;
         --directory) directory="$2" ;;
+        --notes-output) notes_output="$2" ;;
       esac
       shift
       ;;
@@ -83,3 +90,9 @@ done <<<"$expected"
 [ -s "$PROJECT_ROOT/docs/RELEASE_NOTES.md" ] || die "docs/RELEASE_NOTES.md is missing or empty"
 
 note "release checks passed for $tag at $workflow_commit"
+
+if [ -n "$notes_output" ]; then
+  sed -e "s|/blob/HEAD/|/blob/$workflow_commit/|g" -e "s|/tree/HEAD/|/tree/$workflow_commit/|g" \
+    "$PROJECT_ROOT/docs/RELEASE_NOTES.md" >"$notes_output"
+  note "release notes written to $notes_output, links point at $workflow_commit"
+fi

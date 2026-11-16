@@ -27,7 +27,7 @@ Version `0.1.0-dev`. This is an early development build ("dev beta"). Not every 
 
 ## Download
 
-No pre-release has been published yet; until one is, build from source as [docs/INSTALLATION.md](docs/INSTALLATION.md) describes. Pre-releases will appear on the [releases page](https://github.com/unalivin/workspace/releases), each with exactly three files:
+Pre-releases are published on the [releases page](https://github.com/unalivin/workspace/releases); look for the entries named CertWatch. If there is none, build from source as [docs/INSTALLATION.md](docs/INSTALLATION.md) describes. Each pre-release has exactly three files:
 
 | File | For |
 |---|---|

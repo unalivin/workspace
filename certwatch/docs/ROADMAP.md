@@ -36,7 +36,7 @@ Distribution:
 - Chain validation by the trust store of macOS and Windows. The tests pass their own roots, which is the path Linux always takes.
 - The dashboard on a real display, with a screen reader, and on high-DPI screens.
 - Display of system notifications, start at sign-in at a real sign-in, and opening a terminal window on each operating system.
-- The release workflow. No pre-release has been published yet.
+- The published release files. They are built and checked by the release workflow, but nobody has installed and started them on a real Linux, macOS or Windows desktop.
 
 See [PLATFORM_SUPPORT.md](PLATFORM_SUPPORT.md) for what the automated checks cover.
 

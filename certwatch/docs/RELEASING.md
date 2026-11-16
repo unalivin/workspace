@@ -8,7 +8,7 @@ A release is a pre-release called "dev beta". The only thing that publishes one 
 
 1. On Linux x64, macOS arm64 and Windows x64 runners: runs the tests of the dashboard build, builds and tests the no-GUI variant (it is not attached to the release), then runs `scripts/package.sh`, which builds the dashboard application with the `fyne` packaging tool.
 2. In a separate job with `contents: write`, runs `scripts/release-verify.sh`: the tag points at the workflow commit, the tag version equals the version in the source, no release with this tag exists, and exactly the three files are present.
-3. Publishes exactly three files as a pre-release titled `CertWatch v0.1.0-dev (dev beta)` with the description from `docs/RELEASE_NOTES.md`:
+3. Publishes exactly three files as a pre-release titled `CertWatch v0.1.0-dev (dev beta)`. The description is `docs/RELEASE_NOTES.md`, with every link to the default branch (`/blob/HEAD/`) pointed at the released commit so that the linked pages match the release:
 
 | File | Content |
 |---|---|

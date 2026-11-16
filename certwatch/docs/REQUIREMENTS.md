@@ -108,5 +108,5 @@ Status of every requirement above, with the tests that prove it. "Implemented" m
 | Icons | One consistent set of original drawings defined in code, not a third-party icon set. See [adr/0004-fyne-with-own-skin.md](adr/0004-fyne-with-own-skin.md) |
 | Reduced motion | The setting turns off the fade of the notice bar and the moving progress bar of a running check. The toolkit's own widget animations are compiled out of every build |
 | Accessibility | Keyboard operation, text scaling and contrast are tested. Visible focus on a real display and screen readers are not verified |
-| Release | The release workflow and its checks exist and the checks are tested with `scripts/tests/release.bats`. The workflow has not been run; no pre-release exists |
+| Release | The release workflow builds the three files on Linux, macOS and Windows runners and publishes them only after `scripts/release-verify.sh` passes; that script is tested with `scripts/tests/release.bats`. The published files have not been installed and started on a real desktop |
 | Real desktops | The dashboard, the native chooser, system notifications and start at sign-in have not been tried on a real desktop of any of the three systems |
