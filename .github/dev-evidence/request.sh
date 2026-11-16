@@ -16,6 +16,8 @@ cargo clippy --workspace --all-targets -- -D warnings >"$EVIDENCE_DIR/clippy.ful
 cargo test --workspace >"$EVIDENCE_DIR/test.log" 2>&1
 printf 'test exit status: %s\n' "$?"
 mkdir -p "$EVIDENCE_DIR/tree"
+cargo run -q -p templateapp-core --example genassets -- -out "$EVIDENCE_DIR/tree/assets"
+printf 'genassets exit status: %s\n' "$?"
 cp Cargo.lock "$EVIDENCE_DIR/tree/" || true
 find crates -name '*.rs' -print0 | while IFS= read -r -d '' file; do
   mkdir -p "$EVIDENCE_DIR/tree/$(dirname "$file")"

@@ -1,3 +1,4 @@
+pub mod brand;
 pub mod clock;
 pub mod csv;
 pub mod error;
@@ -8,6 +9,7 @@ pub mod meta;
 pub mod notifier;
 pub mod notify;
 pub mod platform;
+pub mod png;
 pub mod records;
 pub mod service;
 pub mod settings;
