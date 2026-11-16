@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/NexzaDev/certwatch/internal/meta"
+	"github.com/unalivin/certwatch/internal/meta"
 )
 
 type call struct {

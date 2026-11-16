@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NexzaDev/templateapp/internal/meta"
-	"github.com/NexzaDev/templateapp/internal/store"
-	"github.com/NexzaDev/templateapp/internal/testkit"
-	"github.com/NexzaDev/templateapp/internal/theme"
+	"github.com/unalivin/templateapp/internal/meta"
+	"github.com/unalivin/templateapp/internal/store"
+	"github.com/unalivin/templateapp/internal/testkit"
+	"github.com/unalivin/templateapp/internal/theme"
 )
 
 type recordingDeliverer struct {

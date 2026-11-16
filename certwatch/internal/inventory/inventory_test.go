@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NexzaDev/certwatch/internal/certgen"
-	"github.com/NexzaDev/certwatch/internal/notify"
-	"github.com/NexzaDev/certwatch/internal/testkit"
-	"github.com/NexzaDev/certwatch/internal/theme"
-	"github.com/NexzaDev/certwatch/internal/tlscheck"
+	"github.com/unalivin/certwatch/internal/certgen"
+	"github.com/unalivin/certwatch/internal/notify"
+	"github.com/unalivin/certwatch/internal/testkit"
+	"github.com/unalivin/certwatch/internal/theme"
+	"github.com/unalivin/certwatch/internal/tlscheck"
 )
 
 type fixture struct {

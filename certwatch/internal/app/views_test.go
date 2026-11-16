@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NexzaDev/certwatch/internal/certgen"
-	"github.com/NexzaDev/certwatch/internal/inventory"
-	"github.com/NexzaDev/certwatch/internal/settings"
-	"github.com/NexzaDev/certwatch/internal/theme"
-	"github.com/NexzaDev/certwatch/internal/tlscheck"
+	"github.com/unalivin/certwatch/internal/certgen"
+	"github.com/unalivin/certwatch/internal/inventory"
+	"github.com/unalivin/certwatch/internal/settings"
+	"github.com/unalivin/certwatch/internal/theme"
+	"github.com/unalivin/certwatch/internal/tlscheck"
 )
 
 type liveServer struct {

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NexzaDev/certwatch/internal/store"
-	"github.com/NexzaDev/certwatch/migrations"
+	"github.com/unalivin/certwatch/internal/store"
+	"github.com/unalivin/certwatch/migrations"
 )
 
 type Clock struct {

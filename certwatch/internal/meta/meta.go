@@ -10,13 +10,13 @@ import (
 const (
 	AppName       = "CertWatch"
 	Slug          = "certwatch"
-	AppID         = "io.github.nexzadev.certwatch"
+	AppID         = "io.github.unalivin.certwatch"
 	EnvPrefix     = "CERTWATCH"
 	Version       = "0.1.0-dev"
 	Tagline       = "TLS Certificate Monitoring"
 	Description   = "Local-first certificate inventory and TLS posture monitor: tracks expiry, validates hostnames, inspects chains and keeps an audit history, with expiry alerts. Desktop GUI, terminal UI and CLI. Checks only hosts you are authorized to test."
 	IconConcept   = "a certificate sheet with a ribbon seal whose ring doubles as a clock face"
-	RepositoryURL = "https://github.com/NexzaDev/workspace"
+	RepositoryURL = "https://github.com/unalivin/workspace"
 	License       = "MIT"
 )
 

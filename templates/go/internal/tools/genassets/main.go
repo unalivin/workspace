@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/NexzaDev/templateapp/internal/brand"
-	"github.com/NexzaDev/templateapp/internal/meta"
+	"github.com/unalivin/templateapp/internal/brand"
+	"github.com/unalivin/templateapp/internal/meta"
 )
 
 func run(directory string, check bool) error {

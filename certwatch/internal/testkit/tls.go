@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NexzaDev/certwatch/internal/certgen"
+	"github.com/unalivin/certwatch/internal/certgen"
 )
 
 type TLSFixture struct {

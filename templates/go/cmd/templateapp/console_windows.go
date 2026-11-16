@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	"github.com/NexzaDev/templateapp/internal/launcher"
+	"github.com/unalivin/templateapp/internal/launcher"
 )
 
 const (

@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/NexzaDev/templateapp/internal/theme"
+	"github.com/unalivin/templateapp/internal/theme"
 )
 
 const (

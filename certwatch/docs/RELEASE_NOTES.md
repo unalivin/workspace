@@ -6,7 +6,7 @@ CertWatch keeps its data in one SQLite file on your computer. It has no account,
 
 ## This is an early dev beta
 
-Version `0.1.0-dev` is a pre-release for testing. Not every planned feature exists; [docs/ROADMAP.md](https://github.com/NexzaDev/workspace/blob/HEAD/certwatch/docs/ROADMAP.md) lists what is missing and what has not been verified on real desktops. The database format may change before `0.1.0`. Export your endpoint list before you update (`certwatch endpoints export --file endpoints.csv`).
+Version `0.1.0-dev` is a pre-release for testing. Not every planned feature exists; [docs/ROADMAP.md](https://github.com/unalivin/workspace/blob/HEAD/certwatch/docs/ROADMAP.md) lists what is missing and what has not been verified on real desktops. The database format may change before `0.1.0`. Export your endpoint list before you update (`certwatch endpoints export --file endpoints.csv`).
 
 Checks have been tested against local servers with generated certificates, not yet against servers on the internet. Services that need STARTTLS and revocation checks are not supported.
 

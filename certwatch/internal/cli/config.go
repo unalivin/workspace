@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/NexzaDev/certwatch/internal/app"
-	"github.com/NexzaDev/certwatch/internal/guide"
-	"github.com/NexzaDev/certwatch/internal/meta"
-	"github.com/NexzaDev/certwatch/internal/settings"
-	"github.com/NexzaDev/certwatch/internal/theme"
-	"github.com/NexzaDev/certwatch/internal/userconfig"
+	"github.com/unalivin/certwatch/internal/app"
+	"github.com/unalivin/certwatch/internal/guide"
+	"github.com/unalivin/certwatch/internal/meta"
+	"github.com/unalivin/certwatch/internal/settings"
+	"github.com/unalivin/certwatch/internal/theme"
+	"github.com/unalivin/certwatch/internal/userconfig"
 )
 
 func configCommand() *command {

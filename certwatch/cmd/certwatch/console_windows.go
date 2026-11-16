@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	"github.com/NexzaDev/certwatch/internal/launcher"
+	"github.com/unalivin/certwatch/internal/launcher"
 )
 
 const (

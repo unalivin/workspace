@@ -11,12 +11,12 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 
-	"github.com/NexzaDev/templateapp/internal/app"
-	"github.com/NexzaDev/templateapp/internal/guide"
-	"github.com/NexzaDev/templateapp/internal/meta"
-	"github.com/NexzaDev/templateapp/internal/settings"
-	"github.com/NexzaDev/templateapp/internal/theme"
-	"github.com/NexzaDev/templateapp/internal/userconfig"
+	"github.com/unalivin/templateapp/internal/app"
+	"github.com/unalivin/templateapp/internal/guide"
+	"github.com/unalivin/templateapp/internal/meta"
+	"github.com/unalivin/templateapp/internal/settings"
+	"github.com/unalivin/templateapp/internal/theme"
+	"github.com/unalivin/templateapp/internal/userconfig"
 )
 
 type settingRow struct {

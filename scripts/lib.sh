@@ -3,7 +3,7 @@ set -euo pipefail
 
 WORKSPACE_ROOT="${WORKSPACE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 REGISTRY_FILE="${REGISTRY_FILE:-$WORKSPACE_ROOT/scripts/projects.tsv}"
-WORKSPACE_OWNER="${WORKSPACE_OWNER:-NexzaDev}"
+WORKSPACE_OWNER="${WORKSPACE_OWNER:-unalivin}"
 WORKSPACE_REPO="${WORKSPACE_REPO:-workspace}"
 TEMPLATE_LANGUAGES="go rust cpp"
 DRY_RUN="${DRY_RUN:-0}"

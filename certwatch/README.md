@@ -27,7 +27,7 @@ Version `0.1.0-dev`. This is an early development build ("dev beta"). Not every 
 
 ## Download
 
-No pre-release has been published yet; until one is, build from source as [docs/INSTALLATION.md](docs/INSTALLATION.md) describes. Pre-releases will appear on the [releases page](https://github.com/NexzaDev/workspace/releases), each with exactly three files:
+No pre-release has been published yet; until one is, build from source as [docs/INSTALLATION.md](docs/INSTALLATION.md) describes. Pre-releases will appear on the [releases page](https://github.com/unalivin/workspace/releases), each with exactly three files:
 
 | File | For |
 |---|---|
@@ -92,7 +92,7 @@ The usage guide is built into the application (About, Usage guide, or `certwatch
 
 ## Security
 
-Report vulnerabilities privately through the [GitHub advisory form](https://github.com/NexzaDev/workspace/security/advisories/new). See [SECURITY.md](SECURITY.md) and the [threat model](docs/THREAT_MODEL.md).
+Report vulnerabilities privately through the [GitHub advisory form](https://github.com/unalivin/workspace/security/advisories/new). See [SECURITY.md](SECURITY.md) and the [threat model](docs/THREAT_MODEL.md).
 
 ## Contributing
 

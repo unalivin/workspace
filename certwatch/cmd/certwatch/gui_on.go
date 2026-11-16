@@ -10,12 +10,12 @@ import (
 	"fyne.io/fyne/v2"
 	fyneapp "fyne.io/fyne/v2/app"
 
-	"github.com/NexzaDev/certwatch/internal/app"
-	"github.com/NexzaDev/certwatch/internal/cli"
-	"github.com/NexzaDev/certwatch/internal/gui"
-	"github.com/NexzaDev/certwatch/internal/launcher"
-	"github.com/NexzaDev/certwatch/internal/meta"
-	"github.com/NexzaDev/certwatch/internal/platform"
+	"github.com/unalivin/certwatch/internal/app"
+	"github.com/unalivin/certwatch/internal/cli"
+	"github.com/unalivin/certwatch/internal/gui"
+	"github.com/unalivin/certwatch/internal/launcher"
+	"github.com/unalivin/certwatch/internal/meta"
+	"github.com/unalivin/certwatch/internal/platform"
 )
 
 func run(ctx context.Context, env *cli.Env) int {

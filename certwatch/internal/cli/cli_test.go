@@ -11,13 +11,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NexzaDev/certwatch/internal/app"
-	"github.com/NexzaDev/certwatch/internal/launcher"
-	"github.com/NexzaDev/certwatch/internal/meta"
-	"github.com/NexzaDev/certwatch/internal/notify"
-	"github.com/NexzaDev/certwatch/internal/settings"
-	"github.com/NexzaDev/certwatch/internal/testkit"
-	"github.com/NexzaDev/certwatch/internal/userconfig"
+	"github.com/unalivin/certwatch/internal/app"
+	"github.com/unalivin/certwatch/internal/launcher"
+	"github.com/unalivin/certwatch/internal/meta"
+	"github.com/unalivin/certwatch/internal/notify"
+	"github.com/unalivin/certwatch/internal/settings"
+	"github.com/unalivin/certwatch/internal/testkit"
+	"github.com/unalivin/certwatch/internal/userconfig"
 )
 
 type harness struct {

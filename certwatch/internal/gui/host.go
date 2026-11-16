@@ -12,11 +12,11 @@ import (
 	fynetheme "fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
-	"github.com/NexzaDev/certwatch/internal/brand"
-	"github.com/NexzaDev/certwatch/internal/launcher"
-	"github.com/NexzaDev/certwatch/internal/meta"
-	"github.com/NexzaDev/certwatch/internal/settings"
-	"github.com/NexzaDev/certwatch/internal/theme"
+	"github.com/unalivin/certwatch/internal/brand"
+	"github.com/unalivin/certwatch/internal/launcher"
+	"github.com/unalivin/certwatch/internal/meta"
+	"github.com/unalivin/certwatch/internal/settings"
+	"github.com/unalivin/certwatch/internal/theme"
 )
 
 type Host struct {

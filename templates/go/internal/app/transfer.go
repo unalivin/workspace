@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/NexzaDev/templateapp/internal/records"
+	"github.com/unalivin/templateapp/internal/records"
 )
 
 const exportLimit = 10000

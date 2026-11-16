@@ -58,7 +58,7 @@ fake_gh() {
 #!/usr/bin/env bash
 printf '%s\n' "$*" >>"$GH_LOG"
 case "$1 $2" in
-  "api user") printf '%s\n' "${GH_LOGIN:-NexzaDev}" ;;
+  "api user") printf '%s\n' "${GH_LOGIN:-unalivin}" ;;
   "repo view") exit "${GH_REPO_EXISTS:-1}" ;;
   "release view") exit "${GH_RELEASE_EXISTS:-1}" ;;
 esac

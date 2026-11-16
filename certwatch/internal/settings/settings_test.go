@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/NexzaDev/certwatch/internal/settings"
-	"github.com/NexzaDev/certwatch/internal/testkit"
+	"github.com/unalivin/certwatch/internal/settings"
+	"github.com/unalivin/certwatch/internal/testkit"
 )
 
 func newService(t *testing.T, env map[string]string, flags map[string]string) *settings.Service {

@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NexzaDev/certwatch/internal/meta"
-	"github.com/NexzaDev/certwatch/internal/store"
-	"github.com/NexzaDev/certwatch/internal/testkit"
-	"github.com/NexzaDev/certwatch/internal/theme"
+	"github.com/unalivin/certwatch/internal/meta"
+	"github.com/unalivin/certwatch/internal/store"
+	"github.com/unalivin/certwatch/internal/testkit"
+	"github.com/unalivin/certwatch/internal/theme"
 )
 
 type recordingDeliverer struct {

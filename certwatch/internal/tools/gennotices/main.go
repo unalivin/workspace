@@ -9,8 +9,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/NexzaDev/certwatch/internal/licenses"
-	"github.com/NexzaDev/certwatch/internal/meta"
+	"github.com/unalivin/certwatch/internal/licenses"
+	"github.com/unalivin/certwatch/internal/meta"
 )
 
 const bundled = `## Components bundled inside dependencies

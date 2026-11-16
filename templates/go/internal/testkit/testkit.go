@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NexzaDev/templateapp/internal/store"
-	"github.com/NexzaDev/templateapp/migrations"
+	"github.com/unalivin/templateapp/internal/store"
+	"github.com/unalivin/templateapp/migrations"
 )
 
 type Clock struct {

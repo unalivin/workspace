@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/NexzaDev/templateapp/internal/app"
-	"github.com/NexzaDev/templateapp/internal/cli"
+	"github.com/unalivin/templateapp/internal/app"
+	"github.com/unalivin/templateapp/internal/cli"
 )
 
 var updateDocs = flag.Bool("update-docs", false, "rewrite the generated tables in docs/COMMANDS.md")

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/NexzaDev/templateapp/internal/meta"
+	"github.com/unalivin/templateapp/internal/meta"
 )
 
 const (

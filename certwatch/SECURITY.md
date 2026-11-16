@@ -8,7 +8,7 @@ CertWatch is at version `0.1.0-dev`. Only the latest commit on the default branc
 
 Report vulnerabilities privately through the GitHub private vulnerability advisory form of the repository:
 
-https://github.com/NexzaDev/workspace/security/advisories/new
+https://github.com/unalivin/workspace/security/advisories/new
 
 The same link is in the application: About, Report a vulnerability privately. Do not open a public issue for a vulnerability.
 

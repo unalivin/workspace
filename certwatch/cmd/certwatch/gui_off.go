@@ -5,7 +5,7 @@ package main
 import (
 	"context"
 
-	"github.com/NexzaDev/certwatch/internal/cli"
+	"github.com/unalivin/certwatch/internal/cli"
 )
 
 func run(ctx context.Context, env *cli.Env) int {

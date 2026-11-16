@@ -8,7 +8,7 @@ import (
 	"fyne.io/fyne/v2"
 	fynetheme "fyne.io/fyne/v2/theme"
 
-	"github.com/NexzaDev/templateapp/internal/theme"
+	"github.com/unalivin/templateapp/internal/theme"
 )
 
 type skin struct {

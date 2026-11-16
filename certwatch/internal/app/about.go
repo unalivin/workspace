@@ -6,10 +6,10 @@ import (
 	"sort"
 	"strings"
 
-	bundle "github.com/NexzaDev/certwatch"
-	"github.com/NexzaDev/certwatch/internal/guide"
-	"github.com/NexzaDev/certwatch/internal/meta"
-	"github.com/NexzaDev/certwatch/internal/settings"
+	bundle "github.com/unalivin/certwatch"
+	"github.com/unalivin/certwatch/internal/guide"
+	"github.com/unalivin/certwatch/internal/meta"
+	"github.com/unalivin/certwatch/internal/settings"
 )
 
 type NavItem struct {

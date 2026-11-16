@@ -14,9 +14,9 @@ import (
 	fynetheme "fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
-	"github.com/NexzaDev/certwatch/internal/app"
-	"github.com/NexzaDev/certwatch/internal/theme"
-	"github.com/NexzaDev/certwatch/internal/words"
+	"github.com/unalivin/certwatch/internal/app"
+	"github.com/unalivin/certwatch/internal/theme"
+	"github.com/unalivin/certwatch/internal/words"
 )
 
 const noticeFade = 180 * time.Millisecond

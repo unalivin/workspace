@@ -2,7 +2,7 @@
 
 ## Downloads
 
-Pre-releases are on the [releases page](https://github.com/NexzaDev/workspace/releases). Each one has exactly three files:
+Pre-releases are on the [releases page](https://github.com/unalivin/workspace/releases). Each one has exactly three files:
 
 | File | Platform | Content |
 |---|---|---|

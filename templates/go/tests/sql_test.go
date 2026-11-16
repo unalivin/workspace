@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/NexzaDev/templateapp/internal/notify"
-	"github.com/NexzaDev/templateapp/internal/records"
-	"github.com/NexzaDev/templateapp/internal/sqlscan"
-	"github.com/NexzaDev/templateapp/internal/testkit"
+	"github.com/unalivin/templateapp/internal/notify"
+	"github.com/unalivin/templateapp/internal/records"
+	"github.com/unalivin/templateapp/internal/sqlscan"
+	"github.com/unalivin/templateapp/internal/testkit"
 )
 
 const (

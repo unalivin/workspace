@@ -2,7 +2,7 @@
 
 ## Downloads
 
-No pre-release has been published yet; until one is, use [Build from source](#build-from-source). Pre-releases will be on the [releases page](https://github.com/NexzaDev/workspace/releases), each with exactly three files:
+No pre-release has been published yet; until one is, use [Build from source](#build-from-source). Pre-releases will be on the [releases page](https://github.com/unalivin/workspace/releases), each with exactly three files:
 
 | File | Platform | Content |
 |---|---|---|

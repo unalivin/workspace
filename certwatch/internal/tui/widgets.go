@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/NexzaDev/certwatch/internal/theme"
+	"github.com/unalivin/certwatch/internal/theme"
 )
 
 type styles struct {

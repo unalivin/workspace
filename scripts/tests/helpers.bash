@@ -51,7 +51,7 @@ make_fake_template() {
   printf 'CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL) STRICT;\n' >"$base/migrations/0001_init.sql"
   {
     printf '# Template App\n\nTEMPLATE_DESCRIPTION\n\n'
-    printf 'Repository: https://github.com/NexzaDev/workspace\n'
+    printf 'Repository: https://github.com/unalivin/workspace\n'
     printf 'Folder: templates/%s\n' "$language"
     printf 'Release tag: templateapp/v0.1.0-dev\n\n'
     for item in Download Install Usage Documentation Security Contributing License; do
@@ -71,7 +71,7 @@ make_fake_template() {
 make_fake_gh() {
   mkdir -p "$TEST_ROOT/bin"
   export GH_LOG="$TEST_ROOT/gh.log"
-  export FAKE_GH_LOGIN="${FAKE_GH_LOGIN:-NexzaDev}"
+  export FAKE_GH_LOGIN="${FAKE_GH_LOGIN:-unalivin}"
   export FAKE_GH_REPO_EXISTS="${FAKE_GH_REPO_EXISTS:-0}"
   : >"$GH_LOG"
   cat >"$TEST_ROOT/bin/gh" <<'FAKE'

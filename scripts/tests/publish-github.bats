@@ -25,10 +25,10 @@ publish() {
 @test "publish-github creates the repository, sets metadata and pushes main" {
   publish
   [ "$status" -eq 0 ]
-  grep -q "^repo create NexzaDev/workspace --public --description Monorepo of 25 local-first defensive security and network tools in Go, Rust and C++, each with a desktop GUI, terminal UI and CLI, SQLite storage and tag-triggered pre-releases.$" "$GH_LOG"
-  grep -q "^repo edit NexzaDev/workspace --description Monorepo of 25" "$GH_LOG"
-  grep -q "^api --method PUT repos/NexzaDev/workspace/topics -f names\[\]=cybersecurity -f names\[\]=defensive-security -f names\[\]=network-security -f names\[\]=monorepo -f names\[\]=golang -f names\[\]=rust -f names\[\]=cpp$" "$GH_LOG"
-  grep -q "^api --method PUT repos/NexzaDev/workspace/private-vulnerability-reporting$" "$GH_LOG"
+  grep -q "^repo create unalivin/workspace --public --description Monorepo of 25 local-first defensive security and network tools in Go, Rust and C++, each with a desktop GUI, terminal UI and CLI, SQLite storage and tag-triggered pre-releases.$" "$GH_LOG"
+  grep -q "^repo edit unalivin/workspace --description Monorepo of 25" "$GH_LOG"
+  grep -q "^api --method PUT repos/unalivin/workspace/topics -f names\[\]=cybersecurity -f names\[\]=defensive-security -f names\[\]=network-security -f names\[\]=monorepo -f names\[\]=golang -f names\[\]=rust -f names\[\]=cpp$" "$GH_LOG"
+  grep -q "^api --method PUT repos/unalivin/workspace/private-vulnerability-reporting$" "$GH_LOG"
   [ "$(git -C "$REMOTE_DIR" rev-parse refs/heads/main)" = "$(git -C "$WORKSPACE_ROOT" rev-parse refs/heads/main)" ]
 }
 
@@ -53,7 +53,7 @@ publish() {
 @test "publish-github dry run changes nothing" {
   publish --dry-run
   [ "$status" -eq 0 ]
-  [[ "$output" == *"dry-run: gh repo create NexzaDev/workspace --public"* ]]
+  [[ "$output" == *"dry-run: gh repo create unalivin/workspace --public"* ]]
   [[ "$output" == *"dry-run: git -C"* ]]
   [[ "$output" == *"private-vulnerability-reporting"* ]]
   refute git -C "$REMOTE_DIR" rev-parse --verify --quiet refs/heads/main
@@ -64,7 +64,7 @@ publish() {
 @test "publish-github refuses a different logged-in user" {
   FAKE_GH_LOGIN=someone-else publish
   [ "$status" -ne 0 ]
-  [[ "$output" == *"is not the owner NexzaDev"* ]]
+  [[ "$output" == *"is not the owner unalivin"* ]]
   refute git -C "$REMOTE_DIR" rev-parse --verify --quiet refs/heads/main
 }
 

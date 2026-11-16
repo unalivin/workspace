@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/NexzaDev/certwatch/internal/meta"
+	"github.com/unalivin/certwatch/internal/meta"
 )
 
 type Kind string

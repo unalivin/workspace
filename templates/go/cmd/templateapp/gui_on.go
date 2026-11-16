@@ -10,12 +10,12 @@ import (
 	"fyne.io/fyne/v2"
 	fyneapp "fyne.io/fyne/v2/app"
 
-	"github.com/NexzaDev/templateapp/internal/app"
-	"github.com/NexzaDev/templateapp/internal/cli"
-	"github.com/NexzaDev/templateapp/internal/gui"
-	"github.com/NexzaDev/templateapp/internal/launcher"
-	"github.com/NexzaDev/templateapp/internal/meta"
-	"github.com/NexzaDev/templateapp/internal/platform"
+	"github.com/unalivin/templateapp/internal/app"
+	"github.com/unalivin/templateapp/internal/cli"
+	"github.com/unalivin/templateapp/internal/gui"
+	"github.com/unalivin/templateapp/internal/launcher"
+	"github.com/unalivin/templateapp/internal/meta"
+	"github.com/unalivin/templateapp/internal/platform"
 )
 
 func run(ctx context.Context, env *cli.Env) int {

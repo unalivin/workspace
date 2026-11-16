@@ -5,7 +5,7 @@ package main
 import (
 	"context"
 
-	"github.com/NexzaDev/templateapp/internal/cli"
+	"github.com/unalivin/templateapp/internal/cli"
 )
 
 func run(ctx context.Context, env *cli.Env) int {

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/NexzaDev/certwatch/internal/app"
-	"github.com/NexzaDev/certwatch/internal/cli"
+	"github.com/unalivin/certwatch/internal/app"
+	"github.com/unalivin/certwatch/internal/cli"
 )
 
 var updateDocs = flag.Bool("update-docs", false, "rewrite the generated tables in docs/COMMANDS.md")

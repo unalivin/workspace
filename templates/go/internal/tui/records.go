@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/NexzaDev/templateapp/internal/app"
-	"github.com/NexzaDev/templateapp/internal/notify"
-	"github.com/NexzaDev/templateapp/internal/records"
-	"github.com/NexzaDev/templateapp/internal/settings"
-	"github.com/NexzaDev/templateapp/internal/theme"
+	"github.com/unalivin/templateapp/internal/app"
+	"github.com/unalivin/templateapp/internal/notify"
+	"github.com/unalivin/templateapp/internal/records"
+	"github.com/unalivin/templateapp/internal/settings"
+	"github.com/unalivin/templateapp/internal/theme"
 )
 
 const listLimit = 500

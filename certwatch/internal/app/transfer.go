@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/NexzaDev/certwatch/internal/inventory"
+	"github.com/unalivin/certwatch/internal/inventory"
 )
 
 type FormatError struct{ Message string }

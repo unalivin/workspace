@@ -9,14 +9,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NexzaDev/certwatch/internal/certgen"
-	"github.com/NexzaDev/certwatch/internal/inventory"
-	"github.com/NexzaDev/certwatch/internal/meta"
-	"github.com/NexzaDev/certwatch/internal/notify"
-	"github.com/NexzaDev/certwatch/internal/settings"
-	"github.com/NexzaDev/certwatch/internal/testkit"
-	"github.com/NexzaDev/certwatch/internal/theme"
-	"github.com/NexzaDev/certwatch/internal/userconfig"
+	"github.com/unalivin/certwatch/internal/certgen"
+	"github.com/unalivin/certwatch/internal/inventory"
+	"github.com/unalivin/certwatch/internal/meta"
+	"github.com/unalivin/certwatch/internal/notify"
+	"github.com/unalivin/certwatch/internal/settings"
+	"github.com/unalivin/certwatch/internal/testkit"
+	"github.com/unalivin/certwatch/internal/theme"
+	"github.com/unalivin/certwatch/internal/userconfig"
 )
 
 type sandbox struct {
@@ -426,7 +426,7 @@ func TestExternalLinksStayInsideTheRepository(t *testing.T) {
 			t.Fatalf("link %+v", link)
 		}
 	}
-	for _, url := range []string{"https://example.org/", "http://github.com/NexzaDev/workspace", meta.RepositoryURL + "/../../other", "javascript:alert(1)", "file:///etc/passwd", ""} {
+	for _, url := range []string{"https://example.org/", "http://github.com/unalivin/workspace", meta.RepositoryURL + "/../../other", "javascript:alert(1)", "file:///etc/passwd", ""} {
 		if link := ExternalLink("x", url); link.Allowed || link.Reason == "" {
 			t.Fatalf("link %q was allowed", url)
 		}

@@ -6,8 +6,8 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/NexzaDev/certwatch/internal/certgen"
-	"github.com/NexzaDev/certwatch/internal/tlscheck"
+	"github.com/unalivin/certwatch/internal/certgen"
+	"github.com/unalivin/certwatch/internal/tlscheck"
 )
 
 const (

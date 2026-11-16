@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/NexzaDev/certwatch/internal/meta"
+	"github.com/unalivin/certwatch/internal/meta"
 )
 
 const (

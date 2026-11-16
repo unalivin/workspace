@@ -10,7 +10,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/NexzaDev/certwatch/internal/theme"
+	"github.com/unalivin/certwatch/internal/theme"
 )
 
 const (

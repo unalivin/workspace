@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/NexzaDev/certwatch/internal/settings"
+	"github.com/unalivin/certwatch/internal/settings"
 )
 
 var requiredFiles = []string{

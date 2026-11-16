@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/NexzaDev/templateapp/internal/settings"
-	"github.com/NexzaDev/templateapp/internal/testkit"
+	"github.com/unalivin/templateapp/internal/settings"
+	"github.com/unalivin/templateapp/internal/testkit"
 )
 
 func newService(t *testing.T, env map[string]string, flags map[string]string) *settings.Service {

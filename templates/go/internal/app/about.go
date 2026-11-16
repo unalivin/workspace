@@ -6,10 +6,10 @@ import (
 	"sort"
 	"strings"
 
-	bundle "github.com/NexzaDev/templateapp"
-	"github.com/NexzaDev/templateapp/internal/guide"
-	"github.com/NexzaDev/templateapp/internal/meta"
-	"github.com/NexzaDev/templateapp/internal/settings"
+	bundle "github.com/unalivin/templateapp"
+	"github.com/unalivin/templateapp/internal/guide"
+	"github.com/unalivin/templateapp/internal/meta"
+	"github.com/unalivin/templateapp/internal/settings"
 )
 
 type NavItem struct {

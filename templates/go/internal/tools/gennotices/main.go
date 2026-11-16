@@ -9,8 +9,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/NexzaDev/templateapp/internal/licenses"
-	"github.com/NexzaDev/templateapp/internal/meta"
+	"github.com/unalivin/templateapp/internal/licenses"
+	"github.com/unalivin/templateapp/internal/meta"
 )
 
 const bundled = `## Components bundled inside dependencies

@@ -10,9 +10,9 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/NexzaDev/templateapp/internal/meta"
-	"github.com/NexzaDev/templateapp/internal/notify"
-	"github.com/NexzaDev/templateapp/internal/theme"
+	"github.com/unalivin/templateapp/internal/meta"
+	"github.com/unalivin/templateapp/internal/notify"
+	"github.com/unalivin/templateapp/internal/theme"
 )
 
 func notificationsCommand() *command {

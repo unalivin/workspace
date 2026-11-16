@@ -1,4 +1,4 @@
-module github.com/NexzaDev/templateapp
+module github.com/unalivin/templateapp
 
 go 1.27.4
 

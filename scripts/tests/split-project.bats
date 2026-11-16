@@ -54,9 +54,9 @@ teardown() {
 
 @test "split-project rewrites repository links and tag references" {
   "$WORKSPACE_ROOT/scripts/split-project.sh" --output "$TEST_ROOT/standalone" certwatch
-  grep -q "^Repository: https://github.com/NexzaDev/certwatch$" "$TEST_ROOT/standalone/README.md"
+  grep -q "^Repository: https://github.com/unalivin/certwatch$" "$TEST_ROOT/standalone/README.md"
   grep -q "^Release tag: v0.1.0-dev$" "$TEST_ROOT/standalone/README.md"
-  refute grep -rq "NexzaDev/workspace" "$TEST_ROOT/standalone" --exclude-dir=.git
+  refute grep -rq "unalivin/workspace" "$TEST_ROOT/standalone" --exclude-dir=.git
 }
 
 @test "split-project leaves the monorepo untouched" {
@@ -67,7 +67,7 @@ teardown() {
   [ "$(git -C "$WORKSPACE_ROOT" rev-parse HEAD)" = "$head" ]
   [ "$(git -C "$WORKSPACE_ROOT" for-each-ref --format='%(refname)')" = "$branches" ]
   [ -z "$(git -C "$WORKSPACE_ROOT" status --porcelain)" ]
-  grep -q "NexzaDev/workspace" "$WORKSPACE_ROOT/certwatch/README.md"
+  grep -q "unalivin/workspace" "$WORKSPACE_ROOT/certwatch/README.md"
 }
 
 @test "split-project dry run creates nothing" {

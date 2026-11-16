@@ -11,14 +11,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/NexzaDev/templateapp/internal/meta"
-	"github.com/NexzaDev/templateapp/internal/notify"
-	"github.com/NexzaDev/templateapp/internal/records"
-	"github.com/NexzaDev/templateapp/internal/settings"
-	"github.com/NexzaDev/templateapp/internal/store"
-	"github.com/NexzaDev/templateapp/internal/theme"
-	"github.com/NexzaDev/templateapp/internal/userconfig"
-	"github.com/NexzaDev/templateapp/migrations"
+	"github.com/unalivin/templateapp/internal/meta"
+	"github.com/unalivin/templateapp/internal/notify"
+	"github.com/unalivin/templateapp/internal/records"
+	"github.com/unalivin/templateapp/internal/settings"
+	"github.com/unalivin/templateapp/internal/store"
+	"github.com/unalivin/templateapp/internal/theme"
+	"github.com/unalivin/templateapp/internal/userconfig"
+	"github.com/unalivin/templateapp/migrations"
 )
 
 const sqlCopyInto = "VACUUM INTO ?"

@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/NexzaDev/certwatch/internal/inventory"
-	"github.com/NexzaDev/certwatch/internal/notify"
-	"github.com/NexzaDev/certwatch/internal/sqlscan"
-	"github.com/NexzaDev/certwatch/internal/testkit"
+	"github.com/unalivin/certwatch/internal/inventory"
+	"github.com/unalivin/certwatch/internal/notify"
+	"github.com/unalivin/certwatch/internal/sqlscan"
+	"github.com/unalivin/certwatch/internal/testkit"
 )
 
 const (

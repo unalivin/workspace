@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/NexzaDev/certwatch/internal/meta"
+	"github.com/unalivin/certwatch/internal/meta"
 )
 
 type Runner func(ctx context.Context, name string, arguments ...string) error

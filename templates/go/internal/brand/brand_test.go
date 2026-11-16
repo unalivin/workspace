@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/NexzaDev/templateapp/internal/meta"
+	"github.com/unalivin/templateapp/internal/meta"
 )
 
 func TestIconHasThePlateAndTheMotifAtEverySize(t *testing.T) {

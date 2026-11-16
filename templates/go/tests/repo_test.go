@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/NexzaDev/templateapp/internal/settings"
+	"github.com/unalivin/templateapp/internal/settings"
 )
 
 var requiredFiles = []string{

@@ -23,7 +23,7 @@ Publishes the workspace as a public GitHub repository with gh:
   8. pushes one tag when --tag is given
 
   --dry-run     Print every command instead of running it
-  --owner       GitHub login that owns the repository (default: NexzaDev)
+  --owner       GitHub login that owns the repository (default: unalivin)
   --repo        Repository name (default: workspace)
   --remote-url  Push target (default: https://github.com/<owner>/<repo>.git)
   --tag         Existing local tag to push after main

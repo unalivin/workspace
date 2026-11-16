@@ -10,7 +10,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/NexzaDev/certwatch/internal/meta"
+	"github.com/unalivin/certwatch/internal/meta"
 )
 
 type Autostart struct {
@@ -47,7 +47,7 @@ func (a Autostart) Path() (string, error) {
 }
 
 func (a Autostart) label() string {
-	return "io.github.nexzadev." + meta.Slug + ".notifier"
+	return "io.github.unalivin." + meta.Slug + ".notifier"
 }
 
 func (a Autostart) checkExecutable() error {

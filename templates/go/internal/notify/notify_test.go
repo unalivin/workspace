@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NexzaDev/templateapp/internal/testkit"
-	"github.com/NexzaDev/templateapp/internal/theme"
+	"github.com/unalivin/templateapp/internal/testkit"
+	"github.com/unalivin/templateapp/internal/theme"
 )
 
 func at(clock string) time.Time {

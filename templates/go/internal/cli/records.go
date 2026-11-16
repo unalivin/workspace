@@ -11,10 +11,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/NexzaDev/templateapp/internal/app"
-	"github.com/NexzaDev/templateapp/internal/meta"
-	"github.com/NexzaDev/templateapp/internal/records"
-	"github.com/NexzaDev/templateapp/internal/theme"
+	"github.com/unalivin/templateapp/internal/app"
+	"github.com/unalivin/templateapp/internal/meta"
+	"github.com/unalivin/templateapp/internal/records"
+	"github.com/unalivin/templateapp/internal/theme"
 )
 
 func parseID(in *invocation, what string) (int64, error) {

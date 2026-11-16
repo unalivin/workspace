@@ -11,13 +11,13 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-isatty"
 
-	"github.com/NexzaDev/templateapp/internal/app"
-	"github.com/NexzaDev/templateapp/internal/cli"
-	"github.com/NexzaDev/templateapp/internal/launcher"
-	"github.com/NexzaDev/templateapp/internal/notify"
-	"github.com/NexzaDev/templateapp/internal/platform"
-	"github.com/NexzaDev/templateapp/internal/tui"
-	"github.com/NexzaDev/templateapp/internal/userconfig"
+	"github.com/unalivin/templateapp/internal/app"
+	"github.com/unalivin/templateapp/internal/cli"
+	"github.com/unalivin/templateapp/internal/launcher"
+	"github.com/unalivin/templateapp/internal/notify"
+	"github.com/unalivin/templateapp/internal/platform"
+	"github.com/unalivin/templateapp/internal/tui"
+	"github.com/unalivin/templateapp/internal/userconfig"
 )
 
 func isTerminal(file *os.File) bool {

@@ -11,8 +11,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/NexzaDev/certwatch/internal/certgen"
-	"github.com/NexzaDev/certwatch/internal/theme"
+	"github.com/unalivin/certwatch/internal/certgen"
+	"github.com/unalivin/certwatch/internal/theme"
 )
 
 type pki struct {

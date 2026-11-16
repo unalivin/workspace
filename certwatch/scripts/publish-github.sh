@@ -25,7 +25,7 @@ scripts/split-project.sh); inside the workspace monorepo it refuses to run.
   8. pushes one tag when --tag is given
 
   --dry-run     Print every command instead of running it
-  --owner       GitHub login that owns the repository (default: NexzaDev)
+  --owner       GitHub login that owns the repository (default: unalivin)
   --repo        Repository name (default: $APP_SLUG)
   --remote-url  Push target (default: https://github.com/<owner>/<repo>.git)
   --tag         Existing local tag to push after main, for example v$APP_VERSION
@@ -33,7 +33,7 @@ scripts/split-project.sh); inside the workspace monorepo it refuses to run.
 USAGE
 }
 
-owner="NexzaDev"
+owner="unalivin"
 repo="$APP_SLUG"
 remote_url=""
 tag=""

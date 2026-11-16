@@ -13,9 +13,9 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/NexzaDev/certwatch/internal/store"
-	"github.com/NexzaDev/certwatch/internal/testkit"
-	"github.com/NexzaDev/certwatch/migrations"
+	"github.com/unalivin/certwatch/internal/store"
+	"github.com/unalivin/certwatch/internal/testkit"
+	"github.com/unalivin/certwatch/migrations"
 )
 
 var updateSnapshot = flag.Bool("update", false, "rewrite the schema snapshot")

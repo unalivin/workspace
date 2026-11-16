@@ -10,14 +10,14 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/NexzaDev/templateapp/internal/app"
-	"github.com/NexzaDev/templateapp/internal/launcher"
-	"github.com/NexzaDev/templateapp/internal/meta"
-	"github.com/NexzaDev/templateapp/internal/notify"
-	"github.com/NexzaDev/templateapp/internal/records"
-	"github.com/NexzaDev/templateapp/internal/settings"
-	"github.com/NexzaDev/templateapp/internal/store"
-	"github.com/NexzaDev/templateapp/internal/theme"
+	"github.com/unalivin/templateapp/internal/app"
+	"github.com/unalivin/templateapp/internal/launcher"
+	"github.com/unalivin/templateapp/internal/meta"
+	"github.com/unalivin/templateapp/internal/notify"
+	"github.com/unalivin/templateapp/internal/records"
+	"github.com/unalivin/templateapp/internal/settings"
+	"github.com/unalivin/templateapp/internal/store"
+	"github.com/unalivin/templateapp/internal/theme"
 )
 
 const (

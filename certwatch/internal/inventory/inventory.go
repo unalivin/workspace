@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/NexzaDev/certwatch/internal/store"
-	"github.com/NexzaDev/certwatch/internal/tlscheck"
+	"github.com/unalivin/certwatch/internal/store"
+	"github.com/unalivin/certwatch/internal/tlscheck"
 )
 
 const (

@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/NexzaDev/templateapp/internal/meta"
+	"github.com/unalivin/templateapp/internal/meta"
 )
 
 const (

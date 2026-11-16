@@ -20,4 +20,4 @@ All notable changes to Template App are recorded here. The format follows [Keep 
 - Labeled demo data that is loaded and removed with one action.
 - Scripts for setup, checks, fuzzing, packaging and release verification.
 
-[0.1.0-dev]: https://github.com/NexzaDev/workspace/releases
+[0.1.0-dev]: https://github.com/unalivin/workspace/releases

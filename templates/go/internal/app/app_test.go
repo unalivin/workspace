@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NexzaDev/templateapp/internal/meta"
-	"github.com/NexzaDev/templateapp/internal/notify"
-	"github.com/NexzaDev/templateapp/internal/records"
-	"github.com/NexzaDev/templateapp/internal/settings"
-	"github.com/NexzaDev/templateapp/internal/testkit"
-	"github.com/NexzaDev/templateapp/internal/theme"
-	"github.com/NexzaDev/templateapp/internal/userconfig"
+	"github.com/unalivin/templateapp/internal/meta"
+	"github.com/unalivin/templateapp/internal/notify"
+	"github.com/unalivin/templateapp/internal/records"
+	"github.com/unalivin/templateapp/internal/settings"
+	"github.com/unalivin/templateapp/internal/testkit"
+	"github.com/unalivin/templateapp/internal/theme"
+	"github.com/unalivin/templateapp/internal/userconfig"
 )
 
 type sandbox struct {
@@ -422,7 +422,7 @@ func TestExternalLinksStayInsideTheRepository(t *testing.T) {
 			t.Fatalf("link %+v", link)
 		}
 	}
-	for _, url := range []string{"https://example.org/", "http://github.com/NexzaDev/workspace", meta.RepositoryURL + "/../../other", "javascript:alert(1)", "file:///etc/passwd", ""} {
+	for _, url := range []string{"https://example.org/", "http://github.com/unalivin/workspace", meta.RepositoryURL + "/../../other", "javascript:alert(1)", "file:///etc/passwd", ""} {
 		if link := ExternalLink("x", url); link.Allowed || link.Reason == "" {
 			t.Fatalf("link %q was allowed", url)
 		}

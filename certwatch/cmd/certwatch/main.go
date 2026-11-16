@@ -11,13 +11,13 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-isatty"
 
-	"github.com/NexzaDev/certwatch/internal/app"
-	"github.com/NexzaDev/certwatch/internal/cli"
-	"github.com/NexzaDev/certwatch/internal/launcher"
-	"github.com/NexzaDev/certwatch/internal/notify"
-	"github.com/NexzaDev/certwatch/internal/platform"
-	"github.com/NexzaDev/certwatch/internal/tui"
-	"github.com/NexzaDev/certwatch/internal/userconfig"
+	"github.com/unalivin/certwatch/internal/app"
+	"github.com/unalivin/certwatch/internal/cli"
+	"github.com/unalivin/certwatch/internal/launcher"
+	"github.com/unalivin/certwatch/internal/notify"
+	"github.com/unalivin/certwatch/internal/platform"
+	"github.com/unalivin/certwatch/internal/tui"
+	"github.com/unalivin/certwatch/internal/userconfig"
 )
 
 func isTerminal(file *os.File) bool {

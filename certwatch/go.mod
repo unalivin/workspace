@@ -1,4 +1,4 @@
-module github.com/NexzaDev/certwatch
+module github.com/unalivin/certwatch
 
 go 1.27.4
 

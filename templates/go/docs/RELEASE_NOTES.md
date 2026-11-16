@@ -6,7 +6,7 @@ Template App keeps its data in one SQLite file on your computer and makes no net
 
 ## This is an early dev beta
 
-Version `0.1.0-dev` is a pre-release for testing. Not every planned feature exists; [docs/ROADMAP.md](https://github.com/NexzaDev/workspace/blob/HEAD/templates/go/docs/ROADMAP.md) lists what is missing and what has not been verified on real desktops. The database format may change before `0.1.0`. Export your records before you update.
+Version `0.1.0-dev` is a pre-release for testing. Not every planned feature exists; [docs/ROADMAP.md](https://github.com/unalivin/workspace/blob/HEAD/templates/go/docs/ROADMAP.md) lists what is missing and what has not been verified on real desktops. The database format may change before `0.1.0`. Export your records before you update.
 
 ## Downloads
 

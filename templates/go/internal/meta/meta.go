@@ -10,13 +10,13 @@ import (
 const (
 	AppName       = "Template App"
 	Slug          = "templateapp"
-	AppID         = "io.github.nexzadev.templateapp"
+	AppID         = "io.github.unalivin.templateapp"
 	EnvPrefix     = "TEMPLATEAPP"
 	Version       = "0.1.0-dev"
 	Tagline       = "TEMPLATE_TAGLINE"
 	Description   = "TEMPLATE_DESCRIPTION"
 	IconConcept   = "TEMPLATE_ICON_CONCEPT"
-	RepositoryURL = "https://github.com/NexzaDev/workspace"
+	RepositoryURL = "https://github.com/unalivin/workspace"
 	License       = "MIT"
 )
 
