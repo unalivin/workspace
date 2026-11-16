@@ -53,7 +53,7 @@ case "$ui" in
   *) die "--ui must be gui, tui or none" ;;
 esac
 
-suffix="$(go env GOEXE)"
+suffix="$(exe_suffix)"
 if [ "$ui" = "gui" ]; then
   run make --no-print-directory build
   binary="dist/bin/$APP_SLUG$suffix"

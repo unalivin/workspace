@@ -12,8 +12,7 @@ Runs make targets (or one command) from the project root, keeps the complete
 output in the log and, when a step fails inside GitHub Actions, prints the
 failing tests, compiler errors and last lines of that step as an error
 annotation so the failure can be read from the check run without opening the
-log. The Go problem matcher of the runner is turned off, because its
-annotations use up the limit per step before the summary is printed.
+log.
 
   --command <label>  Run a program instead of make targets
   --help             Show this help
@@ -25,7 +24,7 @@ finding_lines=24
 line_width=240
 
 findings() {
-  grep -E -A 3 -- '^[[:space:]]*--- FAIL|^panic:|^not ok |^Vulnerability #|Found in:|Fixed in:|_test\.go:[0-9]+:|\.go:[0-9]+:[0-9]+:|^FAIL[[:space:]]|[Ee]rror:|undefined reference|cannot find' "$1" |
+  grep -E -A 3 -- '^error(\[E[0-9]+\])?:|^warning: unused|panicked at|^test .* \.\.\. FAILED|^not ok |^Diff in |^Crate:|^ID:|^Solution:|^[[:space:]]+--> |undefined reference|cannot find|ERROR: AddressSanitizer|ERROR: LeakSanitizer' "$1" |
     grep -v -- '^--$' | sed -e 's/[[:space:]]*$//' | grep -v '^$' | cut -c "1-$line_width" | head -n "$finding_lines" || true
 }
 
@@ -76,10 +75,6 @@ if [ "$#" -eq 0 ]; then
 fi
 
 cd "$PROJECT_ROOT"
-
-if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
-  printf '::remove-matcher owner=go::\n'
-fi
 
 case "$1" in
   --help | -h)

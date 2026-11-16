@@ -28,7 +28,7 @@ teardown() {
 }
 
 @test "every script rejects an unknown option" {
-  for name in check demo dev-setup fuzz package publish-github release-verify; do
+  for name in check demo dev-setup fuzz package publish-github release-verify sanitize; do
     run "$REAL_PROJECT/scripts/$name.sh" --no-such-option
     [ "$status" -ne 0 ]
     [[ "$output" == *"unknown argument"* ]]
@@ -41,13 +41,13 @@ teardown() {
   done
 }
 
-@test "package --dry-run prints the pinned packaging command and creates nothing" {
+@test "package --dry-run prints the release build and creates nothing" {
   copy_project_scripts "$SANDBOX/project"
   run "$SANDBOX/project/scripts/package.sh" --dry-run
   [ "$status" -eq 0 ]
-  [[ "$output" == *"fyne package --target"* ]]
-  [[ "$output" == *"--app-version 0.1.0"* ]]
-  [[ "$output" == *"no_animations"* ]]
+  [[ "$output" == *"dry-run: cargo "*"--release"* ]]
+  [[ "$output" == *"-app"* ]]
+  [[ "$output" == *"packaged "* ]]
   [ ! -e "$SANDBOX/project/dist" ]
 }
 
@@ -78,19 +78,37 @@ teardown() {
   [[ "$output" == *"failed:  0"* ]]
 }
 
-@test "fuzz --list names every fuzz target with its package" {
+@test "fuzz --list names every fuzz target" {
   run "$REAL_PROJECT/scripts/fuzz.sh" --list
   [ "$status" -eq 0 ]
-  [[ "$output" == *"./internal/settings FuzzNormalize"* ]]
-  count="$(grep -rE --include='*_test.go' -c '^func Fuzz' "$REAL_PROJECT/internal" "$REAL_PROJECT/tests" | awk -F: '{ total += $2 } END { print total }')"
+  [[ "$output" == *"settings_normalize"* ]]
+  count="$(find "$REAL_PROJECT/fuzz/fuzz_targets" -name '*.rs' | wc -l)"
+  [ "${#lines[@]}" -eq "$count" ]
+  for name in "${lines[@]}"; do
+    grep -q "name = \"$name\"" "$REAL_PROJECT/fuzz/Cargo.toml"
+  done
+}
+
+@test "fuzz --dry-run prints one cargo fuzz command per target" {
+  run "$REAL_PROJECT/scripts/fuzz.sh" --dry-run --time 2m
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"cargo fuzz run settings_normalize -- -max_total_time=120"* ]]
+  count="$(find "$REAL_PROJECT/fuzz/fuzz_targets" -name '*.rs' | wc -l)"
   [ "${#lines[@]}" -eq "$count" ]
 }
 
-@test "fuzz --dry-run prints one go test command per target" {
-  run "$REAL_PROJECT/scripts/fuzz.sh" --dry-run --time 1s
+@test "fuzz rejects a duration it cannot read" {
+  run "$REAL_PROJECT/scripts/fuzz.sh" --dry-run --time soon
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"5s or 2m"* ]]
+}
+
+@test "sanitize --dry-run prints the test command of the no-GUI build" {
+  run "$REAL_PROJECT/scripts/sanitize.sh" --dry-run
   [ "$status" -eq 0 ]
-  [[ "$output" == *"-fuzztime 1s"* ]]
-  [[ "$output" == *"FuzzNormalize"* ]]
+  [[ "$output" == *"cargo test --locked"* ]]
+  [[ "$output" == *"--no-default-features"* ]]
+  [[ "$output" != *"-gui"* ]]
 }
 
 @test "ci-step runs a command and passes its output through" {
@@ -109,18 +127,33 @@ teardown() {
 
 @test "ci-step puts the failing test before the last lines of a long log" {
   {
-    printf 'ok  \texample/first\t0.1s\n'
-    printf -- '--- FAIL: TestWidget (0.00s)\n'
-    printf '    widget_test.go:12: got 3, want 4\n'
+    printf 'test first::tests::works ... ok\n'
+    printf 'test widget::tests::adds ... FAILED\n'
+    printf "thread 'widget::tests::adds' panicked at crates/app/src/widget.rs:12:5:\n"
+    printf 'assertion failed: got 3, want 4\n'
     for number in $(seq 1 40); do
-      printf 'ok  \texample/package%s\t0.1s\n' "$number"
+      printf 'test example::case%s ... ok\n' "$number"
     done
   } >"$SANDBOX/long.log"
   GITHUB_ACTIONS=true run "$REAL_PROJECT/scripts/ci-step.sh" --command "long test" bash -c "cat '$SANDBOX/long.log'; exit 1"
   [ "$status" -eq 1 ]
   annotation="${output##*::error}"
-  [[ "$annotation" == *"--- FAIL: TestWidget"*"widget_test.go:12: got 3, want 4"*"...%0A"*"example/package40"* ]]
-  [[ "$annotation" != *"example/package20"* ]]
+  [[ "$annotation" == *"widget::tests::adds ... FAILED"*"widget.rs:12:5"*"got 3, want 4"*"...%0A"*"example::case40"* ]]
+  [[ "$annotation" != *"example::case20"* ]]
+}
+
+@test "ci-step shows a compiler error with its location" {
+  {
+    printf '   Compiling example v0.1.0\n'
+    printf 'error[E0308]: mismatched types\n'
+    printf '  --> crates/app/src/main.rs:7:9\n'
+    for number in $(seq 1 40); do
+      printf 'note line %s\n' "$number"
+    done
+  } >"$SANDBOX/build.log"
+  GITHUB_ACTIONS=true run "$REAL_PROJECT/scripts/ci-step.sh" --command "build" bash -c "cat '$SANDBOX/build.log'; exit 101"
+  [ "$status" -eq 101 ]
+  [[ "$output" == *"::error title="*"build failed"*"::error[E0308]: mismatched types%0A  --> crates/app/src/main.rs:7:9"* ]]
 }
 
 @test "ci-step prints no annotation outside GitHub Actions" {
@@ -135,23 +168,29 @@ teardown() {
 }
 
 @test "dev-setup --install --dry-run prints the pinned tool versions" {
-  command -v go >/dev/null 2>&1 || skip "go is not installed"
-  GOBIN="$SANDBOX/gobin" PATH="$(dirname "$(command -v go)"):/usr/bin:/bin" run "$REAL_PROJECT/scripts/dev-setup.sh" --install --dry-run
+  SETUP_ALL_TOOLS=1 run "$REAL_PROJECT/scripts/dev-setup.sh" --install --dry-run
   [ "$status" -eq 0 ]
-  [[ "$output" == *"staticcheck@v"* ]]
-  [[ "$output" == *"govulncheck@v"* ]]
-  [[ "$output" == *"fyne.io/tools/cmd/fyne@v"* ]]
+  [[ "$output" == *"rustup toolchain install $(project_value RUST_VERSION) "* ]]
+  [[ "$output" == *"cargo install --locked cargo-audit --version $(project_value CARGO_AUDIT_VERSION)"* ]]
+  [[ "$output" == *"cargo install --locked cargo-deny --version $(project_value CARGO_DENY_VERSION)"* ]]
+  [[ "$output" == *"cargo install --locked cargo-fuzz --version $(project_value CARGO_FUZZ_VERSION)"* ]]
+  [[ "$output" == *"cargo install --locked cargo-bundle --version $(project_value CARGO_BUNDLE_VERSION)"* ]]
 }
 
 @test "the script constants match the application metadata" {
-  meta="$REAL_PROJECT/internal/meta/meta.go"
-  [ "$(project_value APP_SLUG)" = "$(sed -n 's/^[[:space:]]*Slug[[:space:]]*= "\(.*\)"$/\1/p' "$meta")" ]
-  [ "$(project_value APP_NAME)" = "$(sed -n 's/^[[:space:]]*AppName[[:space:]]*= "\(.*\)"$/\1/p' "$meta")" ]
-  [ "$(project_value APP_ID)" = "$(sed -n 's/^[[:space:]]*AppID[[:space:]]*= "\(.*\)"$/\1/p' "$meta")" ]
-  [ "$(project_value APP_VERSION)" = "$(sed -n 's/^[[:space:]]*Version[[:space:]]*= "\(.*\)"$/\1/p' "$meta")" ]
-  [ "$(project_value APP_REPOSITORY_URL)" = "$(sed -n 's/^[[:space:]]*RepositoryURL[[:space:]]*= "\(.*\)"$/\1/p' "$meta")" ]
+  meta="$REAL_PROJECT/crates/$(project_value APP_SLUG)-core/src/meta.rs"
+  constant() {
+    sed -n "s/^pub const $1: &str = \"\\(.*\\)\";\$/\\1/p" "$meta"
+  }
+  [ "$(project_value APP_SLUG)" = "$(constant SLUG)" ]
+  [ "$(project_value APP_NAME)" = "$(constant APP_NAME)" ]
+  [ "$(project_value APP_ID)" = "$(constant APP_ID)" ]
+  [ "$(project_value APP_REPOSITORY_URL)" = "$(constant REPOSITORY_URL)" ]
+  [ "$(project_value APP_VERSION)" = "$(sed -n 's/^version = "\(.*\)"$/\1/p' "$REAL_PROJECT/Cargo.toml" | head -n 1)" ]
   [ "$(project_value APP_NUMERIC_VERSION)" = "$(project_value APP_VERSION | sed 's/-.*//')" ]
-  [ "$(project_value GO_VERSION)" = "$(sed -n 's/^go //p' "$REAL_PROJECT/go.mod")" ]
+  [ "$(project_value RUST_VERSION)" = "$(sed -n 's/^channel = "\(.*\)"$/\1/p' "$REAL_PROJECT/rust-toolchain.toml")" ]
+  grep -q "^name = \"$(project_value APP_NAME)\"$" "$REAL_PROJECT/crates/$(project_value APP_SLUG)-app/Cargo.toml"
+  grep -q "^identifier = \"$(project_value APP_ID)\"$" "$REAL_PROJECT/crates/$(project_value APP_SLUG)-app/Cargo.toml"
 }
 
 @test "the environment example lists only variables the documentation explains" {
@@ -163,8 +202,8 @@ teardown() {
 
 @test "package builds the Linux archive from an existing binary" {
   [ "$(uname -s)" = "Linux" ] || skip "the archive layout under test is the Linux one"
-  command -v fyne >/dev/null 2>&1 || skip "fyne is not installed"
   slug="$(project_value APP_SLUG)"
+  id="$(project_value APP_ID)"
   mkdir -p "$SANDBOX/bin"
   printf '#!/bin/sh\nexit 0\n' >"$SANDBOX/bin/$slug"
   chmod +x "$SANDBOX/bin/$slug"
@@ -174,14 +213,35 @@ teardown() {
   archive="$(find "$SANDBOX/out" -name "$slug-linux-*.tar.gz")"
   [ -s "$archive" ]
   listing="$(tar -tzf "$archive")"
-  for entry in LICENSE THIRD_PARTY_NOTICES.md USAGE.md README.txt Makefile "usr/local/bin/$slug"; do
+  for entry in LICENSE THIRD_PARTY_NOTICES.md USAGE.md README.txt Makefile "usr/local/bin/$slug" \
+    "usr/local/share/applications/$id.desktop" "usr/local/share/pixmaps/$id.png"; do
     [[ "$listing" == *"/$entry"* ]]
   done
-  [[ "$listing" == *".desktop"* ]]
-  [ -z "$(find "$REAL_PROJECT" -maxdepth 2 -name '*.tar.xz')" ]
+}
+
+@test "the Linux archive installs into a user prefix and removes itself again" {
+  [ "$(uname -s)" = "Linux" ] || skip "the archive layout under test is the Linux one"
+  slug="$(project_value APP_SLUG)"
+  id="$(project_value APP_ID)"
+  mkdir -p "$SANDBOX/bin" "$SANDBOX/unpacked"
+  printf '#!/bin/sh\nexit 0\n' >"$SANDBOX/bin/$slug"
+  chmod +x "$SANDBOX/bin/$slug"
+  run "$REAL_PROJECT/scripts/package.sh" --executable "$SANDBOX/bin/$slug" --output "$SANDBOX/out"
+  [ "$status" -eq 0 ]
+  tar -xzf "$SANDBOX/out/$slug-linux-"*.tar.gz -C "$SANDBOX/unpacked" --strip-components=1
+  run make -C "$SANDBOX/unpacked" user-install USER_PREFIX="$SANDBOX/prefix"
+  [ "$status" -eq 0 ]
+  [ -x "$SANDBOX/prefix/bin/$slug" ]
+  grep -q "^Exec=$SANDBOX/prefix/bin/$slug$" "$SANDBOX/prefix/share/applications/$id.desktop"
+  grep -q "^Icon=$SANDBOX/prefix/share/icons/$id.png$" "$SANDBOX/prefix/share/applications/$id.desktop"
+  [ -s "$SANDBOX/prefix/share/icons/$id.png" ]
+  run make -C "$SANDBOX/unpacked" user-uninstall USER_PREFIX="$SANDBOX/prefix"
+  [ "$status" -eq 0 ]
+  [ -z "$(find "$SANDBOX/prefix" -type f)" ]
 }
 
 @test "package refuses a binary with another name" {
+  [ "$(uname -s)" = "Linux" ] || skip "--executable is supported on Linux only"
   printf 'x\n' >"$SANDBOX/other"
   run "$REAL_PROJECT/scripts/package.sh" --executable "$SANDBOX/other" --dry-run
   [ "$status" -ne 0 ]

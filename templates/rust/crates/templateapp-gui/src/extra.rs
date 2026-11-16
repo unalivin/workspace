@@ -8,7 +8,7 @@ use app_core::theme::{self, Color};
 use app_core::userconfig::{FRONT_END_GUI, FRONT_END_TUI};
 use egui::{
     Align, Button, CentralPanel, ComboBox, Frame, Key, Label, Layout, Margin, Panel, RichText, ScrollArea, Sense,
-    TextEdit, Ui, vec2,
+    TextEdit, Ui, UiBuilder, vec2,
 };
 
 use crate::forms::{danger, muted};
@@ -226,12 +226,8 @@ impl Dashboard<'_> {
                     for value in board.set.list.iter().filter(|value| value.definition.group == group) {
                         let title =
                             if value.key == settings::KEY_ACCENT { "Custom accent" } else { value.definition.label };
-                        let mut help = value.definition.help.to_string();
-                        if value.key == settings::KEY_ACCENT {
-                            help.push_str(" The color is adjusted when needed to stay readable.");
-                        }
-                        board
-                            .setting_row(ui, title, &help, |ui| board.setting_control(ui, value, &mut edits, &mut act));
+                        let help = value.definition.help;
+                        board.setting_row(ui, title, help, |ui| board.setting_control(ui, value, &mut edits, &mut act));
                     }
                     board.special_rows(ui, group, &mut act);
                 });
@@ -305,16 +301,18 @@ impl Dashboard<'_> {
         let contents = Frame::NONE.inner_margin(Margin { left: 0, right: gap, top: 0, bottom: 0 });
         Panel::left("guide-contents").frame(contents).resizable(false).exact_size(GUIDE_WIDTH).show(ui, |ui| {
             ScrollArea::vertical().id_salt("guide-contents").auto_shrink(false).show(ui, |ui| {
-                ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
-                    for index in &page.hits {
-                        let section = &page.usage.sections[*index];
-                        let indent = "   ".repeat(section.level.saturating_sub(1).min(3));
-                        let chosen = shown == Some(*index);
-                        if ui.selectable_label(chosen, format!("{indent}{}", section.title)).clicked() {
-                            *act = Some(AboutAct::Section(Some(*index)));
-                        }
+                for index in &page.hits {
+                    let section = &page.usage.sections[*index];
+                    let depth = f32::from(u8::try_from(section.level.saturating_sub(1).min(3)).unwrap_or(0));
+                    let chosen = shown == Some(*index);
+                    let mut slot = ui.available_rect_before_wrap();
+                    slot.min.x += depth * self.tokens.spacing.m;
+                    let entry = UiBuilder::new().max_rect(slot).layout(Layout::top_down_justified(Align::LEFT));
+                    let clicked = ui.scope_builder(entry, |ui| ui.selectable_label(chosen, section.title.as_str()).clicked());
+                    if clicked.inner {
+                        *act = Some(AboutAct::Section(Some(*index)));
                     }
-                });
+                }
             });
         });
         let body = Frame::NONE.inner_margin(Margin { left: gap, right: 0, top: 0, bottom: 0 });

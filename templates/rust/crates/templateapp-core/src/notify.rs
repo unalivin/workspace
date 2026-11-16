@@ -6,7 +6,7 @@ use crate::theme::Severity;
 
 pub const EVENT_RECORD_URGENT: &str = "record.urgent";
 pub const EVENT_RECORD_COMPLETED: &str = "record.completed";
-const MAX_TITLE_LENGTH: usize = 120;
+pub const MAX_TITLE_LENGTH: usize = 120;
 
 const SQL_SELECT_RULE: &str =
     "SELECT enabled, min_severity, quiet_start, quiet_end, dedup_minutes FROM notification_rules WHERE event_type = ?1";

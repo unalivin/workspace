@@ -24,7 +24,7 @@ fn icon() -> IconData {
 
 fn native(viewport: ViewportBuilder) -> NativeOptions {
     NativeOptions {
-        viewport: viewport.with_icon(icon()).with_app_id(meta::SLUG),
+        viewport: viewport.with_icon(icon()).with_app_id(meta::APP_ID),
         run_and_return: true,
         centered: true,
         persist_window: false,

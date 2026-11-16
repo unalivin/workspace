@@ -3,7 +3,7 @@ set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-linux_packages=(gcc pkg-config libgl1-mesa-dev xorg-dev libxkbcommon-dev libwayland-dev libegl1-mesa-dev xz-utils)
+linux_packages=(gcc libc6-dev)
 shellcheck_package="shellcheck-py==0.11.0.1"
 shfmt_package="shfmt-py==4.2.0"
 bats_package="bats@1.13.0"
@@ -14,19 +14,24 @@ Usage: scripts/dev-setup.sh [--install] [--dry-run]
 
 Checks the prerequisites for building $APP_NAME and reports what is missing.
 
-  Go $GO_VERSION with cgo and a C compiler
-  Dashboard build: OpenGL and windowing headers
+  Rust $RUST_VERSION with rustfmt and clippy (rust-toolchain.toml pins it, rustup installs it)
+  A C compiler and linker (SQLite is compiled in)
     Linux (Debian, Ubuntu): ${linux_packages[*]}
     macOS: Xcode command line tools
-    Windows: a MinGW-w64 gcc on PATH (for example from MSYS2)
-  staticcheck $STATICCHECK_VERSION, govulncheck $GOVULNCHECK_VERSION, fyne $FYNE_TOOLS_VERSION (go install)
+    Windows: Build Tools for Visual Studio with the Windows SDK
+  cargo audit $CARGO_AUDIT_VERSION, cargo deny $CARGO_DENY_VERSION, cargo fuzz $CARGO_FUZZ_VERSION (cargo install)
+  cargo bundle $CARGO_BUNDLE_VERSION for the macOS application bundle (cargo install)
   shellcheck, shfmt and bats for the scripts
 
 Without options nothing is changed; the exit status is 1 when a required tool
-for the no-GUI build is missing.
+is missing.
 
-  --install  Install what is missing: apt packages on Debian or Ubuntu (uses sudo),
-             Go tools with go install, shell tools with pip and npm
+  --install  Install what is missing: the pinned toolchain with rustup, apt
+             packages on Debian or Ubuntu (uses sudo), cargo tools with
+             cargo install, shell tools with pip and npm. The supply chain
+             and fuzzing tools and the shell tools are installed on Linux,
+             or everywhere with SETUP_ALL_TOOLS=1. cargo bundle is installed
+             on macOS only, the one place where it is used.
   --dry-run  With --install, print the commands instead of running them
   --help     Show this help
 USAGE
@@ -58,15 +63,6 @@ have() {
   command -v "$1" >/dev/null 2>&1
 }
 
-go_bin_dir() {
-  local dir
-  dir="$(go env GOBIN)"
-  if [ -z "$dir" ]; then
-    dir="$(go env GOPATH)/bin"
-  fi
-  printf '%s' "$dir"
-}
-
 expose() {
   local dir="$1"
   case ":$PATH:" in
@@ -78,9 +74,21 @@ expose() {
   fi
 }
 
+all_tools() {
+  [ "$(host_os)" = "linux" ] || [ "${SETUP_ALL_TOOLS:-0}" = "1" ]
+}
+
+install_toolchain() {
+  if ! have rustup && [ "$DRY_RUN" != "1" ]; then
+    note "rustup was not found: install Rust $RUST_VERSION with rustfmt and clippy another way"
+    return 0
+  fi
+  run rustup toolchain install "$RUST_VERSION" --profile minimal --component rustfmt --component clippy
+}
+
 install_system_packages() {
   [ "$(host_os)" = "linux" ] || return 0
-  if gui_ready && have xz; then
+  if have cc; then
     return 0
   fi
   if ! have apt-get; then
@@ -95,12 +103,12 @@ install_system_packages() {
   run "${sudo_command[@]}" apt-get install -y --no-install-recommends "${linux_packages[@]}"
 }
 
-install_go_tool() {
-  local name="$1" package="$2"
-  if have "$name"; then
+install_cargo_tool() {
+  local subcommand="$1" version="$2"
+  if [ "$DRY_RUN" != "1" ] && have_cargo_tool "$subcommand"; then
     return 0
   fi
-  run go install "$package"
+  run cargo install --locked "cargo-$subcommand" --version "$version"
 }
 
 install_shell_tools() {
@@ -136,47 +144,71 @@ install_shell_tools() {
 }
 
 if [ "$install" = "1" ]; then
-  have go || die "Go $GO_VERSION is not installed: get it from the Go download page, then run this again"
+  have cargo || [ "$DRY_RUN" = "1" ] || die "Rust is not installed: get rustup from the Rust download page, then run this again"
+  install_toolchain
   install_system_packages
-  expose "$(go_bin_dir)"
-  install_go_tool staticcheck "honnef.co/go/tools/cmd/staticcheck@$STATICCHECK_VERSION"
-  install_go_tool govulncheck "golang.org/x/vuln/cmd/govulncheck@$GOVULNCHECK_VERSION"
-  install_go_tool fyne "fyne.io/tools/cmd/fyne@$FYNE_TOOLS_VERSION"
-  if [ "$(host_os)" = "linux" ] || [ "${SETUP_SHELL_TOOLS:-0}" = "1" ]; then
+  if all_tools; then
+    install_cargo_tool audit "$CARGO_AUDIT_VERSION"
+    install_cargo_tool deny "$CARGO_DENY_VERSION"
+    install_cargo_tool fuzz "$CARGO_FUZZ_VERSION"
     install_shell_tools
+  fi
+  if [ "$(host_os)" = "macos" ] || [ "$DRY_RUN" = "1" ]; then
+    install_cargo_tool bundle "$CARGO_BUNDLE_VERSION"
   fi
   if [ "$DRY_RUN" = "1" ]; then
     exit 0
   fi
 fi
 
-if have go; then
-  found="$(go env GOVERSION)"
-  if [ "$found" = "go$GO_VERSION" ]; then
-    report "ok" "go" "$found"
+cd "$PROJECT_ROOT"
+if have cargo && have rustc; then
+  found="$(rustc --version | awk '{ print $2 }')"
+  if [ "$found" = "$RUST_VERSION" ]; then
+    report "ok" "rust" "$found"
   else
-    report "differs" "go" "$found found, go$GO_VERSION is what CI uses"
+    report "differs" "rust" "$found found, $RUST_VERSION is what CI uses"
     missing_optional=1
   fi
-  if [ "$(go env CGO_ENABLED)" = "1" ] && have "$(go env CC)"; then
-    report "ok" "cgo" "C compiler $(go env CC)"
-  else
-    report "missing" "cgo" "a C compiler is required (SQLite is compiled in)"
-    missing_required=1
-  fi
+  for component in fmt clippy; do
+    if have_cargo_tool "$component"; then
+      report "ok" "cargo $component" "$(cargo "$component" --version)"
+    else
+      report "missing" "cargo $component" "run scripts/dev-setup.sh --install"
+      missing_optional=1
+    fi
+  done
 else
-  report "missing" "go" "install Go $GO_VERSION"
+  report "missing" "rust" "install Rust $RUST_VERSION with rustup"
   missing_required=1
 fi
 
 if gui_ready; then
-  report "ok" "dashboard" "windowing and OpenGL headers found"
+  report "ok" "linker" "a C toolchain for the compiled-in SQLite and for linking was found"
 else
-  report "missing" "dashboard" "headers for the dashboard build are missing; the no-GUI build still works"
-  missing_optional=1
+  report "missing" "linker" "a C compiler is required (SQLite is compiled in)"
+  missing_required=1
 fi
 
-for tool in staticcheck govulncheck fyne shellcheck shfmt bats; do
+for tool in audit deny fuzz; do
+  if have_cargo_tool "$tool"; then
+    report "ok" "cargo $tool" "$(cargo "$tool" --version 2>/dev/null | head -n 1)"
+  else
+    report "missing" "cargo $tool" "run scripts/dev-setup.sh --install"
+    missing_optional=1
+  fi
+done
+
+if [ "$(host_os)" = "macos" ]; then
+  if have_cargo_tool bundle; then
+    report "ok" "cargo bundle" "$(cargo bundle --version 2>/dev/null | head -n 1)"
+  else
+    report "missing" "cargo bundle" "run scripts/dev-setup.sh --install"
+    missing_optional=1
+  fi
+fi
+
+for tool in shellcheck shfmt bats; do
   if have "$tool"; then
     report "ok" "$tool" "$(command -v "$tool")"
   else

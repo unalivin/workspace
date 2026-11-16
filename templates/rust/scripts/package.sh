@@ -7,20 +7,19 @@ usage() {
   cat <<USAGE
 Usage: scripts/package.sh [--output <directory>] [--executable <file>] [--dry-run]
 
-Builds the release file of $APP_NAME for this operating system with
-"fyne package" ($FYNE_TOOLS_VERSION) and writes it to dist/:
+Builds the release file of $APP_NAME for this operating system and writes it
+to dist/:
 
-  Linux    $APP_SLUG-linux-<arch>.tar.gz    binary, desktop entry, icon, licenses, usage guide
-  macOS    $APP_SLUG-macos-<arch>.tar.gz    $APP_NAME.app, licenses, usage guide
-  Windows  $APP_SLUG-windows-<arch>.exe     one executable with the icon embedded
+  Linux    $APP_SLUG-linux-<arch>.tar.gz    binary, desktop entry, icon, install Makefile, licenses, usage guide
+  macOS    $APP_SLUG-macos-<arch>.tar.gz    $APP_NAME.app made by cargo bundle $CARGO_BUNDLE_VERSION, licenses, usage guide
+  Windows  $APP_SLUG-windows-<arch>.exe     one executable with the icon embedded by the build script
 
 The archives contain LICENSE, THIRD_PARTY_NOTICES.md, README.txt and USAGE.md.
 The Windows executable carries the same texts inside: "$APP_SLUG licenses"
 and "$APP_SLUG guide" print them. Nothing is signed or notarized.
 
   --output      Directory for the result (default: dist)
-  --executable  Package this existing binary instead of building one
-                (Linux and macOS; on Windows the tool always rebuilds)
+  --executable  Package this existing binary instead of building one (Linux only)
   --dry-run     Print the commands instead of running them
   --help        Show this help
 USAGE
@@ -53,10 +52,9 @@ done
 os="$(host_os)"
 arch="$(host_arch)"
 [ "$os" != "unknown" ] || die "unsupported operating system: $(uname -s)"
-command -v fyne >/dev/null 2>&1 || [ "$DRY_RUN" = "1" ] || die "fyne is not installed: run scripts/dev-setup.sh --install"
 
 if [ -n "$executable" ]; then
-  [ "$os" != "windows" ] || die "--executable is not supported on Windows"
+  [ "$os" = "linux" ] || die "--executable is supported on Linux only"
   [ -f "$executable" ] || die "not a file: $executable"
   executable="$(cd "$(dirname "$executable")" && pwd)/$(basename "$executable")"
   [ "$(basename "$executable")" = "$APP_SLUG" ] || die "the binary must be named $APP_SLUG, found $(basename "$executable")"
@@ -67,33 +65,55 @@ case "$output" in
   /* | [A-Za-z]:*) ;;
   *) output="$PROJECT_ROOT/$output" ;;
 esac
-source_dir="cmd/$APP_SLUG"
-icon="$PROJECT_ROOT/assets/icon.png"
-tags="${GUI_TAGS// /,}"
 work="$output/package-work"
 name="$APP_SLUG-$os-$arch"
+package="$APP_SLUG-app"
 
-fyne_package() {
-  local arguments=(--target "$1" --src "$source_dir" --name "$APP_NAME" --app-id "$APP_ID"
-    --app-version "$APP_NUMERIC_VERSION" --app-build 1 --icon "$icon" --tags "$tags" --release)
-  if [ -n "$executable" ]; then
-    arguments+=(--executable "$executable")
+write_install_makefile() {
+  local target="$1"
+  if [ "$DRY_RUN" = "1" ]; then
+    note "dry-run: write $target"
+    return 0
   fi
-  run fyne package "${arguments[@]}"
+  cat >"$target" <<INSTALL
+PREFIX ?= /usr/local
+USER_PREFIX ?= \$(HOME)/.local
+
+.PHONY: install uninstall user-install user-uninstall
+
+install:
+	install -Dm755 usr/local/bin/$APP_SLUG "\$(DESTDIR)\$(PREFIX)/bin/$APP_SLUG"
+	install -Dm644 usr/local/share/applications/$APP_ID.desktop "\$(DESTDIR)\$(PREFIX)/share/applications/$APP_ID.desktop"
+	install -Dm644 usr/local/share/pixmaps/$APP_ID.png "\$(DESTDIR)\$(PREFIX)/share/pixmaps/$APP_ID.png"
+
+uninstall:
+	rm -f "\$(DESTDIR)\$(PREFIX)/bin/$APP_SLUG"
+	rm -f "\$(DESTDIR)\$(PREFIX)/share/applications/$APP_ID.desktop"
+	rm -f "\$(DESTDIR)\$(PREFIX)/share/pixmaps/$APP_ID.png"
+
+user-install:
+	install -Dm755 usr/local/bin/$APP_SLUG "\$(USER_PREFIX)/bin/$APP_SLUG"
+	install -Dm644 usr/local/share/applications/$APP_ID.desktop "\$(USER_PREFIX)/share/applications/$APP_ID.desktop"
+	install -Dm644 usr/local/share/pixmaps/$APP_ID.png "\$(USER_PREFIX)/share/icons/$APP_ID.png"
+	sed -i -e "s|^Exec=.*|Exec=\$(USER_PREFIX)/bin/$APP_SLUG|" -e "s|^Icon=.*|Icon=\$(USER_PREFIX)/share/icons/$APP_ID.png|" "\$(USER_PREFIX)/share/applications/$APP_ID.desktop"
+
+user-uninstall:
+	rm -f "\$(USER_PREFIX)/bin/$APP_SLUG"
+	rm -f "\$(USER_PREFIX)/share/applications/$APP_ID.desktop"
+	rm -f "\$(USER_PREFIX)/share/icons/$APP_ID.png"
+INSTALL
 }
 
 write_desktop_entry() {
-  local directory="$1" entry
+  local target="$1"
   if [ "$DRY_RUN" = "1" ]; then
     note "dry-run: write the desktop entry from assets/$APP_SLUG.desktop"
     return 0
   fi
-  entry="$(find "$directory" -type f -name "$APP_ID.desktop" | head -n 1)"
-  [ -n "$entry" ] || die "the package does not contain $APP_ID.desktop"
   {
     sed -e "s|^Icon=.*|Icon=$APP_ID|" "assets/$APP_SLUG.desktop"
-    printf 'StartupWMClass=%s\n' "$APP_NAME"
-  } >"$entry"
+    printf 'StartupWMClass=%s\n' "$APP_ID"
+  } >"$target"
 }
 
 write_readme() {
@@ -122,30 +142,38 @@ add_documents() {
   run cp docs/USAGE.md "$target/USAGE.md"
 }
 
+build_release() {
+  run cargo build --locked --release -p "$package"
+}
+
 run rm -rf "$work"
 run mkdir -p "$work/$name"
 
 case "$os" in
   linux)
-    fyne_package linux
-    run tar -xJf "$APP_NAME.tar.xz" -C "$work/$name" --strip-components=1
-    run rm -f "$APP_NAME.tar.xz"
-    write_desktop_entry "$work/$name"
-    add_documents "$work/$name"
-    binary_path="usr/local/bin/$APP_SLUG"
-    if [ "$DRY_RUN" != "1" ]; then
-      binary_path="$(cd "$work/$name" && find usr -type f -name "$APP_SLUG" | head -n 1)"
-      [ -n "$binary_path" ] || die "the package does not contain the $APP_SLUG binary"
+    if [ -z "$executable" ]; then
+      build_release
+      executable="target/release/$APP_SLUG"
     fi
-    write_readme "$work/$name/README.txt" "Start: $binary_path
+    run mkdir -p "$work/$name/usr/local/bin" "$work/$name/usr/local/share/applications" "$work/$name/usr/local/share/pixmaps"
+    run cp "$executable" "$work/$name/usr/local/bin/$APP_SLUG"
+    run chmod 755 "$work/$name/usr/local/bin/$APP_SLUG"
+    run cp "assets/linux/$APP_SLUG.png" "$work/$name/usr/local/share/pixmaps/$APP_ID.png"
+    write_desktop_entry "$work/$name/usr/local/share/applications/$APP_ID.desktop"
+    write_install_makefile "$work/$name/Makefile"
+    add_documents "$work/$name"
+    write_readme "$work/$name/README.txt" "Start: usr/local/bin/$APP_SLUG
 Install for your user (no administrator rights): make user-install
 Install for everyone: sudo make install"
     run tar -czf "$output/$name.tar.gz" -C "$work" "$name"
     result="$output/$name.tar.gz"
     ;;
   macos)
-    fyne_package darwin
-    run mv "$APP_NAME.app" "$work/$name/"
+    if [ "$DRY_RUN" != "1" ]; then
+      have_cargo_tool bundle || die "cargo bundle is not installed: run scripts/dev-setup.sh --install"
+    fi
+    run cargo bundle --release --format osx --package "$package"
+    run cp -R "target/release/bundle/osx/$APP_NAME.app" "$work/$name/"
     add_documents "$work/$name"
     write_readme "$work/$name/README.txt" "Start: open \"$APP_NAME.app\" (the first time: right-click, Open).
 Command line: \"$APP_NAME.app/Contents/MacOS/$APP_SLUG\" --help"
@@ -153,8 +181,8 @@ Command line: \"$APP_NAME.app/Contents/MacOS/$APP_SLUG\" --help"
     result="$output/$name.tar.gz"
     ;;
   windows)
-    fyne_package windows
-    run mv "$source_dir/$APP_NAME.exe" "$output/$name.exe"
+    build_release
+    run cp "target/release/$APP_SLUG.exe" "$output/$name.exe"
     result="$output/$name.exe"
     ;;
 esac

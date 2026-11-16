@@ -1,0 +1,14 @@
+dist/
+target/
+fuzz/target/
+fuzz/corpus/
+fuzz/artifacts/
+fuzz/coverage/
+*.db
+*.db-wal
+*.db-shm
+*.log
+*.profraw
+.env
+.DS_Store
+Thumbs.db

@@ -8,17 +8,16 @@ APP_ID="io.github.unalivin.templateapp"
 APP_VERSION="0.1.0-dev"
 APP_REPOSITORY_URL="https://github.com/unalivin/workspace"
 APP_NUMERIC_VERSION="0.1.0"
-GO_VERSION="1.27.4"
-STATICCHECK_VERSION="v0.8.2"
-GOVULNCHECK_VERSION="v1.9.0"
-FYNE_TOOLS_VERSION="v1.7.4"
-BASE_TAGS="sqlite_fts5"
-GUI_TAGS="$BASE_TAGS no_animations"
-NOGUI_TAGS="$BASE_TAGS nogui"
+RUST_VERSION="1.100.0"
+CARGO_AUDIT_VERSION="0.23.0"
+CARGO_DENY_VERSION="0.20.2"
+CARGO_FUZZ_VERSION="0.13.2"
+CARGO_BUNDLE_VERSION="0.12.0"
+NOGUI_PACKAGES="$APP_SLUG-core $APP_SLUG-tui $APP_SLUG-app"
 DRY_RUN="${DRY_RUN:-0}"
 
-export APP_SLUG APP_NAME APP_ID APP_VERSION APP_REPOSITORY_URL APP_NUMERIC_VERSION GO_VERSION STATICCHECK_VERSION GOVULNCHECK_VERSION \
-  FYNE_TOOLS_VERSION BASE_TAGS GUI_TAGS NOGUI_TAGS
+export APP_SLUG APP_NAME APP_ID APP_VERSION APP_REPOSITORY_URL APP_NUMERIC_VERSION RUST_VERSION CARGO_AUDIT_VERSION \
+  CARGO_DENY_VERSION CARGO_FUZZ_VERSION CARGO_BUNDLE_VERSION NOGUI_PACKAGES
 
 annotate() {
   if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
@@ -63,15 +62,26 @@ host_arch() {
   esac
 }
 
+host_triple() {
+  command -v rustc >/dev/null 2>&1 || return 0
+  rustc -vV 2>/dev/null | sed -n 's/^host: //p'
+}
+
+exe_suffix() {
+  if [ "$(host_os)" = "windows" ]; then
+    printf '.exe'
+  fi
+}
+
+have_cargo_tool() {
+  cargo "$1" --version >/dev/null 2>&1
+}
+
 gui_ready() {
-  command -v go >/dev/null 2>&1 || return 1
-  [ "$(go env CGO_ENABLED 2>/dev/null)" = "1" ] || return 1
+  command -v cargo >/dev/null 2>&1 || return 1
   case "$(host_os)" in
-    linux)
-      [ -f /usr/include/X11/Xlib.h ] && [ -f /usr/include/GL/gl.h ] && [ -f /usr/include/xkbcommon/xkbcommon.h ] &&
-        [ -f /usr/include/wayland-client-core.h ]
-      ;;
-    macos | windows) command -v "$(go env CC)" >/dev/null 2>&1 ;;
+    linux | macos) command -v cc >/dev/null 2>&1 ;;
+    windows) return 0 ;;
     *) return 1 ;;
   esac
 }

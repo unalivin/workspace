@@ -9,10 +9,10 @@ Usage: scripts/check.sh [--require-gui] [--require-all] [--dry-run]
 
 Runs the full local quality suite and prints a summary:
 
-  format, vet and staticcheck, tests and race detector on the no-GUI build,
-  SQL tests, generated documents (command tables, icons, notices), the no-GUI
-  build, shell script checks, and the dashboard build with its tests when the
-  windowing headers are installed.
+  format, clippy, tests and the sanitizer run on the no-GUI build, generated
+  documents (command tables, icons, notices), the no-GUI build, shell script
+  checks, the supply chain checks, and the dashboard build with its tests
+  when a C toolchain for linking is installed.
 
 A check whose tool is not installed is reported as skipped with the reason.
 The exit status is 1 when a check fails.
@@ -66,11 +66,7 @@ have() {
 }
 
 step fmt-check
-if have staticcheck; then
-  step lint
-else
-  skip lint "staticcheck is not installed"
-fi
+step lint
 step test-nogui
 step race-or-sanitize
 step docs-check
@@ -82,16 +78,20 @@ if have shellcheck && have shfmt && have bats; then
 else
   skip shell "shellcheck, shfmt or bats is not installed"
 fi
+if have_cargo_tool audit && have_cargo_tool deny; then
+  step vuln
+else
+  skip vuln "cargo audit or cargo deny is not installed"
+fi
+
 if gui_ready; then
-  if have staticcheck; then
-    step lint-gui
-  fi
+  step lint-gui
   step test
   step build
 elif [ "$require_gui" = "1" ]; then
-  failed+=("dashboard build (windowing headers are missing)")
+  failed+=("dashboard build (a C toolchain for linking is missing)")
 else
-  skip "dashboard build" "windowing headers are missing, see scripts/dev-setup.sh"
+  skip "dashboard build" "a C toolchain for linking is missing, see scripts/dev-setup.sh"
 fi
 
 note ""
