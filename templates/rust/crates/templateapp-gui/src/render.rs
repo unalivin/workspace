@@ -212,8 +212,9 @@ impl Stage {
             ..RawInput::default()
         };
         self.time += 0.25;
-        let output = self.ctx.run_ui(input, |ui| draw(ui));
+        let mut output = self.ctx.run_ui(input, |ui| draw(ui));
         self.textures.update(&output.textures_delta);
+        output.textures_delta.clear();
         self.fill = self.ctx.global_style().visuals.panel_fill;
         let primitives = self.ctx.tessellate(output.shapes, output.pixels_per_point);
         let mut picture =

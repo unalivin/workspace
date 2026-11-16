@@ -6,7 +6,7 @@ use egui::{
     RichText, ScrollArea, TextEdit, Ui, vec2,
 };
 
-use crate::forms::{Verdict, muted, primary};
+use crate::forms::{Verdict, muted};
 use crate::model::{AboutTab, Dashboard, SEARCH_LIMIT, Shortcut, Tone};
 use crate::skin::{self, ICON_SCALE, alpha, color, severity_icon, status_icon, subheading};
 use crate::table::{self, Cell, fixed, flexible};
@@ -408,9 +408,5 @@ impl Dashboard<'_> {
         if load {
             self.load_demo();
         }
-    }
-
-    pub(crate) fn primary_button(&self, ui: &mut Ui, label: &str) -> egui::Response {
-        ui.add(primary(label, &self.tokens))
     }
 }
