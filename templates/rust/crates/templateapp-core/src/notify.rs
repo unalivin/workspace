@@ -8,10 +8,12 @@ pub const EVENT_RECORD_URGENT: &str = "record.urgent";
 pub const EVENT_RECORD_COMPLETED: &str = "record.completed";
 const MAX_TITLE_LENGTH: usize = 120;
 
-const SQL_SELECT_RULE: &str = "SELECT enabled, min_severity, quiet_start, quiet_end, dedup_minutes FROM notification_rules WHERE event_type = ?1";
+const SQL_SELECT_RULE: &str =
+    "SELECT enabled, min_severity, quiet_start, quiet_end, dedup_minutes FROM notification_rules WHERE event_type = ?1";
 const SQL_UPSERT_RULE: &str = "INSERT INTO notification_rules (event_type, enabled, min_severity, quiet_start, quiet_end, dedup_minutes, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) ON CONFLICT (event_type) DO UPDATE SET enabled = excluded.enabled, min_severity = excluded.min_severity, quiet_start = excluded.quiet_start, quiet_end = excluded.quiet_end, dedup_minutes = excluded.dedup_minutes, updated_at = excluded.updated_at";
 const SQL_DELETE_RULE: &str = "DELETE FROM notification_rules WHERE event_type = ?1";
-const SQL_LAST_SIMILAR: &str = "SELECT created_at FROM notifications WHERE event_type = ?1 AND dedup_key = ?2 ORDER BY created_at DESC LIMIT 1";
+const SQL_LAST_SIMILAR: &str =
+    "SELECT created_at FROM notifications WHERE event_type = ?1 AND dedup_key = ?2 ORDER BY created_at DESC LIMIT 1";
 const SQL_INSERT: &str = "INSERT INTO notifications (event_type, severity, title, record_kind, record_id, dedup_key, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)";
 const SQL_LIST: &str = "SELECT id, event_type, severity, title, record_kind, record_id, created_at, read_at FROM notifications WHERE (?1 = 0 OR read_at IS NULL) AND (?2 = '' OR severity = ?2) AND (?3 = '' OR event_type = ?3) ORDER BY created_at DESC, id DESC LIMIT ?4";
 const SQL_UNREAD_COUNT: &str = "SELECT unread_notifications FROM overview_attention";
@@ -164,7 +166,13 @@ pub struct Event {
     pub dedup_key: String,
 }
 
-pub fn evaluate(rule: &Rule, severity: Severity, now: Timestamp, minute_of_day: i64, last_similar: Option<Timestamp>) -> Outcome {
+pub fn evaluate(
+    rule: &Rule,
+    severity: Severity,
+    now: Timestamp,
+    minute_of_day: i64,
+    last_similar: Option<Timestamp>,
+) -> Outcome {
     if !rule.enabled {
         return Outcome::SuppressedDisabled;
     }
@@ -271,8 +279,11 @@ pub fn publish_with(conn: &Connection, now: Timestamp, zone: Zone, event: &Event
     if event_type(&event.event_type).is_none() {
         return Err(unknown_event(&event.event_type));
     }
-    let dedup_key =
-        if event.dedup_key.is_empty() { format!("{}:{}", event.record_kind, event.record_id) } else { event.dedup_key.clone() };
+    let dedup_key = if event.dedup_key.is_empty() {
+        format!("{}:{}", event.record_kind, event.record_id)
+    } else {
+        event.dedup_key.clone()
+    };
     let rule = load_rule(conn, &event.event_type)?;
     let last: Option<String> =
         conn.query_row(SQL_LAST_SIMILAR, (&event.event_type, &dedup_key), |row| row.get(0)).optional()?;
@@ -296,11 +307,15 @@ pub fn publish_with(conn: &Connection, now: Timestamp, zone: Zone, event: &Event
     Ok((Outcome::Delivered, conn.last_insert_rowid()))
 }
 
-fn scan(row: &Row<'_>) -> rusqlite::Result<(i64, String, String, String, String, i64, String, Option<String>)> {
+type RawNotification = (i64, String, String, String, String, i64, String, Option<String>);
+
+fn scan(row: &Row<'_>) -> rusqlite::Result<RawNotification> {
     Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?, row.get(6)?, row.get(7)?))
 }
 
-fn collect(rows: impl Iterator<Item = rusqlite::Result<(i64, String, String, String, String, i64, String, Option<String>)>>) -> Result<Vec<Notification>> {
+fn collect(
+    rows: impl Iterator<Item = rusqlite::Result<RawNotification>>,
+) -> Result<Vec<Notification>> {
     let mut list = Vec::new();
     for row in rows {
         let (id, event_type, severity, title, record_kind, record_id, created, read) = row?;
@@ -475,7 +490,15 @@ mod tests {
     #[test]
     fn quiet_hours_may_cross_midnight() {
         let night = Rule { quiet_start: "22:30".to_string(), quiet_end: "06:00".to_string(), ..rule() };
-        for (clock, expected) in [("22:29", false), ("22:30", true), ("23:59", true), ("00:00", true), ("05:59", true), ("06:00", false), ("12:00", false)] {
+        for (clock, expected) in [
+            ("22:29", false),
+            ("22:30", true),
+            ("23:59", true),
+            ("00:00", true),
+            ("05:59", true),
+            ("06:00", false),
+            ("12:00", false),
+        ] {
             assert_eq!(night.in_quiet_hours(parse_clock(clock).unwrap()), expected, "{clock}");
         }
         let same = Rule { quiet_start: "08:00".to_string(), quiet_end: "08:00".to_string(), ..rule() };
@@ -572,7 +595,8 @@ mod tests {
             created_at: fixed_time(),
             read_at: None,
         };
-        let items = vec![item(1, "one", Severity::Low), item(2, "two", Severity::Critical), item(3, "three", Severity::High)];
+        let items =
+            vec![item(1, "one", Severity::Low), item(2, "two", Severity::Critical), item(3, "three", Severity::High)];
         assert_eq!(summary(&[], true), (crate::meta::APP_NAME.to_string(), String::new()));
         assert_eq!(summary(&items[..1], false).1, "1 new notification");
         assert_eq!(summary(&items[..1], true).1, "one");

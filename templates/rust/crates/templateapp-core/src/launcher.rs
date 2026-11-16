@@ -71,7 +71,11 @@ pub fn decide(input: &Input) -> Decision {
     let flag = input.ui_flag.trim().to_lowercase();
     let env = input.env_ui.trim().to_lowercase();
     if !flag.is_empty() && !valid_mode(&flag) {
-        return decision(Action::Fail, "", format!("--ui \"{}\" is not valid: use --ui gui or --ui tui", input.ui_flag));
+        return decision(
+            Action::Fail,
+            "",
+            format!("--ui \"{}\" is not valid: use --ui gui or --ui tui", input.ui_flag),
+        );
     }
     if flag.is_empty() && !env.is_empty() && !valid_mode(&env) {
         return decision(
@@ -87,7 +91,9 @@ pub fn decide(input: &Input) -> Decision {
             return decision(
                 Action::Fail,
                 "",
-                format!("{origin} asks for the dashboard but this build has no dashboard: use --ui tui or a build with the GUI"),
+                format!(
+                    "{origin} asks for the dashboard but this build has no dashboard: use --ui tui or a build with the GUI"
+                ),
             );
         }
         if input.headless {
@@ -109,13 +115,18 @@ pub fn decide(input: &Input) -> Decision {
         return decision(
             Action::Fail,
             "",
-            format!("{origin} asks for the terminal UI but this session is not an interactive terminal: run a subcommand instead"),
+            format!(
+                "{origin} asks for the terminal UI but this session is not an interactive terminal: run a subcommand instead"
+            ),
         );
     }
     let fallback = if input.gui_available && !input.headless { MODE_GUI } else { MODE_TUI };
     let remembered = valid_mode(&input.remembered);
-    let preferred =
-        if remembered && (input.remembered == MODE_TUI || fallback == MODE_GUI) { input.remembered.as_str() } else { fallback };
+    let preferred = if remembered && (input.remembered == MODE_TUI || fallback == MODE_GUI) {
+        input.remembered.as_str()
+    } else {
+        fallback
+    };
     let open = |mode: &str, reason: &str| -> Decision {
         if mode == MODE_GUI {
             decision(Action::OpenGui, mode, reason)
@@ -182,7 +193,11 @@ pub struct PromptResult {
     pub quit: bool,
 }
 
-pub fn prompt_terminal(input: &mut dyn BufRead, output: &mut dyn Write, default_mode: &str) -> std::io::Result<PromptResult> {
+pub fn prompt_terminal(
+    input: &mut dyn BufRead,
+    output: &mut dyn Write,
+    default_mode: &str,
+) -> std::io::Result<PromptResult> {
     let default_mode = if valid_mode(default_mode) { default_mode } else { MODE_GUI };
     let marker = |mode: &str| if mode == default_mode { " (default)" } else { "" };
     writeln!(output, "How do you want to open {}?", meta::APP_NAME)?;
@@ -224,7 +239,8 @@ pub fn prompt_terminal(input: &mut dyn BufRead, output: &mut dyn Write, default_
     Ok(quit)
 }
 
-const AUTOMATION_VARIABLES: [&str; 7] = ["CI", "GITHUB_ACTIONS", "GITLAB_CI", "JENKINS_URL", "BUILDKITE", "TF_BUILD", "TEAMCITY_VERSION"];
+const AUTOMATION_VARIABLES: [&str; 7] =
+    ["CI", "GITHUB_ACTIONS", "GITLAB_CI", "JENKINS_URL", "BUILDKITE", "TF_BUILD", "TEAMCITY_VERSION"];
 
 #[derive(Clone)]
 pub struct Session {
@@ -284,7 +300,9 @@ pub fn requests_terminal(arguments: &[String]) -> bool {
         if argument == "--" {
             return false;
         }
-        if argument == "--ui=tui" || (argument == "--ui" && arguments.get(index + 1).is_some_and(|next| next == MODE_TUI)) {
+        if argument == "--ui=tui"
+            || (argument == "--ui" && arguments.get(index + 1).is_some_and(|next| next == MODE_TUI))
+        {
             return true;
         }
     }
@@ -317,31 +335,91 @@ mod tests {
             ("terminal first run", terminal(), Action::PromptTerminal, "gui"),
             ("terminal remembered tui", Input { remembered: "tui".to_string(), ..terminal() }, Action::OpenTui, "tui"),
             ("terminal remembered gui", Input { remembered: "gui".to_string(), ..terminal() }, Action::OpenGui, "gui"),
-            ("terminal ask again", Input { remembered: "tui".to_string(), ask: true, ..terminal() }, Action::PromptTerminal, "tui"),
+            (
+                "terminal ask again",
+                Input { remembered: "tui".to_string(), ask: true, ..terminal() },
+                Action::PromptTerminal,
+                "tui",
+            ),
             ("terminal no prompt", Input { no_prompt: true, ..terminal() }, Action::OpenGui, "gui"),
             ("terminal without dashboard", Input { gui_available: false, ..terminal() }, Action::OpenTui, "tui"),
             ("headless terminal", Input { headless: true, ..terminal() }, Action::OpenTui, "tui"),
-            ("headless remembered gui", Input { headless: true, remembered: "gui".to_string(), ..terminal() }, Action::OpenTui, "tui"),
-            ("headless pipe", Input { headless: true, gui_available: true, ..Input::default() }, Action::PrintHelp, "tui"),
+            (
+                "headless remembered gui",
+                Input { headless: true, remembered: "gui".to_string(), ..terminal() },
+                Action::OpenTui,
+                "tui",
+            ),
+            (
+                "headless pipe",
+                Input { headless: true, gui_available: true, ..Input::default() },
+                Action::PrintHelp,
+                "tui",
+            ),
             ("automation", Input { ci: true, ..terminal() }, Action::PrintHelp, "gui"),
-            ("pipe", Input { gui_available: true, terminal_output: true, ..Input::default() }, Action::PrintHelp, "gui"),
+            (
+                "pipe",
+                Input { gui_available: true, terminal_output: true, ..Input::default() },
+                Action::PrintHelp,
+                "gui",
+            ),
             ("desktop first run", desktop(), Action::ShowChooser, "gui"),
             ("desktop remembered gui", Input { remembered: "gui".to_string(), ..desktop() }, Action::OpenGui, "gui"),
-            ("desktop remembered tui", Input { remembered: "tui".to_string(), ..desktop() }, Action::OpenTerminalWindow, "tui"),
-            ("desktop ask again", Input { remembered: "tui".to_string(), ask: true, ..desktop() }, Action::ShowChooser, "tui"),
+            (
+                "desktop remembered tui",
+                Input { remembered: "tui".to_string(), ..desktop() },
+                Action::OpenTerminalWindow,
+                "tui",
+            ),
+            (
+                "desktop ask again",
+                Input { remembered: "tui".to_string(), ask: true, ..desktop() },
+                Action::ShowChooser,
+                "tui",
+            ),
             ("desktop no prompt", Input { no_prompt: true, ..desktop() }, Action::OpenGui, "gui"),
-            ("desktop without dashboard", Input { gui_available: false, ..desktop() }, Action::OpenTerminalWindow, "tui"),
+            (
+                "desktop without dashboard",
+                Input { gui_available: false, ..desktop() },
+                Action::OpenTerminalWindow,
+                "tui",
+            ),
             ("flag gui", Input { ui_flag: "gui".to_string(), ..terminal() }, Action::OpenGui, ""),
             ("flag tui", Input { ui_flag: " TUI ".to_string(), ..terminal() }, Action::OpenTui, ""),
-            ("flag tui from desktop", Input { ui_flag: "tui".to_string(), ..desktop() }, Action::OpenTerminalWindow, ""),
-            ("flag tui in a pipe", Input { ui_flag: "tui".to_string(), gui_available: true, ..Input::default() }, Action::Fail, ""),
+            (
+                "flag tui from desktop",
+                Input { ui_flag: "tui".to_string(), ..desktop() },
+                Action::OpenTerminalWindow,
+                "",
+            ),
+            (
+                "flag tui in a pipe",
+                Input { ui_flag: "tui".to_string(), gui_available: true, ..Input::default() },
+                Action::Fail,
+                "",
+            ),
             ("flag gui headless", Input { ui_flag: "gui".to_string(), headless: true, ..terminal() }, Action::Fail, ""),
-            ("flag gui without dashboard", Input { ui_flag: "gui".to_string(), gui_available: false, ..terminal() }, Action::Fail, ""),
+            (
+                "flag gui without dashboard",
+                Input { ui_flag: "gui".to_string(), gui_available: false, ..terminal() },
+                Action::Fail,
+                "",
+            ),
             ("flag invalid", Input { ui_flag: "web".to_string(), ..terminal() }, Action::Fail, ""),
             ("env tui", Input { env_ui: "tui".to_string(), ..terminal() }, Action::OpenTui, ""),
             ("env invalid", Input { env_ui: "web".to_string(), ..terminal() }, Action::Fail, ""),
-            ("flag beats env", Input { ui_flag: "gui".to_string(), env_ui: "tui".to_string(), ..terminal() }, Action::OpenGui, ""),
-            ("flag beats invalid env", Input { ui_flag: "tui".to_string(), env_ui: "web".to_string(), ..terminal() }, Action::OpenTui, ""),
+            (
+                "flag beats env",
+                Input { ui_flag: "gui".to_string(), env_ui: "tui".to_string(), ..terminal() },
+                Action::OpenGui,
+                "",
+            ),
+            (
+                "flag beats invalid env",
+                Input { ui_flag: "tui".to_string(), env_ui: "web".to_string(), ..terminal() },
+                Action::OpenTui,
+                "",
+            ),
         ];
         for (name, input, action, default) in cases {
             let made = decide(&input);

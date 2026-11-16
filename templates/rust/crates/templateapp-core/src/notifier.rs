@@ -182,7 +182,8 @@ impl Autostart {
     }
 
     pub fn path(&self) -> Result<PathBuf> {
-        let unknown = || AppError::Io("the home directory is unknown, so the autostart entry cannot be placed".to_string());
+        let unknown =
+            || AppError::Io("the home directory is unknown, so the autostart entry cannot be placed".to_string());
         match self.os {
             Os::Windows => {
                 let base = if !self.app_data.is_empty() {
@@ -201,9 +202,10 @@ impl Autostart {
                     .join(format!("{}-notifier.cmd", meta::SLUG)))
             }
             Os::Macos if self.home_dir.is_empty() => Err(unknown()),
-            Os::Macos => {
-                Ok(Path::new(&self.home_dir).join("Library").join("LaunchAgents").join(format!("{}.plist", self.label())))
-            }
+            Os::Macos => Ok(Path::new(&self.home_dir)
+                .join("Library")
+                .join("LaunchAgents")
+                .join(format!("{}.plist", self.label()))),
             Os::Linux if self.home_dir.is_empty() => Err(unknown()),
             Os::Linux => {
                 let base = if Path::new(&self.config_home).is_absolute() {
@@ -269,7 +271,8 @@ impl Autostart {
             return Ok((false, path));
         }
         if !dry_run {
-            fs::remove_file(&path).map_err(|error| AppError::Io(format!("cannot remove \"{}\": {error}", path.display())))?;
+            fs::remove_file(&path)
+                .map_err(|error| AppError::Io(format!("cannot remove \"{}\": {error}", path.display())))?;
         }
         Ok((true, path))
     }
@@ -290,7 +293,12 @@ mod tests {
 
     fn urgent(records: &Records<'_>, name: &str) {
         records
-            .create(&Input { name: name.to_string(), status: Status::Open, severity: Severity::Critical, ..Input::default() })
+            .create(&Input {
+                name: name.to_string(),
+                status: Status::Open,
+                severity: Severity::Critical,
+                ..Input::default()
+            })
             .unwrap();
     }
 
@@ -307,7 +315,13 @@ mod tests {
             shown.borrow_mut().push((title.to_string(), body.to_string()));
             Ok(())
         };
-        let runner = Runner { database: database.clone(), state_dir: directory.path().join("state"), show_titles: false, clock, deliver: &deliver };
+        let runner = Runner {
+            database: database.clone(),
+            state_dir: directory.path().join("state"),
+            show_titles: false,
+            clock,
+            deliver: &deliver,
+        };
         assert_eq!(runner.tick().unwrap(), 0);
         assert_eq!(runner.tick().unwrap(), 0);
         assert!(shown.borrow().is_empty());
@@ -331,7 +345,13 @@ mod tests {
         let records = Records::new(store.conn(), clock.clone(), Zone::Utc);
         let failing = |_: &str, _: &str| -> Result<()> { Err(AppError::Io("no notification service".to_string())) };
         let state_dir = directory.path().join("state");
-        let broken = Runner { database: database.clone(), state_dir: state_dir.clone(), show_titles: true, clock: clock.clone(), deliver: &failing };
+        let broken = Runner {
+            database: database.clone(),
+            state_dir: state_dir.clone(),
+            show_titles: true,
+            clock: clock.clone(),
+            deliver: &failing,
+        };
         broken.tick().unwrap();
         urgent(&records, "needs delivery");
         let error = broken.tick().unwrap_err().to_string();
@@ -341,13 +361,25 @@ mod tests {
             delivered.borrow_mut().push(body.to_string());
             Ok(())
         };
-        let fixed = Runner { database: database.clone(), state_dir: state_dir.clone(), show_titles: true, clock: clock.clone(), deliver: &working };
+        let fixed = Runner {
+            database: database.clone(),
+            state_dir: state_dir.clone(),
+            show_titles: true,
+            clock: clock.clone(),
+            deliver: &working,
+        };
         assert_eq!(fixed.tick().unwrap(), 1);
         assert_eq!(*delivered.borrow(), vec!["A record needs attention".to_string()]);
         fs::write(state_dir.join(STATE_FILE_NAME), "{broken").unwrap();
         assert_eq!(fixed.tick().unwrap(), 0);
         assert_eq!(delivered.borrow().len(), 1);
-        let missing = Runner { database: directory.path().join("missing.db"), state_dir, show_titles: true, clock, deliver: &working };
+        let missing = Runner {
+            database: directory.path().join("missing.db"),
+            state_dir,
+            show_titles: true,
+            clock,
+            deliver: &working,
+        };
         assert!(missing.tick().unwrap_err().to_string().contains("read-only"));
     }
 
@@ -394,16 +426,31 @@ mod tests {
     }
 
     fn autostart(os: Os, home: &str, executable: &str) -> Autostart {
-        Autostart { os, home_dir: home.to_string(), config_home: String::new(), app_data: String::new(), executable: executable.to_string() }
+        Autostart {
+            os,
+            home_dir: home.to_string(),
+            config_home: String::new(),
+            app_data: String::new(),
+            executable: executable.to_string(),
+        }
     }
 
     #[test]
     fn autostart_entries_are_placed_and_written_per_platform() {
         let linux = autostart(Os::Linux, "/home/ada", "/opt/app/templateapp");
-        assert!(linux.path().unwrap().ends_with(Path::new(".config").join("autostart").join(format!("{}-notifier.desktop", meta::SLUG))));
+        assert!(
+            linux
+                .path()
+                .unwrap()
+                .ends_with(Path::new(".config").join("autostart").join(format!("{}-notifier.desktop", meta::SLUG)))
+        );
         assert!(linux.content().unwrap().contains("Exec=\"/opt/app/templateapp\" notifier run\n"));
         let mac = autostart(Os::Macos, "/Users/ada", "/Applications/A&B/app");
-        assert!(mac.path().unwrap().ends_with(Path::new("Library").join("LaunchAgents").join(format!("{}.notifier.plist", meta::APP_ID))));
+        assert!(
+            mac.path()
+                .unwrap()
+                .ends_with(Path::new("Library").join("LaunchAgents").join(format!("{}.notifier.plist", meta::APP_ID)))
+        );
         assert!(mac.content().unwrap().contains("<string>/Applications/A&amp;B/app</string>"));
         let windows = autostart(Os::Windows, "", "C:\\Apps\\app.exe");
         assert!(windows.path().is_err());

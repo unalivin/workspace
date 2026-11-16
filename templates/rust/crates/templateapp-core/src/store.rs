@@ -15,7 +15,8 @@ const SQL_SCHEMA_SNAPSHOT: &str = "SELECT type, name, coalesce(sql, '') FROM sql
 const SQL_COMPILE_OPTIONS: &str = "PRAGMA compile_options";
 const SQL_FOREIGN_KEY_CHECK: &str = "PRAGMA foreign_key_check";
 
-pub const EMBEDDED_MIGRATIONS: &[(&str, &str)] = &[("0001_init.sql", include_str!("../../../migrations/0001_init.sql"))];
+pub const EMBEDDED_MIGRATIONS: &[(&str, &str)] =
+    &[("0001_init.sql", include_str!("../../../migrations/0001_init.sql"))];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Migration {
@@ -39,8 +40,8 @@ pub struct Store {
 fn migration_number(name: &str) -> Option<i64> {
     let stem = name.strip_suffix(".sql")?;
     let (number, title) = stem.split_once('_')?;
-    let valid_title =
-        !title.is_empty() && title.bytes().all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_');
+    let valid_title = !title.is_empty()
+        && title.bytes().all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_');
     if number.len() != 4 || !number.bytes().all(|byte| byte.is_ascii_digit()) || !valid_title {
         return None;
     }
@@ -109,7 +110,10 @@ impl Store {
             return Err(AppError::Usage(format!("database path \"{}\" must be absolute", path.display())));
         }
         if path.is_dir() {
-            return Err(AppError::Usage(format!("database path \"{}\" is a directory: choose a file path", path.display())));
+            return Err(AppError::Usage(format!(
+                "database path \"{}\" is a directory: choose a file path",
+                path.display()
+            )));
         }
         check_header(path)?;
         let flags = if options.read_only {
@@ -227,7 +231,10 @@ impl Store {
             return Ok(false);
         }
         if current != migration.number - 1 {
-            return Err(AppError::Storage(format!("expected schema version {}, found {current}", migration.number - 1)));
+            return Err(AppError::Storage(format!(
+                "expected schema version {}, found {current}",
+                migration.number - 1
+            )));
         }
         transaction.execute_batch(&migration.sql)?;
         transaction.commit()?;
@@ -331,7 +338,10 @@ mod tests {
             fs::write(&golden, &snapshot).unwrap();
         }
         let expected = fs::read_to_string(&golden).unwrap().replace("\r\n", "\n");
-        assert_eq!(snapshot, expected, "run UPDATE_SNAPSHOT=1 cargo test -p templateapp-core schema_matches to accept the change");
+        assert_eq!(
+            snapshot, expected,
+            "run UPDATE_SNAPSHOT=1 cargo test -p templateapp-core schema_matches to accept the change"
+        );
     }
 
     #[test]
@@ -357,7 +367,9 @@ mod tests {
         drop(Store::open_ready(&path).unwrap());
         let store = Store::open(&path, Options { read_only: true, busy_timeout: None }).unwrap();
         assert!(store.read_only());
-        assert!(store.conn().execute("INSERT INTO settings (key, value, updated_at) VALUES ('a', 'b', 'c')", []).is_err());
+        assert!(
+            store.conn().execute("INSERT INTO settings (key, value, updated_at) VALUES ('a', 'b', 'c')", []).is_err()
+        );
         assert!(store.migrate(&embedded_migrations().unwrap()).is_err());
     }
 
@@ -394,7 +406,8 @@ mod tests {
         assert!(load_migrations(&[("0001_init.sql", "CREATE TABLE a (b);")]).is_err());
         assert!(load_migrations(&[("0002_second.sql", "PRAGMA user_version = 2;")]).is_err());
         let loaded =
-            load_migrations(&[("0002_b.sql", "PRAGMA user_version = 2;"), ("0001_a.sql", "PRAGMA user_version = 1;")]).unwrap();
+            load_migrations(&[("0002_b.sql", "PRAGMA user_version = 2;"), ("0001_a.sql", "PRAGMA user_version = 1;")])
+                .unwrap();
         assert_eq!(loaded.iter().map(|migration| migration.number).collect::<Vec<_>>(), vec![1, 2]);
     }
 
@@ -403,7 +416,8 @@ mod tests {
         let directory = TempDir::new("store-busy");
         let path = directory.path().join("app.db");
         let first = Store::open_ready(&path).unwrap();
-        let second = Store::open(&path, Options { read_only: false, busy_timeout: Some(Duration::from_millis(50)) }).unwrap();
+        let second =
+            Store::open(&path, Options { read_only: false, busy_timeout: Some(Duration::from_millis(50)) }).unwrap();
         let held = first.begin().unwrap();
         held.execute("INSERT INTO settings (key, value, updated_at) VALUES ('a', 'b', 'c')", []).unwrap();
         let error = second.begin().err().unwrap();

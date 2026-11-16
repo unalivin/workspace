@@ -164,8 +164,11 @@ mod tests {
     #[test]
     fn headings_become_sections_with_unique_anchors() {
         let guide = parse(SAMPLE);
-        let titles: Vec<(usize, &str, &str)> =
-            guide.sections.iter().map(|section| (section.level, section.title.as_str(), section.anchor.as_str())).collect();
+        let titles: Vec<(usize, &str, &str)> = guide
+            .sections
+            .iter()
+            .map(|section| (section.level, section.title.as_str(), section.anchor.as_str()))
+            .collect();
         assert_eq!(
             titles,
             vec![

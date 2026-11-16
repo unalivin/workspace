@@ -24,7 +24,9 @@ impl Color {
         if digits.len() != 6 || !digits.bytes().all(|byte| byte.is_ascii_hexdigit()) {
             return Err(format!("\"{value}\" is not a color: use the form #RRGGBB"));
         }
-        u32::from_str_radix(digits, 16).map(rgb).map_err(|_| format!("\"{value}\" is not a color: use the form #RRGGBB"))
+        u32::from_str_radix(digits, 16)
+            .map(rgb)
+            .map_err(|_| format!("\"{value}\" is not a color: use the form #RRGGBB"))
     }
 
     pub fn hex(self) -> String {
@@ -84,7 +86,8 @@ pub enum Severity {
 }
 
 impl Severity {
-    pub const ALL: [Severity; 5] = [Severity::Info, Severity::Low, Severity::Medium, Severity::High, Severity::Critical];
+    pub const ALL: [Severity; 5] =
+        [Severity::Info, Severity::Low, Severity::Medium, Severity::High, Severity::Critical];
 
     pub fn parse(text: &str) -> Option<Severity> {
         let wanted = text.trim().to_lowercase();
@@ -342,8 +345,11 @@ pub fn resolve(options: &Options) -> Tokens {
         match Color::parse(&options.accent) {
             Err(problem) => warnings.push(format!("custom accent ignored: {problem}")),
             Ok(custom) => {
-                let (adjusted, changed) =
-                    adjust_for_contrast(custom, &[colors.background, colors.surface, colors.surface_alt], MIN_TEXT_CONTRAST);
+                let (adjusted, changed) = adjust_for_contrast(
+                    custom,
+                    &[colors.background, colors.surface, colors.surface_alt],
+                    MIN_TEXT_CONTRAST,
+                );
                 if changed {
                     warnings.push(format!(
                         "custom accent {} was adjusted to {} to keep a {MIN_TEXT_CONTRAST:.1}:1 contrast",
@@ -371,7 +377,12 @@ pub fn resolve(options: &Options) -> Tokens {
         selection: mix(colors.surface, colors.accent, 0.12),
         semantic,
         spacing,
-        type_scale: TypeScale { caption: 11.0 * scale, body: 13.0 * scale, subheading: 15.0 * scale, heading: 20.0 * scale },
+        type_scale: TypeScale {
+            caption: 11.0 * scale,
+            body: 13.0 * scale,
+            subheading: 15.0 * scale,
+            heading: 20.0 * scale,
+        },
         radius: if selected.name == "contrast" { 0.0 } else { 4.0 },
         motion: !options.reduced_motion,
         warnings,
@@ -558,7 +569,12 @@ mod tests {
         let mut variants = Vec::new();
         for name in names() {
             for mode in [Mode::Light, Mode::Dark] {
-                variants.push(resolve(&Options { name: name.to_string(), mode, text_scale: 100, ..Options::default() }));
+                variants.push(resolve(&Options {
+                    name: name.to_string(),
+                    mode,
+                    text_scale: 100,
+                    ..Options::default()
+                }));
             }
         }
         variants
@@ -607,11 +623,21 @@ mod tests {
 
     #[test]
     fn a_weak_custom_accent_is_adjusted_and_reported() {
-        let tokens = resolve(&Options { name: "slate".to_string(), mode: Mode::Light, accent: "#FFFF66".to_string(), ..Options::default() });
+        let tokens = resolve(&Options {
+            name: "slate".to_string(),
+            mode: Mode::Light,
+            accent: "#FFFF66".to_string(),
+            ..Options::default()
+        });
         assert_ne!(tokens.palette.accent.hex(), "#FFFF66");
         assert!(contrast(tokens.palette.accent, tokens.palette.surface) >= MIN_TEXT_CONTRAST);
         assert!(tokens.warnings.iter().any(|warning| warning.contains("was adjusted")), "{:?}", tokens.warnings);
-        let kept = resolve(&Options { name: "slate".to_string(), mode: Mode::Light, accent: "#1257C4".to_string(), ..Options::default() });
+        let kept = resolve(&Options {
+            name: "slate".to_string(),
+            mode: Mode::Light,
+            accent: "#1257C4".to_string(),
+            ..Options::default()
+        });
         assert_eq!(kept.palette.accent.hex(), "#1257C4");
         assert!(kept.warnings.is_empty());
         let ignored = resolve(&Options { accent: "blue".to_string(), ..Options::default() });
@@ -621,7 +647,8 @@ mod tests {
     #[test]
     fn density_text_scale_and_unknown_names_resolve_to_safe_values() {
         let compact = resolve(&Options { density: "compact".to_string(), text_scale: 150, ..Options::default() });
-        let comfortable = resolve(&Options { density: "comfortable".to_string(), text_scale: 100, ..Options::default() });
+        let comfortable =
+            resolve(&Options { density: "comfortable".to_string(), text_scale: 100, ..Options::default() });
         assert!(compact.spacing.m < comfortable.spacing.m);
         assert!((compact.type_scale.body - 19.5).abs() < 0.001);
         assert!((resolve(&Options { text_scale: 999, ..Options::default() }).type_scale.body - 13.0).abs() < 0.001);

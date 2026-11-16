@@ -230,7 +230,9 @@ impl App {
 
     pub fn move_database(&mut self, plan: &MovePlan) -> Result<()> {
         if plan.from != self.location.path || plan.to.as_os_str().is_empty() {
-            return Err(AppError::Usage("the plan does not match the open database: plan the change again".to_string()));
+            return Err(AppError::Usage(
+                "the plan does not match the open database: plan the change again".to_string(),
+            ));
         }
         if plan.mode == MoveMode::Copy {
             if let Some(parent) = plan.to.parent() {
@@ -323,7 +325,11 @@ impl App {
             full_text_search: false,
             integrity: "ok".to_string(),
             records: 0,
-            front_end: if self.front_end().is_empty() { "ask every time".to_string() } else { self.front_end().to_string() },
+            front_end: if self.front_end().is_empty() {
+                "ask every time".to_string()
+            } else {
+                self.front_end().to_string()
+            },
             changed: Vec::new(),
             overridden: Vec::new(),
             problems: Vec::new(),
@@ -551,51 +557,184 @@ const fn capability(
 }
 
 pub const CAPABILITIES: &[Capability] = &[
-    capability("database.create", "Create the database on first start", "First-start dialog", "First-start screen", "db init"),
-    capability("database.location", "Choose the database location", "Settings, Data, Database location", "Settings, Database location", "db move"),
+    capability(
+        "database.create",
+        "Create the database on first start",
+        "First-start dialog",
+        "First-start screen",
+        "db init",
+    ),
+    capability(
+        "database.location",
+        "Choose the database location",
+        "Settings, Data, Database location",
+        "Settings, Database location",
+        "db move",
+    ),
     capability("database.check", "Check database health", "About, Diagnostics", "About, Diagnostics", "db check"),
     capability("overview.show", "See what needs attention", "Overview", "Overview", "overview"),
     capability("record.list", "List, search, filter and sort records", "Records", "Records", "records list"),
-    capability("record.columns", "Choose the columns of the record table", "Records, Columns", "Records, c", "config set"),
+    capability(
+        "record.columns",
+        "Choose the columns of the record table",
+        "Records, Columns",
+        "Records, c",
+        "config set",
+    ),
     capability("record.show", "Show one record", "Records, row detail panel", "Records, Enter", "records show"),
     capability("record.add", "Add a record", "Records, Add record", "Records, n", "records add"),
     capability("record.edit", "Edit a record", "Records, row detail panel, Edit", "Records, e", "records edit"),
     capability("record.enable", "Enable a record", "Records, row detail panel, Enable", "Records, x", "records enable"),
-    capability("record.disable", "Disable a record", "Records, row detail panel, Disable", "Records, x", "records disable"),
+    capability(
+        "record.disable",
+        "Disable a record",
+        "Records, row detail panel, Disable",
+        "Records, x",
+        "records disable",
+    ),
     capability("record.remove", "Remove a record", "Records, row detail panel, Remove", "Records, d", "records remove"),
     capability("record.import", "Import records from CSV or JSON", "Records, Import", "Records, i", "records import"),
     capability("record.export", "Export records to CSV or JSON", "Records, Export", "Records, o", "records export"),
     capability("demo.load", "Load labeled demo data", "Overview, Load demo data", "Overview, l", "demo load"),
-    capability("demo.remove", "Remove demo data", "Settings, Data, Remove demo data", "Settings, Remove demo data", "demo remove"),
-    capability("notification.list", "List and filter notifications", "Notifications", "Notifications", "notifications list"),
-    capability("notification.read", "Mark notifications as read", "Notifications, Mark as read", "Notifications, m and M", "notifications read"),
-    capability("notification.rule.list", "See the rule of every event type", "Notifications, Rules", "Notifications, Rules", "notifications rules list"),
-    capability("notification.rule.set", "Change a notification rule", "Notifications, Rules", "Notifications, Rules, e", "notifications rules set"),
-    capability("notification.rule.reset", "Reset a notification rule", "Notifications, Rules, Reset", "Notifications, Rules, u", "notifications rules reset"),
-    capability("notifier.install", "Start the notifier at sign-in", "Settings, Notifications, Start at sign-in", "Settings, Notifier at sign-in", "notifier install"),
-    capability("notifier.uninstall", "Stop starting the notifier at sign-in", "Settings, Notifications, Start at sign-in", "Settings, Notifier at sign-in", "notifier uninstall"),
-    capability("notifier.status", "See whether the notifier starts at sign-in", "Settings, Notifications", "Settings, Notifier at sign-in", "notifier status"),
+    capability(
+        "demo.remove",
+        "Remove demo data",
+        "Settings, Data, Remove demo data",
+        "Settings, Remove demo data",
+        "demo remove",
+    ),
+    capability(
+        "notification.list",
+        "List and filter notifications",
+        "Notifications",
+        "Notifications",
+        "notifications list",
+    ),
+    capability(
+        "notification.read",
+        "Mark notifications as read",
+        "Notifications, Mark as read",
+        "Notifications, m and M",
+        "notifications read",
+    ),
+    capability(
+        "notification.rule.list",
+        "See the rule of every event type",
+        "Notifications, Rules",
+        "Notifications, Rules",
+        "notifications rules list",
+    ),
+    capability(
+        "notification.rule.set",
+        "Change a notification rule",
+        "Notifications, Rules",
+        "Notifications, Rules, e",
+        "notifications rules set",
+    ),
+    capability(
+        "notification.rule.reset",
+        "Reset a notification rule",
+        "Notifications, Rules, Reset",
+        "Notifications, Rules, u",
+        "notifications rules reset",
+    ),
+    capability(
+        "notifier.install",
+        "Start the notifier at sign-in",
+        "Settings, Notifications, Start at sign-in",
+        "Settings, Notifier at sign-in",
+        "notifier install",
+    ),
+    capability(
+        "notifier.uninstall",
+        "Stop starting the notifier at sign-in",
+        "Settings, Notifications, Start at sign-in",
+        "Settings, Notifier at sign-in",
+        "notifier uninstall",
+    ),
+    capability(
+        "notifier.status",
+        "See whether the notifier starts at sign-in",
+        "Settings, Notifications",
+        "Settings, Notifier at sign-in",
+        "notifier status",
+    ),
     capability("notifier.run", "Run the background notifier", NOT_APPLICABLE, NOT_APPLICABLE, "notifier run"),
     capability("setting.list", "See every setting and what overrides it", "Settings", "Settings", "config list"),
     capability("setting.set", "Change a setting", "Settings", "Settings, Enter", "config set"),
     capability("setting.reset", "Reset one setting", "Settings, Reset", "Settings, u", "config reset"),
-    capability("theme.list", "List color themes", "Settings, Appearance, Color theme", "Settings, Color theme", "config theme list"),
-    capability("theme.set", "Choose a color theme", "Settings, Appearance, Color theme", "Settings, Color theme", "config theme set"),
-    capability("theme.show", "See the theme in use", "Settings, Appearance", "Settings, Color theme", "config theme show"),
-    capability("launcher.show", "See the remembered front end", "Settings, Launcher", "Settings, Open with", "config launcher show"),
-    capability("launcher.set", "Choose the front end to open by default", "Settings, Launcher", "Settings, Open with", "config launcher set"),
-    capability("launcher.reset", "Ask again which front end to open", "Settings, Launcher", "Settings, Open with", "config launcher reset"),
-    capability("launcher.switch", "Reopen in the other front end", "Menu, Open terminal UI", "Menu, Open dashboard", "--ui"),
-    capability("guide.read", "Read and search the usage guide offline", "About, Usage guide", "About, Usage guide", "guide"),
+    capability(
+        "theme.list",
+        "List color themes",
+        "Settings, Appearance, Color theme",
+        "Settings, Color theme",
+        "config theme list",
+    ),
+    capability(
+        "theme.set",
+        "Choose a color theme",
+        "Settings, Appearance, Color theme",
+        "Settings, Color theme",
+        "config theme set",
+    ),
+    capability(
+        "theme.show",
+        "See the theme in use",
+        "Settings, Appearance",
+        "Settings, Color theme",
+        "config theme show",
+    ),
+    capability(
+        "launcher.show",
+        "See the remembered front end",
+        "Settings, Launcher",
+        "Settings, Open with",
+        "config launcher show",
+    ),
+    capability(
+        "launcher.set",
+        "Choose the front end to open by default",
+        "Settings, Launcher",
+        "Settings, Open with",
+        "config launcher set",
+    ),
+    capability(
+        "launcher.reset",
+        "Ask again which front end to open",
+        "Settings, Launcher",
+        "Settings, Open with",
+        "config launcher reset",
+    ),
+    capability(
+        "launcher.switch",
+        "Reopen in the other front end",
+        "Menu, Open terminal UI",
+        "Menu, Open dashboard",
+        "--ui",
+    ),
+    capability(
+        "guide.read",
+        "Read and search the usage guide offline",
+        "About, Usage guide",
+        "About, Usage guide",
+        "guide",
+    ),
     capability("about.diagnostics", "Show diagnostics", "About, Diagnostics", "About, Diagnostics", "diagnostics"),
-    capability("about.licenses", "Show licenses and notices", "About, Licenses and notices", "About, Licenses", "licenses"),
+    capability(
+        "about.licenses",
+        "Show licenses and notices",
+        "About, Licenses and notices",
+        "About, Licenses",
+        "licenses",
+    ),
     capability("about.links", "Show the source and bug report links", "About, Overview", "About, Overview", "about"),
 ];
 
 pub fn capability_table() -> String {
     let mut table = String::from("| Capability | Dashboard | Terminal UI | CLI |\n|---|---|---|---|\n");
     for capability in CAPABILITIES {
-        let cli = if capability.cli == NOT_APPLICABLE { capability.cli.to_string() } else { format!("`{}`", capability.cli) };
+        let cli =
+            if capability.cli == NOT_APPLICABLE { capability.cli.to_string() } else { format!("`{}`", capability.cli) };
         table.push_str(&format!(
             "| {} | {} | {} | {cli} |\n",
             capability.name, capability.dashboard, capability.terminal
@@ -632,10 +771,18 @@ mod tests {
         let base = options(&directory, &[]);
         let default = locate(&base).unwrap();
         assert_eq!(default.source, "default");
-        assert!(default.path.ends_with(Path::new(".local").join("share").join(meta::SLUG).join(format!("{}.db", meta::SLUG))));
+        assert!(
+            default
+                .path
+                .ends_with(Path::new(".local").join("share").join(meta::SLUG).join(format!("{}.db", meta::SLUG)))
+        );
         assert!(!default.exists && default.overridden_by.is_empty());
         let saved_path = directory.path().join("saved.db");
-        userconfig::save(base.config_dir.as_ref().unwrap(), &Config { database_path: saved_path.to_string_lossy().into_owned(), front_end: String::new() }).unwrap();
+        userconfig::save(
+            base.config_dir.as_ref().unwrap(),
+            &Config { database_path: saved_path.to_string_lossy().into_owned(), front_end: String::new() },
+        )
+        .unwrap();
         assert_eq!((locate(&base).unwrap().source, locate(&base).unwrap().path), ("saved", saved_path));
         let variable = meta::env_name("db");
         let env_path = directory.path().join("env.db");
@@ -708,8 +855,18 @@ mod tests {
         app.move_database(&fresh).unwrap();
         assert_eq!(app.records().count().unwrap(), 0);
         assert!(app.plan_move("", MoveMode::Copy).is_err());
-        assert!(app.plan_move(fresh_target.to_str().unwrap(), MoveMode::Switch).unwrap_err().to_string().contains("already at this location"));
-        assert!(app.plan_move(directory.path().to_str().unwrap(), MoveMode::Switch).unwrap_err().to_string().contains("is a directory"));
+        assert!(
+            app.plan_move(fresh_target.to_str().unwrap(), MoveMode::Switch)
+                .unwrap_err()
+                .to_string()
+                .contains("already at this location")
+        );
+        assert!(
+            app.plan_move(directory.path().to_str().unwrap(), MoveMode::Switch)
+                .unwrap_err()
+                .to_string()
+                .contains("is a directory")
+        );
         drop(app);
         let reopened = App::open(options(&directory, &[])).unwrap();
         assert_eq!(reopened.location().path, fresh_target);
@@ -757,12 +914,22 @@ mod tests {
         assert!(app.export_file(&target, "", false).unwrap_err().to_string().contains("already exists"));
         assert_eq!(app.export_file(&target, "", true).unwrap(), 1);
         assert!(app.export_file(Path::new(""), "", false).is_err());
-        assert!(app.export_file(&directory.path().join("records.txt"), "", false).unwrap_err().to_string().contains("--format"));
+        assert!(
+            app.export_file(&directory.path().join("records.txt"), "", false)
+                .unwrap_err()
+                .to_string()
+                .contains("--format")
+        );
         let json = directory.path().join("records.data");
         assert_eq!(app.export_file(&json, "json", false).unwrap(), 1);
         let result = app.import_file(&json, "json", false).unwrap();
         assert_eq!((result.created, result.skipped), (0, 1));
-        assert!(app.import_file(&directory.path().join("missing.csv"), "", false).unwrap_err().to_string().contains("cannot open the import file"));
+        assert!(
+            app.import_file(&directory.path().join("missing.csv"), "", false)
+                .unwrap_err()
+                .to_string()
+                .contains("cannot open the import file")
+        );
     }
 
     #[test]

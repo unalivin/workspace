@@ -14,7 +14,8 @@ const SQL_INSERT: &str = "INSERT INTO records (name, status, severity, note, ena
 const SQL_GET: &str = "SELECT id, name, status, severity, note, enabled, is_demo, revision, created_at, updated_at FROM records WHERE id = ?1";
 const SQL_GET_BY_NAME: &str = "SELECT id, name, status, severity, note, enabled, is_demo, revision, created_at, updated_at FROM records WHERE name = ?1";
 const SQL_UPDATE: &str = "UPDATE records SET name = ?1, status = ?2, severity = ?3, note = ?4, enabled = ?5, revision = revision + 1, updated_at = ?6 WHERE id = ?7 AND revision = ?8";
-const SQL_SET_ENABLED: &str = "UPDATE records SET enabled = ?1, revision = revision + 1, updated_at = ?2 WHERE id = ?3 AND enabled <> ?1";
+const SQL_SET_ENABLED: &str =
+    "UPDATE records SET enabled = ?1, revision = revision + 1, updated_at = ?2 WHERE id = ?3 AND enabled <> ?1";
 const SQL_DELETE: &str = "DELETE FROM records WHERE id = ?1";
 const SQL_DELETE_DEMO: &str = "DELETE FROM records WHERE is_demo = 1";
 const SQL_COUNT_DEMO: &str = "SELECT count(*) FROM records WHERE is_demo = 1";
@@ -38,7 +39,8 @@ ORDER BY
 LIMIT ?7 OFFSET ?8";
 const SQL_BY_STATUS: &str = "SELECT id FROM records WHERE status = ?1 AND severity = ?2";
 const SQL_RECENT: &str = "SELECT id, name, status, severity, note, enabled, is_demo, revision, created_at, updated_at FROM records ORDER BY updated_at DESC LIMIT ?1";
-const SQL_OVERVIEW: &str = "SELECT open_records, urgent_records, disabled_records, demo_records, unread_notifications FROM overview_attention";
+const SQL_OVERVIEW: &str =
+    "SELECT open_records, urgent_records, disabled_records, demo_records, unread_notifications FROM overview_attention";
 const SQL_OVERVIEW_ROWS: &str = "SELECT status, severity, total, demo_total FROM overview_record_counts";
 
 pub const HOT_QUERIES: &[(&str, &str, usize)] = &[
@@ -127,7 +129,13 @@ pub struct Input {
 
 impl Default for Input {
     fn default() -> Self {
-        Input { name: String::new(), status: Status::Open, severity: Severity::Info, note: String::new(), enabled: true }
+        Input {
+            name: String::new(),
+            status: Status::Open,
+            severity: Severity::Info,
+            note: String::new(),
+            enabled: true,
+        }
     }
 }
 
@@ -153,8 +161,9 @@ impl Record {
 }
 
 pub fn parse_status(text: &str) -> Result<Status> {
-    Status::parse(text)
-        .ok_or_else(|| AppError::invalid("status", format!("unknown status \"{text}\""), "Use open, in_progress or done"))
+    Status::parse(text).ok_or_else(|| {
+        AppError::invalid("status", format!("unknown status \"{text}\""), "Use open, in_progress or done")
+    })
 }
 
 pub fn parse_severity(text: &str) -> Result<Severity> {
@@ -245,7 +254,11 @@ impl Overview {
     }
 
     pub fn by_severity(&self, severity: Severity) -> i64 {
-        self.breakdown.iter().filter(|row| row.severity == severity && row.status != Status::Done).map(|row| row.total).sum()
+        self.breakdown
+            .iter()
+            .filter(|row| row.severity == severity && row.status != Status::Done)
+            .map(|row| row.total)
+            .sum()
     }
 }
 
@@ -320,10 +333,20 @@ fn announce(conn: &Connection, now: Timestamp, zone: Zone, before: Option<&Recor
     };
     let was_urgent = before.is_some_and(|record| record.enabled && urgent(record.status, record.severity));
     if urgent(after.status, after.severity) && !was_urgent {
-        notify::publish_with(conn, now, zone, &event(notify::EVENT_RECORD_URGENT, after.severity, "A record needs attention"))?;
+        notify::publish_with(
+            conn,
+            now,
+            zone,
+            &event(notify::EVENT_RECORD_URGENT, after.severity, "A record needs attention"),
+        )?;
     }
     if after.status == Status::Done && before.is_some_and(|record| record.status != Status::Done) {
-        notify::publish_with(conn, now, zone, &event(notify::EVENT_RECORD_COMPLETED, Severity::Info, "A record was completed"))?;
+        notify::publish_with(
+            conn,
+            now,
+            zone,
+            &event(notify::EVENT_RECORD_COMPLETED, Severity::Info, "A record was completed"),
+        )?;
     }
     Ok(())
 }
@@ -573,7 +596,8 @@ impl<'a> Records<'a> {
         let now = self.clock.now();
         let mut added = 0;
         for demo in DEMO_RECORDS {
-            let exists: Option<i64> = transaction.query_row(SQL_GET_BY_NAME, [demo.name], |row| row.get(0)).optional()?;
+            let exists: Option<i64> =
+                transaction.query_row(SQL_GET_BY_NAME, [demo.name], |row| row.get(0)).optional()?;
             if exists.is_some() {
                 continue;
             }
@@ -603,7 +627,12 @@ impl<'a> Records<'a> {
     }
 }
 
-pub(crate) fn apply_import(conn: &Connection, now: Timestamp, zone: Zone, inputs: &[Input]) -> Result<(usize, usize, usize)> {
+pub(crate) fn apply_import(
+    conn: &Connection,
+    now: Timestamp,
+    zone: Zone,
+    inputs: &[Input],
+) -> Result<(usize, usize, usize)> {
     let (mut created, mut updated, mut skipped) = (0, 0, 0);
     for input in inputs {
         let existing = conn.query_row(SQL_GET_BY_NAME, [&input.name], scan).optional()?.map(build).transpose()?;
@@ -677,8 +706,17 @@ mod tests {
     fn records_are_created_read_updated_and_deleted() {
         let fixture = fixture("records-crud");
         let records = fixture.records();
-        let created = records.create(&Input { name: "  Review   the  router ".to_string(), note: " line\r\nnext ".to_string(), ..Input::default() }).unwrap();
-        assert_eq!((created.name.as_str(), created.note.as_str(), created.revision), ("Review the router", "line\nnext", 1));
+        let created = records
+            .create(&Input {
+                name: "  Review   the  router ".to_string(),
+                note: " line\r\nnext ".to_string(),
+                ..Input::default()
+            })
+            .unwrap();
+        assert_eq!(
+            (created.name.as_str(), created.note.as_str(), created.revision),
+            ("Review the router", "line\nnext", 1)
+        );
         assert_eq!(created.created_at, fixed_time());
         fixture.hand.advance(60);
         let mut change = created.input();
@@ -702,7 +740,10 @@ mod tests {
             (Input { name: "a".repeat(201), ..Input::default() }, "more than 200 characters"),
             (Input { name: "bell\u{7}".to_string(), ..Input::default() }, "control character"),
             (Input { name: "ok".to_string(), note: "n".repeat(4001), ..Input::default() }, "more than 4000 characters"),
-            (Input { name: "ok".to_string(), note: "esc\u{1b}[0m".to_string(), ..Input::default() }, "note: the note contains a control character"),
+            (
+                Input { name: "ok".to_string(), note: "esc\u{1b}[0m".to_string(), ..Input::default() },
+                "note: the note contains a control character",
+            ),
         ];
         for (candidate, expected) in cases {
             let error = normalize(&candidate).unwrap_err().to_string();
@@ -711,7 +752,12 @@ mod tests {
         assert!(parse_status("closed").unwrap_err().to_string().contains("Use open, in_progress or done"));
         assert!(parse_severity("urgent").unwrap_err().to_string().contains("Use info, low, medium, high or critical"));
         assert_eq!(parse_status(" DONE ").unwrap(), Status::Done);
-        assert_eq!(normalize(&Input { name: "tab\there".to_string(), note: "keep\ttab".to_string(), ..Input::default() }).unwrap().note, "keep\ttab");
+        assert_eq!(
+            normalize(&Input { name: "tab\there".to_string(), note: "keep\ttab".to_string(), ..Input::default() })
+                .unwrap()
+                .note,
+            "keep\ttab"
+        );
     }
 
     #[test]
@@ -733,8 +779,10 @@ mod tests {
         let fixture = fixture("records-conflict");
         let records = fixture.records();
         let created = records.create(&input("Shared", Status::Open, Severity::Info)).unwrap();
-        let first = records.update(created.id, created.revision, &input("Shared", Status::InProgress, Severity::Info)).unwrap();
-        let stale = records.update(created.id, created.revision, &input("Shared", Status::Done, Severity::Info)).unwrap_err();
+        let first =
+            records.update(created.id, created.revision, &input("Shared", Status::InProgress, Severity::Info)).unwrap();
+        let stale =
+            records.update(created.id, created.revision, &input("Shared", Status::Done, Severity::Info)).unwrap_err();
         assert!(stale.to_string().contains("changed by another window (now revision 2)"), "{stale}");
         assert_eq!(records.get(created.id).unwrap(), first);
         records.delete(created.id).unwrap();
@@ -748,19 +796,33 @@ mod tests {
         let records = fixture.records();
         let alpha = records.create(&input("alpha router", Status::Open, Severity::Critical)).unwrap();
         fixture.hand.advance(10);
-        let bravo = records.create(&Input { note: "firewall notes".to_string(), ..input("Bravo switch", Status::Done, Severity::Low) }).unwrap();
+        let bravo = records
+            .create(&Input { note: "firewall notes".to_string(), ..input("Bravo switch", Status::Done, Severity::Low) })
+            .unwrap();
         fixture.hand.advance(10);
         let charlie = records.create(&input("charlie router", Status::InProgress, Severity::Medium)).unwrap();
         records.set_enabled(charlie.id, false).unwrap();
         let ids = |query: Query| records.list(&query).unwrap().iter().map(|record| record.id).collect::<Vec<_>>();
         assert_eq!(ids(Query::default()), vec![alpha.id, bravo.id]);
         assert_eq!(ids(Query { include_disabled: true, ..Query::default() }), vec![alpha.id, bravo.id, charlie.id]);
-        assert_eq!(ids(Query { include_disabled: true, descending: true, ..Query::default() }), vec![charlie.id, bravo.id, alpha.id]);
-        assert_eq!(ids(Query { sort: "severity".to_string(), descending: true, ..Query::default() }), vec![alpha.id, bravo.id]);
-        assert_eq!(ids(Query { sort: "updated".to_string(), descending: true, include_disabled: true, ..Query::default() })[0], charlie.id);
+        assert_eq!(
+            ids(Query { include_disabled: true, descending: true, ..Query::default() }),
+            vec![charlie.id, bravo.id, alpha.id]
+        );
+        assert_eq!(
+            ids(Query { sort: "severity".to_string(), descending: true, ..Query::default() }),
+            vec![alpha.id, bravo.id]
+        );
+        assert_eq!(
+            ids(Query { sort: "updated".to_string(), descending: true, include_disabled: true, ..Query::default() })[0],
+            charlie.id
+        );
         assert_eq!(ids(Query { status: Some(Status::Done), ..Query::default() }), vec![bravo.id]);
         assert_eq!(ids(Query { severity: Some(Severity::Critical), ..Query::default() }), vec![alpha.id]);
-        assert_eq!(ids(Query { search: "rout".to_string(), include_disabled: true, ..Query::default() }), vec![alpha.id, charlie.id]);
+        assert_eq!(
+            ids(Query { search: "rout".to_string(), include_disabled: true, ..Query::default() }),
+            vec![alpha.id, charlie.id]
+        );
         assert_eq!(ids(Query { search: "FIREWALL".to_string(), ..Query::default() }), vec![bravo.id]);
         assert_eq!(ids(Query { search: "\"*()".to_string(), ..Query::default() }), Vec::<i64>::new());
         assert_eq!(ids(Query { limit: 1, offset: 1, ..Query::default() }), vec![bravo.id]);
@@ -789,14 +851,20 @@ mod tests {
         assert_eq!(notifications.unread_count().unwrap(), 0);
         let raised = records.update(calm.id, calm.revision, &input("calm", Status::Open, Severity::High)).unwrap();
         assert_eq!(notifications.unread_count().unwrap(), 1);
-        let still = records.update(raised.id, raised.revision, &input("calm", Status::InProgress, Severity::Critical)).unwrap();
+        let still =
+            records.update(raised.id, raised.revision, &input("calm", Status::InProgress, Severity::Critical)).unwrap();
         assert_eq!(notifications.unread_count().unwrap(), 1);
         records.update(still.id, still.revision, &input("calm", Status::Done, Severity::Critical)).unwrap();
         let listed = notifications.list(&Filter::default()).unwrap();
         assert_eq!(listed.len(), 2);
-        assert!(listed.iter().any(|item| item.event_type == notify::EVENT_RECORD_COMPLETED && item.severity == Severity::Info));
+        assert!(
+            listed
+                .iter()
+                .any(|item| item.event_type == notify::EVENT_RECORD_COMPLETED && item.severity == Severity::Info)
+        );
         assert!(listed.iter().all(|item| item.record_id == calm.id && !item.title.contains("calm")));
-        let hidden = records.create(&Input { enabled: false, ..input("hidden", Status::Open, Severity::Critical) }).unwrap();
+        let hidden =
+            records.create(&Input { enabled: false, ..input("hidden", Status::Open, Severity::Critical) }).unwrap();
         assert_eq!(notifications.list(&Filter::default()).unwrap().len(), 2);
         fixture.hand.advance(2 * 60 * 60);
         records.set_enabled(hidden.id, true).unwrap();
@@ -842,8 +910,10 @@ mod tests {
     fn hot_queries_use_an_index() {
         let fixture = fixture("records-plans");
         for (name, sql, parameters) in HOT_QUERIES.iter().chain(notify::HOT_QUERIES) {
-            let plan = fixture.store.query_plan(sql, *parameters).unwrap().join(" | ");
-            assert!(plan.contains("USING") && !plan.contains("SCAN records") && !plan.contains("SCAN notifications"), "{name}: {plan}");
+            let plan = fixture.store.query_plan(sql, *parameters).unwrap();
+            let indexed = |step: &String| step.contains("USING INDEX") || step.contains("USING COVERING INDEX");
+            let full_scan = |step: &String| step.starts_with("SCAN") && !indexed(step);
+            assert!(plan.iter().any(indexed) && !plan.iter().any(full_scan), "{name}: {}", plan.join(" | "));
         }
     }
 

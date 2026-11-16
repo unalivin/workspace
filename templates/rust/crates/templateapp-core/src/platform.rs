@@ -5,8 +5,10 @@ use std::sync::Arc;
 use crate::error::{AppError, Result};
 use crate::meta;
 
+type Lookup = dyn Fn(&str) -> Option<String> + Send + Sync;
+
 #[derive(Clone)]
-pub struct Env(Arc<dyn Fn(&str) -> Option<String> + Send + Sync>);
+pub struct Env(Arc<Lookup>);
 
 impl Env {
     pub fn system() -> Self {

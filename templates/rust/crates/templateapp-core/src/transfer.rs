@@ -132,7 +132,8 @@ fn csv_candidates(text: &str) -> Result<Vec<Candidate>> {
         header.iter().enumerate().map(|(index, name)| (name.trim().to_lowercase(), index)).collect();
     if !position.contains_key("name") {
         return Err(AppError::Usage(
-            "the CSV header has no \"name\" column: the first line must be name,status,severity,note,enabled".to_string(),
+            "the CSV header has no \"name\" column: the first line must be name,status,severity,note,enabled"
+                .to_string(),
         ));
     }
     let mut candidates = Vec::new();
@@ -176,9 +177,13 @@ fn json_candidates(text: &str) -> Result<Vec<Candidate>> {
 }
 
 fn to_input(item: &Exported) -> Result<Input> {
-    let status = if item.status.trim().is_empty() { records::Status::Open } else { records::parse_status(&item.status)? };
-    let severity =
-        if item.severity.trim().is_empty() { crate::theme::Severity::Info } else { records::parse_severity(&item.severity)? };
+    let status =
+        if item.status.trim().is_empty() { records::Status::Open } else { records::parse_status(&item.status)? };
+    let severity = if item.severity.trim().is_empty() {
+        crate::theme::Severity::Info
+    } else {
+        records::parse_severity(&item.severity)?
+    };
     records::normalize(&Input {
         name: item.name.clone(),
         status,
@@ -195,8 +200,9 @@ pub fn parse(raw: &[u8], format: Format) -> Result<(Vec<Input>, Vec<RowError>)> 
             MAX_IMPORT_BYTES >> 20
         )));
     }
-    let text = std::str::from_utf8(raw)
-        .map_err(|_| AppError::Usage("the import is not valid UTF-8 text: save it as UTF-8 and try again".to_string()))?;
+    let text = std::str::from_utf8(raw).map_err(|_| {
+        AppError::Usage("the import is not valid UTF-8 text: save it as UTF-8 and try again".to_string())
+    })?;
     let text = text.strip_prefix('\u{feff}').unwrap_or(text);
     if text.trim().is_empty() {
         return Err(AppError::Usage("the import is empty: export a list first to see the expected layout".to_string()));
@@ -294,7 +300,15 @@ mod tests {
         let directory = TempDir::new("transfer-roundtrip");
         let source = open(&directory);
         let records = service(&source);
-        records.create(&Input { name: "=SUM(A1), \"quoted\"".to_string(), note: "two\nlines, and a comma".to_string(), status: Status::InProgress, severity: Severity::High, enabled: false }).unwrap();
+        records
+            .create(&Input {
+                name: "=SUM(A1), \"quoted\"".to_string(),
+                note: "two\nlines, and a comma".to_string(),
+                status: Status::InProgress,
+                severity: Severity::High,
+                enabled: false,
+            })
+            .unwrap();
         records.create(&Input { name: "plain".to_string(), ..Input::default() }).unwrap();
         let original: Vec<Input> = everything(&records).iter().map(Record::input).collect();
         for format in [Format::Csv, Format::Json] {
@@ -307,7 +321,12 @@ mod tests {
             let target = open(&other);
             let copy = service(&target);
             let result = import(&copy, text.as_bytes(), format, false).unwrap();
-            assert_eq!((result.created, result.updated, result.skipped, result.problems.len()), (2, 0, 0, 0), "{}", format.label());
+            assert_eq!(
+                (result.created, result.updated, result.skipped, result.problems.len()),
+                (2, 0, 0, 0),
+                "{}",
+                format.label()
+            );
             assert_eq!(everything(&copy).iter().map(Record::input).collect::<Vec<_>>(), original);
             let again = import(&copy, text.as_bytes(), format, false).unwrap();
             assert_eq!((again.created, again.updated, again.skipped), (0, 0, 2));

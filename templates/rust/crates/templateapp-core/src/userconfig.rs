@@ -72,7 +72,10 @@ mod tests {
         let directory = TempDir::new("config");
         let nested = directory.path().join("settings");
         assert_eq!(load(&nested).unwrap(), Config::default());
-        let config = Config { database_path: directory.path().join("x.db").to_string_lossy().into_owned(), front_end: "tui".to_string() };
+        let config = Config {
+            database_path: directory.path().join("x.db").to_string_lossy().into_owned(),
+            front_end: "tui".to_string(),
+        };
         save(&nested, &config).unwrap();
         assert_eq!(load(&nested).unwrap(), config);
         let text = fs::read_to_string(file(&nested)).unwrap();

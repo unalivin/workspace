@@ -121,10 +121,7 @@ mod tests {
     #[test]
     fn rows_fields_quotes_and_line_endings_are_read() {
         let rows = parse("a,b,c\r\n\"x,1\",\"say \"\"hi\"\"\",\"two\nlines\"\n\nlast,,\n", 100).unwrap();
-        assert_eq!(
-            rows,
-            vec![vec!["a", "b", "c"], vec!["x,1", "say \"hi\"", "two\nlines"], vec!["last", "", ""]]
-        );
+        assert_eq!(rows, vec![vec!["a", "b", "c"], vec!["x,1", "say \"hi\"", "two\nlines"], vec!["last", "", ""]]);
         assert_eq!(parse("only", 100).unwrap(), vec![vec!["only"]]);
         assert_eq!(parse("a,\"\"", 100).unwrap(), vec![vec!["a", ""]]);
         assert_eq!(parse("\"\"\nnext\n", 100).unwrap(), vec![vec![""], vec!["next"]]);

@@ -67,9 +67,8 @@ pub fn write_private(path: &Path, content: &[u8], overwrite: bool) -> Result<()>
 }
 
 pub fn read_limited(path: &Path, limit: u64) -> Result<Vec<u8>> {
-    let size = fs::metadata(path)
-        .map_err(|error| AppError::Io(format!("cannot read \"{}\": {error}", path.display())))?
-        .len();
+    let size =
+        fs::metadata(path).map_err(|error| AppError::Io(format!("cannot read \"{}\": {error}", path.display())))?.len();
     if size > limit {
         return Err(AppError::Usage(format!("\"{}\" is larger than {limit} bytes and was not read", path.display())));
     }
@@ -92,8 +91,10 @@ mod tests {
         assert_eq!(fs::read(&path).unwrap(), b"first");
         write_private(&path, b"second", true).unwrap();
         assert_eq!(fs::read(&path).unwrap(), b"second");
-        let names: Vec<String> =
-            fs::read_dir(path.parent().unwrap()).unwrap().map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned()).collect();
+        let names: Vec<String> = fs::read_dir(path.parent().unwrap())
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
         assert_eq!(names, vec!["export.json"]);
         #[cfg(unix)]
         {

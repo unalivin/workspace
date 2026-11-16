@@ -125,7 +125,14 @@ pub const DEFINITIONS: &[Definition] = &[
         &["system", "light", "dark"],
     ),
     choice(
-        definition(KEY_THEME, "Appearance", "Color theme", "Named palette for accents and surfaces.", Kind::Enum, "slate"),
+        definition(
+            KEY_THEME,
+            "Appearance",
+            "Color theme",
+            "Named palette for accents and surfaces.",
+            Kind::Enum,
+            "slate",
+        ),
         &["slate", "blue", "green", "crimson", "amber", "purple", "contrast"],
     ),
     definition(
@@ -137,19 +144,73 @@ pub const DEFINITIONS: &[Definition] = &[
         "",
     ),
     choice(
-        definition(KEY_DENSITY, "Appearance", "Density", "Row height and spacing of tables and lists.", Kind::Enum, "comfortable"),
+        definition(
+            KEY_DENSITY,
+            "Appearance",
+            "Density",
+            "Row height and spacing of tables and lists.",
+            Kind::Enum,
+            "comfortable",
+        ),
         &["comfortable", "compact"],
     ),
-    range(definition(KEY_TEXT_SCALE, "Appearance", "Text size", "Text size in percent of the default.", Kind::Int, "100"), 80, 200),
-    definition(KEY_REDUCED_MOTION, "Appearance", "Reduced motion", "Turn off animations and transitions.", Kind::Bool, "false"),
-    definition(KEY_MONOCHROME, "Appearance", "Monochrome terminal", "Draw the terminal UI without colors.", Kind::Bool, "false"),
+    range(
+        definition(KEY_TEXT_SCALE, "Appearance", "Text size", "Text size in percent of the default.", Kind::Int, "100"),
+        80,
+        200,
+    ),
+    definition(
+        KEY_REDUCED_MOTION,
+        "Appearance",
+        "Reduced motion",
+        "Turn off animations and transitions.",
+        Kind::Bool,
+        "false",
+    ),
+    definition(
+        KEY_MONOCHROME,
+        "Appearance",
+        "Monochrome terminal",
+        "Draw the terminal UI without colors.",
+        Kind::Bool,
+        "false",
+    ),
     choice(
-        definition(KEY_TIME_ZONE, "Units", "Time zone", "Show timestamps in local time or in UTC.", Kind::Enum, "local"),
+        definition(
+            KEY_TIME_ZONE,
+            "Units",
+            "Time zone",
+            "Show timestamps in local time or in UTC.",
+            Kind::Enum,
+            "local",
+        ),
         &["local", "utc"],
     ),
-    definition(KEY_SIDEBAR_COLLAPSED, "Window", "Sidebar collapsed", "Show the sidebar as icons only.", Kind::Bool, "false"),
-    range(definition(KEY_WINDOW_WIDTH, "Window", "Window width", "Dashboard window width in pixels.", Kind::Int, "1180"), 640, 10000),
-    range(definition(KEY_WINDOW_HEIGHT, "Window", "Window height", "Dashboard window height in pixels.", Kind::Int, "760"), 480, 10000),
+    definition(
+        KEY_SIDEBAR_COLLAPSED,
+        "Window",
+        "Sidebar collapsed",
+        "Show the sidebar as icons only.",
+        Kind::Bool,
+        "false",
+    ),
+    range(
+        definition(KEY_WINDOW_WIDTH, "Window", "Window width", "Dashboard window width in pixels.", Kind::Int, "1180"),
+        640,
+        10000,
+    ),
+    range(
+        definition(
+            KEY_WINDOW_HEIGHT,
+            "Window",
+            "Window height",
+            "Dashboard window height in pixels.",
+            Kind::Int,
+            "760",
+        ),
+        480,
+        10000,
+    ),
     range(
         definition(
             KEY_REFRESH_SECONDS,
@@ -375,7 +436,9 @@ impl<'a> Settings<'a> {
                     value.raw = normalized;
                     value.source = Source::Stored;
                 }
-                Err(error) => value.override_error = format!("stored value is invalid and the default is used: {error}"),
+                Err(error) => {
+                    value.override_error = format!("stored value is invalid and the default is used: {error}")
+                }
             }
         }
         let variable = env_name(definition.key);
@@ -510,7 +573,10 @@ mod tests {
         let flags = BTreeMap::new();
         let settings = service(&store, &[], &flags);
         let initial = settings.get(KEY_DENSITY).unwrap();
-        assert_eq!((initial.raw.as_str(), initial.source, initial.stored.clone()), ("comfortable", Source::Default, None));
+        assert_eq!(
+            (initial.raw.as_str(), initial.source, initial.stored.clone()),
+            ("comfortable", Source::Default, None)
+        );
         let changed = settings.set(KEY_DENSITY, " Compact ").unwrap();
         assert_eq!((changed.raw.as_str(), changed.source), ("compact", Source::Stored));
         assert_eq!(settings.text(KEY_DENSITY).unwrap(), "compact");
@@ -543,7 +609,8 @@ mod tests {
 
     #[test]
     fn normalization_produces_canonical_text() {
-        let check = |key: &str, raw: &str, expected: &str| assert_eq!(normalize(lookup(key).unwrap(), raw).unwrap(), expected);
+        let check =
+            |key: &str, raw: &str, expected: &str| assert_eq!(normalize(lookup(key).unwrap(), raw).unwrap(), expected);
         check(KEY_CONFIRM, "YES", "true");
         check(KEY_CONFIRM, "0", "false");
         check(KEY_TEXT_SCALE, " 0120 ", "120");
