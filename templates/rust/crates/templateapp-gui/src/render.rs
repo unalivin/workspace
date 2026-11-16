@@ -260,14 +260,22 @@ impl Stage {
         lines.join("\n")
     }
 
-    pub fn locate(&self, wanted: &str) -> Option<Pos2> {
-        self.texts.iter().find(|(text, _)| text == wanted).map(|(_, area)| area.center())
+    pub fn locate_all(&self, wanted: &str) -> Vec<Pos2> {
+        self.texts.iter().filter(|(text, _)| text == wanted).map(|(_, area)| area.center()).collect()
     }
 
-    pub fn click(&mut self, wanted: &str, mut draw: impl FnMut(&mut Ui)) -> bool {
-        let Some(pos) = self.locate(wanted) else {
-            return false;
-        };
+    pub fn locate(&self, wanted: &str) -> Option<Pos2> {
+        self.locate_all(wanted).first().copied()
+    }
+
+    pub fn hover(&mut self, pos: Pos2, frames: usize, mut draw: impl FnMut(&mut Ui)) {
+        self.frame(vec![Event::PointerMoved(pos)], &mut draw);
+        for _ in 0..frames {
+            self.frame(Vec::new(), &mut draw);
+        }
+    }
+
+    pub fn click_at(&mut self, pos: Pos2, mut draw: impl FnMut(&mut Ui)) {
         let button = |pressed: bool| Event::PointerButton {
             pos,
             button: egui::PointerButton::Primary,
@@ -278,7 +286,16 @@ impl Stage {
         self.frame(vec![button(true)], &mut draw);
         self.frame(vec![button(false)], &mut draw);
         self.frame(Vec::new(), &mut draw);
-        true
+    }
+
+    pub fn click(&mut self, wanted: &str, draw: impl FnMut(&mut Ui)) -> bool {
+        match self.locate(wanted) {
+            Some(pos) => {
+                self.click_at(pos, draw);
+                true
+            }
+            None => false,
+        }
     }
 
     pub fn settle(&mut self, frames: usize, mut draw: impl FnMut(&mut Ui)) -> Picture {

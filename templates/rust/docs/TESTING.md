@@ -17,7 +17,7 @@ make screenshots       # render the dashboard screens into dist/screens
 
 A single test: `cargo test -p templateapp-core listing_filters`. Tests of one crate: `cargo test -p templateapp-tui`.
 
-The dashboard tests need no display. They run the real interface code, feed it pointer and key events, and paint the result with a software renderer that is part of the dashboard crate. The dashboard crate is compiled with optimization in test builds so that they take seconds.
+The dashboard tests need no display. They run the real interface code, feed it pointer and key events, read the text it paints, and paint the result with a software renderer that is part of the dashboard crate. The dashboard crate is compiled with optimization in test builds so that they take seconds.
 
 `make check` reports a step as skipped, with the reason, when its tool is missing. `scripts/check.sh --require-all` turns a skip into a failure; CI installs every tool.
 
@@ -41,7 +41,7 @@ Rust has no race detector that works on the stable compiler, and the workspace f
 | Commands | `crates/templateapp-app/src/tests.rs` | Every command through the real argument parser against a real database, including exit codes, prompts and help |
 | Terminal UI | `crates/templateapp-tui/src/tests.rs` | The model is driven with key presses; state and the painted screen are checked |
 | Dashboard | `crates/templateapp-gui/src/tests.rs` and the module tests beside it | The interface code is driven with events: every page, forms, confirmations, the skin, icons, the table layout |
-| Capability matrix | `service.rs`, `crates/templateapp-app/src/tests.rs` | Every capability is listed once and names a real command; `docs/COMMANDS.md` matches |
+| Capability matrix | `service.rs` and the tests of the three interface crates | Every capability is listed once, names a real command, is painted somewhere in the dashboard and is shown in the terminal UI; `docs/COMMANDS.md` matches |
 | Fuzz | `fuzz/fuzz_targets`, `make fuzz` | The parsers hold their invariants on arbitrary input |
 | Repository | `crates/templateapp-app/tests/repository.rs` | Required files, links between documents, no email address, no source comments, settings documented, test names in the documents exist, SQL only in the storage modules |
 | Scripts | `scripts/tests/*.bats` | Setup, checks, packaging, release verification and publishing in dry-run and against fakes |
@@ -72,7 +72,7 @@ Tests never touch the real user directories: each one gets a temporary home and 
 
 | Requirement | Tests |
 |---|---|
-| The three interfaces offer the same capabilities | `navigation_shortcuts_links_and_capabilities_are_complete`, `every_capability_names_a_real_command_and_every_command_has_help`, `the_generated_command_tables_are_current` |
+| The three interfaces offer the same capabilities | `navigation_shortcuts_links_and_capabilities_are_complete`, `every_capability_names_a_real_command_and_every_command_has_help`, `every_dashboard_capability_is_reachable`, `every_terminal_capability_is_reachable`, `the_generated_command_tables_are_current` |
 | A change in one interface appears in the others | `changes_made_by_another_connection_are_noticed_once`, `changes_from_another_window_keep_the_selection_and_unsaved_input` |
 | Conflicting edits lose nothing | `a_stale_revision_or_a_removed_record_is_a_conflict`, `an_edit_that_lost_a_race_keeps_the_form_and_explains`, `an_edit_that_lost_a_race_keeps_the_form_open_and_explains` |
 | A second writer waits and is told, never corrupts | `a_second_writer_waits_then_reports_a_busy_database`, `a_failing_migration_is_rolled_back_completely`, `a_batch_is_created_completely_or_not_at_all` |

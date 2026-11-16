@@ -14,7 +14,7 @@ Rules that are enforced by tests:
 - No comments in Rust, SQL or Bash source files. Express intent through names, small functions and tests, and explain decisions in `docs/`.
 - No email address anywhere in the repository. Commit with a GitHub noreply address.
 - SQL is written as constants with bound parameters, only in the storage modules.
-- Every command has a row in the capability list, every row names a real command, and `docs/COMMANDS.md` is generated from the list.
+- Every capability is reachable from the dashboard, the terminal UI and the commands, and is listed in `docs/COMMANDS.md`, which is generated.
 - A test name written in a document must exist.
 
 Security problems are reported privately, see [SECURITY.md](SECURITY.md).

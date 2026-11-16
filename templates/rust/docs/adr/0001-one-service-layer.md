@@ -8,10 +8,11 @@ The application has a dashboard window, a terminal UI and commands. Users switch
 
 ## Decision
 
-All three call the `service` module of `templateapp-core` and the domain modules beside it. The interface crates (`templateapp-app`, `templateapp-tui`, `templateapp-gui`) contain presentation and input handling only: no SQL, no validation rules, no business decisions. The list of capabilities is data (`CAPABILITIES` in `crates/templateapp-core/src/service.rs`); each row names the command and the place in the dashboard and in the terminal UI, tests prove that every row names a real command and that every command has a row, and `docs/COMMANDS.md` is generated from it.
+All three call the `service` module of `templateapp-core` and the domain modules beside it. The interface crates (`templateapp-app`, `templateapp-tui`, `templateapp-gui`) contain presentation and input handling only: no SQL, no validation rules, no business decisions. The list of capabilities is data (`CAPABILITIES` in `crates/templateapp-core/src/service.rs`); each row names the command and the place in the dashboard and in the terminal UI. Tests prove that every row names a real command, that every command has a row, and that the words of every row are painted by the dashboard and shown by the terminal UI. `docs/COMMANDS.md` is generated from the list.
 
 ## Consequences
 
-- A feature costs three presentations. The tests refuse a command without a capability row; that the dashboard and the terminal UI really offer each row is checked by their own tests page by page, not yet row by row from the list.
+- A feature costs three presentations, and the tests refuse a change that adds it to only one.
+- The dashboard and terminal checks look for the labels and keys a row names. They prove that the control is on the screen, not that it does the right thing; that is the job of the tests of each page.
 - Messages and validation errors are identical everywhere because they come from one place.
 - The no-GUI build is the same program without one crate.

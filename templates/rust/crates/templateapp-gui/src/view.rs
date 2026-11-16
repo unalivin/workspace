@@ -14,8 +14,8 @@ use crate::table::{self, Cell, fixed, flexible};
 const PAGE_KEYS: [Key; 5] = [Key::Num1, Key::Num2, Key::Num3, Key::Num4, Key::Num5];
 const SIDEBAR_WIDTH: f32 = 196.0;
 const FLASH_SECONDS: f32 = 0.6;
-const SEARCH_HINT: &str = "Search records and the usage guide, then press Enter";
-const DEMO_NOTE: &str =
+pub(crate) const SEARCH_HINT: &str = "Search records and the usage guide, then press Enter";
+pub(crate) const DEMO_NOTE: &str =
     "Sample records are loaded. Remove demo data below deletes only the records whose names start with \"Demo:\".";
 
 pub fn nav_icon(id: &str) -> &'static str {

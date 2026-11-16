@@ -19,6 +19,7 @@ use egui::{Event, Key, Modifiers};
 use crate::model::{AboutTab, Dashboard, NotifierState, Options, Shortcut};
 use crate::render::{Picture, Stage};
 use crate::shots;
+use crate::view::{DEMO_NOTE, SEARCH_HINT};
 
 pub(crate) fn environment(home: &TempDir) -> Env {
     let directory = home.path().to_string_lossy().into_owned();
@@ -764,4 +765,88 @@ fn every_dashboard_capability_is_reachable() {
         }
     }
     assert!(missing.is_empty(), "not found in the dashboard: {missing:?}\n{text}");
+}
+
+fn shown_line(text: &str, wanted: &str) -> bool {
+    text.lines().any(|line| line == wanted)
+}
+
+fn search_from_the_top_bar(stage: &mut Stage, board: &mut Dashboard<'_>, words: &str) {
+    board.search.clear();
+    stage.settle(2, |ui| board.ui(ui));
+    assert!(stage.click(SEARCH_HINT, |ui| board.ui(ui)), "the top bar has no search field:\n{}", stage.text());
+    stage.frame(vec![Event::Text(words.to_string())], |ui| board.ui(ui));
+    assert_eq!(board.search, words, "typing did not reach the search field");
+    stage.frame(key(Key::Enter, Modifiers::NONE), |ui| board.ui(ui));
+    stage.settle(2, |ui| board.ui(ui));
+}
+
+#[test]
+fn the_top_bar_searches_and_its_chip_bell_and_help_lead_somewhere() {
+    let home = TempDir::new("gui-top-bar");
+    let mut app = open_app(&home);
+    let mut board = started(&mut app, options(&home));
+    let mut stage = Stage::new(shots::WIDTH, 2000.0, 1.0);
+    let empty = painted(&mut stage, &mut board);
+    assert!(!shown_line(&empty, "Demo data"), "an empty database shows the demo chip:\n{empty}");
+    assert_eq!(board.bell_label(), "Notifications: nothing unread");
+    assert!(stage.click("Help", |ui| board.ui(ui)), "the top bar has no Help:\n{empty}");
+    assert_eq!((board.page_id(), board.about.tab), (NAV_ABOUT, AboutTab::Guide));
+    board.show(NAV_OVERVIEW);
+    let overview = painted(&mut stage, &mut board);
+    let load = overview.lines().find(|line| line.starts_with("Load demo data")).expect("no button loads demo data");
+    assert!(stage.click(load, |ui| board.ui(ui)));
+    assert_eq!(board.overview.demo, 6);
+    let loaded = painted(&mut stage, &mut board);
+    assert!(shown_line(&loaded, "Demo data"), "the demo chip is missing while demo data is loaded:\n{loaded}");
+    assert_eq!(board.bell_label(), "Notifications: 2 unread");
+    let help = stage.locate("Help").unwrap();
+    let chip = stage.locate("Demo data").unwrap();
+    let bell = stage
+        .locate_all("2")
+        .into_iter()
+        .find(|pos| (pos.y - help.y).abs() < 12.0 && pos.x > chip.x && pos.x < help.x)
+        .expect("the bell shows no unread count between the chip and Help");
+    stage.click_at(bell, |ui| board.ui(ui));
+    assert_eq!(board.page_id(), NAV_NOTIFICATIONS);
+    assert!(stage.click("Demo data", |ui| board.ui(ui)));
+    assert_eq!(board.page_id(), NAV_SETTINGS);
+    shows(&board, &[DEMO_NOTE]);
+    assert!(shown_line(&painted(&mut stage, &mut board), "Remove demo data"));
+    search_from_the_top_bar(&mut stage, &mut board, "   ");
+    shows(&board, &["Type one or more words"]);
+    search_from_the_top_bar(&mut stage, &mut board, "demo");
+    assert_eq!((board.page_id(), board.rec.query.search.as_str(), board.rec.list.len()), (NAV_RECORDS, "demo", 6));
+    shows(&board, &["6 records and"]);
+    search_from_the_top_bar(&mut stage, &mut board, "quiet hours");
+    assert_eq!((board.page_id(), board.about.tab), (NAV_ABOUT, AboutTab::Guide));
+    assert_eq!(board.about.search, "quiet hours");
+    search_from_the_top_bar(&mut stage, &mut board, "zzzqqq");
+    shows(&board, &["Nothing matches \"zzzqqq\""]);
+}
+
+#[test]
+fn a_collapsed_sidebar_explains_its_icons_on_hover() {
+    let home = TempDir::new("gui-hints");
+    let mut app = open_app(&home);
+    let mut board = started(&mut app, options(&home));
+    board.show(NAV_RECORDS);
+    let mut stage = Stage::new(shots::WIDTH, shots::HEIGHT, 1.0);
+    let expanded = painted(&mut stage, &mut board);
+    assert!(shown_line(&expanded, "Overview") && shown_line(&expanded, "Collapse"), "{expanded}");
+    let label = stage.locate("Overview").unwrap();
+    assert!(stage.click("Collapse", |ui| board.ui(ui)));
+    assert!(board.collapsed);
+    let collapsed = painted(&mut stage, &mut board);
+    assert!(!shown_line(&collapsed, "Overview") && !shown_line(&collapsed, "Collapse"), "{collapsed}");
+    let icon = egui::pos2(20.0, label.y);
+    stage.hover(icon, 6, |ui| board.ui(ui));
+    let hint = stage.text();
+    let line = hint.lines().find(|line| line.starts_with("Overview: ")).unwrap_or_else(|| panic!("no hint:\n{hint}"));
+    let place = stage.locate(line).unwrap();
+    assert!(place.x > icon.x, "the hint covers the icon it describes: {place:?}");
+    stage.hover(egui::pos2(600.0, 400.0), 6, |ui| board.ui(ui));
+    assert!(!stage.text().contains("Overview: "), "the hint stayed after the pointer left");
+    stage.click_at(icon, |ui| board.ui(ui));
+    assert_eq!(board.page_id(), NAV_OVERVIEW);
 }
