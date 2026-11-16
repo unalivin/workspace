@@ -214,7 +214,16 @@ impl Stage {
     pub fn new(width: f32, height: f32, scale: f32) -> Stage {
         let ctx = Context::default();
         ctx.set_pixels_per_point(scale);
-        Stage { ctx, texts: Vec::new(), textures: Textures::default(), width, height, scale, time: 0.0, fill: Color32::BLACK }
+        Stage {
+            ctx,
+            texts: Vec::new(),
+            textures: Textures::default(),
+            width,
+            height,
+            scale,
+            time: 0.0,
+            fill: Color32::BLACK,
+        }
     }
 
     pub fn frame(&mut self, events: Vec<Event>, mut draw: impl FnMut(&mut Ui)) -> Picture {

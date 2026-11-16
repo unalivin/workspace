@@ -729,13 +729,15 @@ fn every_dashboard_capability_is_reachable() {
         seen.push(painted(&mut stage, &mut board));
     }
     board.show(NAV_RECORDS);
-    for enabled in [true, false] {
-        board.rec.selected = board.rec.list.iter().find(|record| record.enabled == enabled).map(|record| record.id);
-        let name = board.selected_record().map(|record| record.name.clone()).expect("the demo data has both kinds");
+    let first = board.rec.list.first().map(|record| (record.id, record.name.clone())).expect("the demo data is listed");
+    for wanted in ["Disable", "Enable"] {
+        board.rec.selected = Some(first.0);
         let detail = painted(&mut stage, &mut board);
-        assert!(detail.matches(name.as_str()).count() >= 2, "no detail panel for {name}:\n{detail}");
+        assert!(detail.matches(first.1.as_str()).count() >= 2, "no detail panel for {}:\n{detail}", first.1);
+        assert!(detail.lines().any(|line| line == wanted), "the detail panel does not offer {wanted}:\n{detail}");
         seen.push("row detail panel".to_string());
         seen.push(detail);
+        board.toggle_record();
     }
     board.show(NAV_NOTIFICATIONS);
     board.inbox.rules = true;
