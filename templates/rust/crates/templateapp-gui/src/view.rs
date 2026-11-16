@@ -2,8 +2,8 @@ use app_core::meta;
 use app_core::records::DEMO_RECORDS;
 use app_core::service::{NAV_ABOUT, NAV_NOTIFICATIONS, NAV_OVERVIEW, NAV_RECORDS, NAV_SETTINGS};
 use egui::{
-    Align, Button, CentralPanel, Context, Frame, Image, Key, Label, Layout, Margin, MenuBar, Modifiers, Panel, RichText,
-    ScrollArea, TextEdit, Ui, vec2,
+    Align, Button, CentralPanel, Context, Frame, Image, Key, Label, Layout, Margin, MenuBar, Modifiers, Panel,
+    RichText, ScrollArea, TextEdit, Ui, vec2,
 };
 
 use crate::forms::{Verdict, muted, primary};
@@ -128,7 +128,8 @@ impl Dashboard<'_> {
                         }
                     }
                     ui.separator();
-                    let sidebar = Button::new("Collapse or expand the sidebar").shortcut_text(format!("{}+B", command()));
+                    let sidebar =
+                        Button::new("Collapse or expand the sidebar").shortcut_text(format!("{}+B", command()));
                     if ui.add(sidebar).clicked() {
                         self.toggle_sidebar();
                         ui.close();
@@ -171,11 +172,8 @@ impl Dashboard<'_> {
                     }
                     let unread = self.overview.unread_notifications;
                     let bell = self.icon(ui.ctx(), "bell", self.tokens.palette.text);
-                    let bell = if unread > 0 {
-                        Button::image_and_text(bell, unread.to_string())
-                    } else {
-                        Button::image(bell)
-                    };
+                    let bell =
+                        if unread > 0 { Button::image_and_text(bell, unread.to_string()) } else { Button::image(bell) };
                     if ui.add(bell).on_hover_text(self.bell_label()).clicked() {
                         self.show(NAV_NOTIFICATIONS);
                     }
@@ -211,7 +209,8 @@ impl Dashboard<'_> {
         };
         let gaps = self.tokens.spacing;
         let level = tone.severity();
-        let tint = if tone == Tone::Success { self.tokens.semantic.success } else { self.tokens.semantic.severity(level) };
+        let tint =
+            if tone == Tone::Success { self.tokens.semantic.success } else { self.tokens.semantic.severity(level) };
         let now = ui.input(|input| input.time);
         if self.flash != self.flash_seen {
             self.flash_seen = self.flash;
@@ -260,11 +259,7 @@ impl Dashboard<'_> {
         let tint = if current { self.tokens.palette.accent } else { self.tokens.palette.text };
         let image = self.icon(ui.ctx(), nav_icon(item.id), tint);
         let label = self.nav_label(item);
-        let button = if self.collapsed {
-            Button::image(image)
-        } else {
-            Button::image_and_text(image, label.clone())
-        };
+        let button = if self.collapsed { Button::image(image) } else { Button::image_and_text(image, label.clone()) };
         let width = ui.available_width();
         let button = button.selected(current).min_size(vec2(width, self.tokens.spacing.row_height));
         let hint = if self.collapsed { format!("{label}: {}", item.hint) } else { item.hint.to_string() };
@@ -275,8 +270,13 @@ impl Dashboard<'_> {
 
     fn sidebar(&mut self, ui: &mut Ui) {
         let gaps = self.tokens.spacing;
-        let width = if self.collapsed { self.tokens.type_scale.body * ICON_SCALE + gaps.m * 2.0 + gaps.s * 2.0 } else { SIDEBAR_WIDTH };
-        let frame = Frame::new().fill(color(self.tokens.palette.surface)).inner_margin(Margin::same(gaps.s.round() as i8));
+        let width = if self.collapsed {
+            self.tokens.type_scale.body * ICON_SCALE + gaps.m * 2.0 + gaps.s * 2.0
+        } else {
+            SIDEBAR_WIDTH
+        };
+        let frame =
+            Frame::new().fill(color(self.tokens.palette.surface)).inner_margin(Margin::same(gaps.s.round() as i8));
         Panel::left("sidebar").frame(frame).resizable(false).exact_size(width).show(ui, |ui| {
             let nav = self.nav;
             ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
@@ -289,7 +289,8 @@ impl Dashboard<'_> {
             ui.with_layout(Layout::bottom_up(Align::LEFT).with_cross_justify(true), |ui| {
                 let image = self.icon(ui.ctx(), "sidebar", self.tokens.palette.text_muted);
                 let hint = if self.collapsed { "Expand the sidebar" } else { "Collapse the sidebar to icons" };
-                let toggle = if self.collapsed { Button::image(image) } else { Button::image_and_text(image, "Collapse") };
+                let toggle =
+                    if self.collapsed { Button::image(image) } else { Button::image_and_text(image, "Collapse") };
                 if ui.add(toggle.frame(false)).on_hover_text(hint).clicked() {
                     self.toggle_sidebar();
                 }

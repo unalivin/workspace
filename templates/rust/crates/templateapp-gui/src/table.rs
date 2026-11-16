@@ -51,7 +51,14 @@ pub fn header(ui: &mut Ui, tokens: &Tokens, slots: &[(f32, f32)], titles: &[&str
     ui.painter().hline(area.x_range(), area.bottom(), (1.0, color(tokens.palette.divider)));
 }
 
-pub fn row(ui: &mut Ui, icons: &Icons, tokens: &Tokens, slots: &[(f32, f32)], cells: Vec<Cell>, selected: bool) -> Response {
+pub fn row(
+    ui: &mut Ui,
+    icons: &Icons,
+    tokens: &Tokens,
+    slots: &[(f32, f32)],
+    cells: Vec<Cell>,
+    selected: bool,
+) -> Response {
     let height = tokens.spacing.row_height;
     let (area, response) = ui.allocate_exact_size(vec2(ui.available_width(), height), Sense::click());
     let fill = if selected {

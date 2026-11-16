@@ -104,10 +104,7 @@ impl Dashboard<'_> {
                     ui.selectable_value(&mut query.sort, key.to_string(), sort_label(key));
                 }
             });
-            let direction = if query.descending { "Descending" } else { "Ascending" };
-            if ui.button(direction).on_hover_text("Reverse the sort order").clicked() {
-                query.descending = !query.descending;
-            }
+            ui.checkbox(&mut query.descending, "Descending");
             ui.checkbox(&mut query.include_disabled, "Show disabled");
         });
         ui.add_space(self.tokens.spacing.xs);
@@ -272,7 +269,8 @@ impl Dashboard<'_> {
         ui.with_layout(Layout::bottom_up(Align::LEFT), |ui| {
             muted(ui, self.inbox_summary());
             ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
-                let specs = [fixed(112.0), flexible(3.0, 160.0), flexible(1.0, 130.0), flexible(1.0, 150.0), fixed(64.0)];
+                let specs =
+                    [fixed(112.0), flexible(3.0, 160.0), flexible(1.0, 130.0), flexible(1.0, 150.0), fixed(64.0)];
                 let slots = table::layout(&specs, ui.available_width() - gap * 2.0, gap);
                 table::header(ui, &self.tokens, &slots, &["Severity", "Notification", "Event", "Raised", "State"]);
                 let height = self.tokens.spacing.row_height;
@@ -291,7 +289,11 @@ impl Dashboard<'_> {
                                 Cell::Text(item.title.clone()),
                                 Cell::Muted(event_label(&item.event_type).to_string()),
                                 Cell::Muted(self.app.format_time(item.created_at)),
-                                if item.unread() { Cell::Text("Unread".to_string()) } else { Cell::Muted("Read".to_string()) },
+                                if item.unread() {
+                                    Cell::Text("Unread".to_string())
+                                } else {
+                                    Cell::Muted("Read".to_string())
+                                },
                             ];
                             let selected = self.inbox.selected == Some(item.id);
                             let line = table::row(ui, &self.icons, &self.tokens, &slots, cells, selected);
@@ -331,7 +333,8 @@ impl Dashboard<'_> {
                 } else {
                     format!("{} to {}", rule.quiet_start, rule.quiet_end)
                 };
-                let dedup = if rule.dedup_minutes == 0 { "Off".to_string() } else { format!("{} min", rule.dedup_minutes) };
+                let dedup =
+                    if rule.dedup_minutes == 0 { "Off".to_string() } else { format!("{} min", rule.dedup_minutes) };
                 let cells = vec![
                     Cell::Text(event_label(&rule.event_type).to_string()),
                     Cell::Text(if rule.enabled { "Yes" } else { "No" }.to_string()),

@@ -564,9 +564,7 @@ impl<'a> Dashboard<'a> {
         } else {
             self.say(
                 Tone::Info,
-                format!(
-                    "Nothing matches \"{query}\". Search covers record names, record notes and the usage guide."
-                ),
+                format!("Nothing matches \"{query}\". Search covers record names, record notes and the usage guide."),
             );
         }
     }
@@ -860,7 +858,13 @@ impl<'a> Dashboard<'a> {
             .filter(|column| !value.definition.pinned.contains(column))
             .map(|column| {
                 let current = if stored.iter().any(|shown| shown == column) { "show" } else { "hide" };
-                Field::choice(column, records::column_label(column), current, "", &[("show", "Shown"), ("hide", "Hidden")])
+                Field::choice(
+                    column,
+                    records::column_label(column),
+                    current,
+                    "",
+                    &[("show", "Shown"), ("hide", "Hidden")],
+                )
             })
             .collect();
         self.form = Some(Form::new("Columns of the record table", "Save", fields, Submit::Columns));
@@ -885,10 +889,8 @@ impl<'a> Dashboard<'a> {
 
     pub fn import_records(&mut self) {
         let help = "A CSV or JSON file. Rows are matched by name: new names are added, known names are updated. Nothing is written until you confirm the preview.";
-        let fields = vec![
-            Field::text("path", "File", "", help, PATH_LIMIT),
-            Field::choice("format", "Format", "", "", FORMATS),
-        ];
+        let fields =
+            vec![Field::text("path", "File", "", help, PATH_LIMIT), Field::choice("format", "Format", "", "", FORMATS)];
         self.form = Some(Form::new("Import records", "Preview", fields, Submit::Import));
     }
 
@@ -1033,8 +1035,11 @@ impl<'a> Dashboard<'a> {
     }
 
     fn selected_rule(&mut self) -> Option<Rule> {
-        let found =
-            self.inbox.rule.as_ref().and_then(|id| self.inbox.rule_list.iter().find(|rule| &rule.event_type == id).cloned());
+        let found = self
+            .inbox
+            .rule
+            .as_ref()
+            .and_then(|id| self.inbox.rule_list.iter().find(|rule| &rule.event_type == id).cloned());
         if found.is_none() {
             self.say(Tone::Info, "Select an event type first");
         }

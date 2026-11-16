@@ -52,7 +52,8 @@ pub const PATHS: &[(&str, &str)] = &[
 pub const FALLBACK: &str = "info";
 
 pub fn path(name: &str) -> &'static str {
-    let found = PATHS.iter().find(|(known, _)| *known == name).or_else(|| PATHS.iter().find(|(known, _)| *known == FALLBACK));
+    let found =
+        PATHS.iter().find(|(known, _)| *known == name).or_else(|| PATHS.iter().find(|(known, _)| *known == FALLBACK));
     found.map(|(_, data)| *data).unwrap_or("")
 }
 
@@ -311,7 +312,10 @@ mod tests {
             for shape in &shapes {
                 assert!(shape.len() >= 3, "{name} has an open outline");
                 for (x, y) in shape {
-                    assert!((0.0..=VIEW).contains(x) && (0.0..=VIEW).contains(y), "{name} leaves the view box at {x},{y}");
+                    assert!(
+                        (0.0..=VIEW).contains(x) && (0.0..=VIEW).contains(y),
+                        "{name} leaves the view box at {x},{y}"
+                    );
                 }
             }
             let coverage = mask(&shapes, 24);

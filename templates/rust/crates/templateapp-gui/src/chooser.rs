@@ -23,11 +23,17 @@ pub fn title() -> String {
     format!("How do you want to open {}?", meta::APP_NAME)
 }
 
-pub fn show(ui: &mut Ui, tokens: &Tokens, icons: &Icons, default_mode: &str, remember: &mut bool, focus: bool) -> Choice {
+pub fn show(
+    ui: &mut Ui,
+    tokens: &Tokens,
+    icons: &Icons,
+    default_mode: &str,
+    remember: &mut bool,
+    focus: bool,
+) -> Choice {
     let mut choice = Choice::Waiting;
-    let frame = Frame::new()
-        .fill(color(tokens.palette.background))
-        .inner_margin(Margin::same(tokens.spacing.l.round() as i8));
+    let frame =
+        Frame::new().fill(color(tokens.palette.background)).inner_margin(Margin::same(tokens.spacing.l.round() as i8));
     CentralPanel::default().frame(frame).show(ui, |ui| {
         ui.horizontal(|ui| {
             ui.add(icons.logo(ui.ctx(), 48.0));

@@ -104,7 +104,7 @@ impl Form {
 
     pub fn show(&mut self, ctx: &Context, tokens: &Tokens) -> Verdict {
         let mut verdict = Verdict::Open;
-        let shown = Modal::new(Id::new("form-dialog")).show(ctx, |ui| {
+        let shown = Modal::new(Id::unique("form-dialog")).show(ctx, |ui| {
             ui.set_width(460.0_f32.min(ui.ctx().content_rect().width() - 48.0));
             ui.heading(&self.title);
             ui.add_space(tokens.spacing.s);
@@ -188,7 +188,7 @@ impl Confirm {
 
     pub fn show(&self, ctx: &Context, tokens: &Tokens) -> Verdict {
         let mut verdict = Verdict::Open;
-        let shown = Modal::new(Id::new("confirm-dialog")).show(ctx, |ui| {
+        let shown = Modal::new(Id::unique("confirm-dialog")).show(ctx, |ui| {
             ui.set_width(480.0_f32.min(ui.ctx().content_rect().width() - 48.0));
             ui.heading(&self.title);
             ui.add_space(tokens.spacing.s);

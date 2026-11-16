@@ -1,6 +1,8 @@
 use app_core::records::Status;
 use app_core::theme::{self, Color, Severity, Tokens};
-use egui::{Color32, Context, CornerRadius, FontFamily, FontId, Margin, Shadow, Stroke, Style, TextStyle, Theme, Visuals, vec2};
+use egui::{
+    Color32, Context, CornerRadius, FontFamily, FontId, Margin, Shadow, Stroke, Style, TextStyle, Theme, Visuals, vec2,
+};
 
 pub const SUBHEADING: &str = "subheading";
 pub const ICON_SCALE: f32 = 1.3;

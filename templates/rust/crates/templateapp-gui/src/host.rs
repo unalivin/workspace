@@ -51,7 +51,8 @@ struct Shown {
 fn shown(ctx: &Context) -> (f64, bool, Shown) {
     ctx.input(|input| {
         let viewport = input.viewport();
-        let full = viewport.maximized == Some(true) || viewport.fullscreen == Some(true) || viewport.minimized == Some(true);
+        let full =
+            viewport.maximized == Some(true) || viewport.fullscreen == Some(true) || viewport.minimized == Some(true);
         (input.time, viewport.close_requested(), Shown { size: viewport.inner_rect.map(|area| area.size()), full })
     })
 }
@@ -111,7 +112,8 @@ pub fn run(app: &mut App, mut options: Options) -> Result<String> {
             let board = Dashboard::new(app, options);
             Ok(Box::new(Window { board, next, ticked: 0.0, size: None }))
         });
-        let viewport = ViewportBuilder::default().with_title(meta::APP_NAME).with_inner_size(size).with_min_inner_size(MIN_SIZE);
+        let viewport =
+            ViewportBuilder::default().with_title(meta::APP_NAME).with_inner_size(size).with_min_inner_size(MIN_SIZE);
         eframe::run_native(meta::APP_NAME, native(viewport), creator)
     };
     outcome.map_err(|error| failure(&error))?;
@@ -187,7 +189,8 @@ pub fn choose(default_mode: &str) -> Result<PromptResult> {
                 focused: false,
             }))
         });
-        let viewport = ViewportBuilder::default().with_title(&title).with_inner_size(CHOOSER_SIZE).with_resizable(false);
+        let viewport =
+            ViewportBuilder::default().with_title(&title).with_inner_size(CHOOSER_SIZE).with_resizable(false);
         eframe::run_native(&title, native(viewport), creator)
     };
     outcome.map_err(|error| failure(&error))?;

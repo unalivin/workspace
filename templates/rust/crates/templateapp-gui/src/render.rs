@@ -155,7 +155,8 @@ fn triangle(picture: &mut Picture, textures: &Textures, id: TextureId, clip: Rec
             let texel = textures.sample(id, u, v);
             let mut source = [0.0; 4];
             for channel in 0..4 {
-                let tint = shares[0] * colors[0][channel] + shares[1] * colors[1][channel] + shares[2] * colors[2][channel];
+                let tint =
+                    shares[0] * colors[0][channel] + shares[1] * colors[1][channel] + shares[2] * colors[2][channel];
                 source[channel] = tint * texel[channel] / 255.0;
             }
             picture.blend(x, y, source);

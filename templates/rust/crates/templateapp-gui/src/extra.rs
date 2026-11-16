@@ -9,7 +9,9 @@ use app_core::userconfig::{FRONT_END_GUI, FRONT_END_TUI};
 use egui::{Button, ComboBox, Key, Label, RichText, ScrollArea, Sense, TextEdit, Ui, vec2};
 
 use crate::forms::{danger, muted};
-use crate::model::{ABOUT_TABS, AboutTab, Dashboard, NOTIFIER_MISSING, NOTIFIER_OFF, NotifierState, front_end_label, saved_value};
+use crate::model::{
+    ABOUT_TABS, AboutTab, Dashboard, NOTIFIER_MISSING, NOTIFIER_OFF, NotifierState, front_end_label, saved_value,
+};
 use crate::skin::{color, subheading};
 use crate::table::{self, Cell, fixed, flexible};
 
@@ -75,7 +77,8 @@ impl Dashboard<'_> {
             match value.definition.kind {
                 Kind::Bool => {
                     let mut on = saved == "true";
-                    if ui.checkbox(&mut on, if on { "On" } else { "Off" }).changed() {
+                    let label = if on { "On" } else { "Off" };
+                    if ui.checkbox(&mut on, label).changed() {
                         *act = Some(SettingAct::Save(key.to_string(), on.to_string()));
                     }
                 }
@@ -106,8 +109,11 @@ impl Dashboard<'_> {
                             egui::StrokeKind::Inside,
                         );
                     }
-                    let hint = if value.definition.kind == Kind::Color { "#RRGGBB, empty for the theme accent" } else { "" };
-                    let edit = ui.add(TextEdit::singleline(draft).hint_text(hint).char_limit(200).desired_width(CONTROL_WIDTH - 60.0));
+                    let hint =
+                        if value.definition.kind == Kind::Color { "#RRGGBB, empty for the theme accent" } else { "" };
+                    let edit = ui.add(
+                        TextEdit::singleline(draft).hint_text(hint).char_limit(200).desired_width(CONTROL_WIDTH - 60.0),
+                    );
                     let entered = edit.lost_focus() && ui.input(|input| input.key_pressed(Key::Enter));
                     let dirty = draft.as_str() != saved;
                     if edit.changed() {
@@ -122,7 +128,11 @@ impl Dashboard<'_> {
                     }
                 }
             }
-            if ui.add_enabled(value.stored.is_some(), Button::new("Reset")).on_hover_text("Back to the default").clicked() {
+            if ui
+                .add_enabled(value.stored.is_some(), Button::new("Reset"))
+                .on_hover_text("Back to the default")
+                .clicked()
+            {
                 *act = Some(SettingAct::Reset(key.to_string()));
             }
         });
@@ -145,7 +155,7 @@ impl Dashboard<'_> {
             "Data" => {
                 self.setting_row(ui, "Database location", &self.database_note(), |ui| {
                     ui.add(Label::new(RichText::new(self.database_path()).monospace()).wrap());
-                    if ui.add_enabled(!self.database_locked(), Button::new("Change")).clicked() {
+                    if ui.add_enabled(!self.database_locked(), Button::new("Change…")).clicked() {
                         *act = Some(SettingAct::Database);
                     }
                 });
@@ -210,12 +220,14 @@ impl Dashboard<'_> {
                 board.card(ui, |ui| {
                     ui.set_width(ui.available_width());
                     for value in board.set.list.iter().filter(|value| value.definition.group == group) {
-                        let title = if value.key == settings::KEY_ACCENT { "Custom accent" } else { value.definition.label };
+                        let title =
+                            if value.key == settings::KEY_ACCENT { "Custom accent" } else { value.definition.label };
                         let mut help = value.definition.help.to_string();
                         if value.key == settings::KEY_ACCENT {
                             help.push_str(" The color is adjusted when needed to stay readable.");
                         }
-                        board.setting_row(ui, title, &help, |ui| board.setting_control(ui, value, &mut edits, &mut act));
+                        board
+                            .setting_row(ui, title, &help, |ui| board.setting_control(ui, value, &mut edits, &mut act));
                     }
                     board.special_rows(ui, group, &mut act);
                 });
@@ -243,10 +255,15 @@ impl Dashboard<'_> {
             });
         });
         ui.add_space(self.tokens.spacing.m);
+        ui.label(format!("License: {}", meta::LICENSE));
+        ui.add_space(self.tokens.spacing.s);
         let source = service::source_link();
-        if ui.button(source.label.as_str()).on_hover_text(source.url.as_str()).clicked() {
-            *act = Some(AboutAct::Source);
-        }
+        ui.horizontal_wrapped(|ui| {
+            if ui.button(source.label.as_str()).clicked() {
+                *act = Some(AboutAct::Source);
+            }
+            muted(ui, source.url.as_str());
+        });
         if ui.button("Found a bug? Please report it on GitHub.").clicked() {
             *act = Some(AboutAct::Bug);
         }
@@ -268,7 +285,8 @@ impl Dashboard<'_> {
     }
 
     fn about_guide(&self, ui: &mut Ui, search: &mut String, act: &mut Option<AboutAct>) {
-        let edited = ui.add(TextEdit::singleline(search).hint_text("Search the guide").char_limit(100).desired_width(320.0));
+        let edited =
+            ui.add(TextEdit::singleline(search).hint_text("Search the guide").char_limit(100).desired_width(320.0));
         if edited.changed() {
             *act = Some(AboutAct::Filter);
         }
