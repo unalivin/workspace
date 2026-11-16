@@ -675,3 +675,29 @@ fn keys_reach_the_dashboard_through_the_window() {
     assert!(board.finished());
     assert_eq!(board.page_id(), NAV_RECORDS);
 }
+
+#[test]
+fn a_record_table_wider_than_its_space_scrolls_sideways() {
+    let home = TempDir::new("gui-scroll");
+    let mut app = open_app(&home);
+    let mut board = started(&mut app, options(&home));
+    board.load_demo();
+    board.show(NAV_RECORDS);
+    board.rec.selected = board.rec.list.first().map(|record| record.id);
+    let mut stage = Stage::new(900.0, 600.0, 1.0);
+    let before = stage.settle(3, |ui| board.ui(ui));
+    let over = egui::pos2(420.0, 300.0);
+    let wheel = Event::MouseWheel {
+        unit: egui::MouseWheelUnit::Point,
+        delta: egui::vec2(-400.0, 0.0),
+        phase: egui::TouchPhase::Move,
+        source: egui::MouseWheelSource::Wheel,
+        modifiers: Modifiers::NONE,
+    };
+    stage.frame(vec![Event::PointerMoved(over)], |ui| board.ui(ui));
+    stage.frame(vec![wheel], |ui| board.ui(ui));
+    let after = stage.settle(8, |ui| board.ui(ui));
+    let row = |picture: &Picture| -> Vec<[u8; 4]> { (230..520).map(|x| picture.pixel(x, 300)).collect() };
+    assert_ne!(row(&before), row(&after), "the table did not move");
+    assert_eq!(board.rec.selected, board.rec.list.first().map(|record| record.id));
+}

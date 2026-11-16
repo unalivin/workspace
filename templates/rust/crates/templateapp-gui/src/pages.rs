@@ -203,8 +203,11 @@ impl Dashboard<'_> {
                                     let cells = self.record_cells(record, columns);
                                     let selected = self.rec.selected == Some(record.id);
                                     if table::row(ui, &self.icons, &self.tokens, &slots, cells, selected).clicked() {
-                                        *act =
-                                            Some(if selected { RecordAct::Close } else { RecordAct::Select(record.id) });
+                                        *act = Some(if selected {
+                                            RecordAct::Close
+                                        } else {
+                                            RecordAct::Select(record.id)
+                                        });
                                     }
                                 }
                             },
