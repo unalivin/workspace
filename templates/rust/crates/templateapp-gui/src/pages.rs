@@ -188,23 +188,28 @@ impl Dashboard<'_> {
             ui.with_layout(Layout::bottom_up(Align::LEFT), |ui| {
                 muted(ui, format!("{} records shown", self.rec.list.len()));
                 ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
-                    let slots = table::layout(&specs, ui.available_width() - gap * 2.0, gap);
-                    table::header(ui, &self.tokens, &slots, &titles);
-                    let height = self.tokens.spacing.row_height;
-                    ScrollArea::vertical().id_salt("record-rows").auto_shrink(false).show_rows(
-                        ui,
-                        height,
-                        self.rec.list.len(),
-                        |ui, range| {
-                            for record in &self.rec.list[range] {
-                                let cells = self.record_cells(record, columns);
-                                let selected = self.rec.selected == Some(record.id);
-                                if table::row(ui, &self.icons, &self.tokens, &slots, cells, selected).clicked() {
-                                    *act = Some(if selected { RecordAct::Close } else { RecordAct::Select(record.id) });
+                    ScrollArea::horizontal().id_salt("record-table").auto_shrink(false).show(ui, |ui| {
+                        let width = ui.available_width().max(table::needed(&specs, gap));
+                        ui.set_min_width(width);
+                        let slots = table::layout(&specs, width - gap * 2.0, gap);
+                        table::header(ui, &self.tokens, &slots, &titles);
+                        let height = self.tokens.spacing.row_height;
+                        ScrollArea::vertical().id_salt("record-rows").auto_shrink(false).show_rows(
+                            ui,
+                            height,
+                            self.rec.list.len(),
+                            |ui, range| {
+                                for record in &self.rec.list[range] {
+                                    let cells = self.record_cells(record, columns);
+                                    let selected = self.rec.selected == Some(record.id);
+                                    if table::row(ui, &self.icons, &self.tokens, &slots, cells, selected).clicked() {
+                                        *act =
+                                            Some(if selected { RecordAct::Close } else { RecordAct::Select(record.id) });
+                                    }
                                 }
-                            }
-                        },
-                    );
+                            },
+                        );
+                    });
                 });
             });
         }

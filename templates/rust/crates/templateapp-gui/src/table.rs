@@ -39,6 +39,10 @@ fn place(ui: &mut Ui, area: Rect, widget: impl Widget) {
     ui.scope_builder(UiBuilder::new().max_rect(area).layout(Layout::left_to_right(Align::Center)), |ui| ui.add(widget));
 }
 
+pub fn needed(specs: &[Spec], gap: f32) -> f32 {
+    specs.iter().map(|spec| spec.fixed).sum::<f32>() + gap * (specs.len() + 1) as f32
+}
+
 pub enum Cell {
     Text(String),
     Muted(String),
@@ -124,6 +128,7 @@ mod tests {
         assert_eq!(narrow[1].1, 100.0);
         assert_eq!(narrow[2].0, 180.0);
         assert!(layout(&[], 100.0, 10.0).is_empty());
+        assert_eq!(needed(&[fixed(60.0), flexible(1.0, 100.0), fixed(80.0)], 10.0), 280.0);
         assert_eq!(layout(&[fixed(40.0), fixed(50.0)], 300.0, 10.0), vec![(0.0, 40.0), (50.0, 50.0)]);
     }
 }

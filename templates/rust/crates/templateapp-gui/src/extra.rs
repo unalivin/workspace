@@ -7,8 +7,8 @@ use app_core::settings::{self, Kind, Value};
 use app_core::theme::{self, Color};
 use app_core::userconfig::{FRONT_END_GUI, FRONT_END_TUI};
 use egui::{
-    Align, Button, CentralPanel, ComboBox, Frame, Key, Label, Layout, Margin, Panel, RichText, ScrollArea, Sense, TextEdit, Ui,
-    vec2,
+    Align, Button, CentralPanel, ComboBox, Frame, Key, Label, Layout, Margin, Panel, RichText, ScrollArea, Sense,
+    TextEdit, Ui, vec2,
 };
 
 use crate::forms::{danger, muted};

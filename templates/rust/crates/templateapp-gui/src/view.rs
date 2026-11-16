@@ -264,11 +264,8 @@ impl Dashboard<'_> {
         } else {
             Button::image_and_text(image, RichText::new(label.clone()).color(color(tint)))
         };
-        let button = if current {
-            button.fill(color(self.tokens.palette.accent))
-        } else {
-            button.frame_when_inactive(false)
-        };
+        let button =
+            if current { button.fill(color(self.tokens.palette.accent)) } else { button.frame_when_inactive(false) };
         let button = button.min_size(vec2(ui.available_width(), self.tokens.spacing.row_height));
         let hint = if self.collapsed { format!("{label}: {}", item.hint) } else { item.hint.to_string() };
         if ui.add(button).on_hover_text(hint).clicked() {
