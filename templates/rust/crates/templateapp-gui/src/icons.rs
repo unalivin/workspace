@@ -287,7 +287,8 @@ impl Icons {
 
     pub fn drawn(&self) -> Vec<String> {
         let textures = self.textures.borrow();
-        let mut names: Vec<String> = textures.keys().map(|(name, _)| name.clone()).filter(|name| name != LOGO).collect();
+        let mut names: Vec<String> =
+            textures.keys().map(|(name, _)| name.clone()).filter(|name| name != LOGO).collect();
         names.sort();
         names.dedup();
         names

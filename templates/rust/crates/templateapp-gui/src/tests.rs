@@ -958,7 +958,9 @@ impl Asked {
 fn the_chooser_offers_both_front_ends_and_marks_the_default() {
     let mut asked = Asked::new(MODE_GUI);
     let text = asked.stage.text();
-    for wanted in [chooser::title().as_str(), chooser::DASHBOARD, chooser::TERMINAL, chooser::REMEMBER, "Quit", chooser::LATER] {
+    for wanted in
+        [chooser::title().as_str(), chooser::DASHBOARD, chooser::TERMINAL, chooser::REMEMBER, "Quit", chooser::LATER]
+    {
         assert!(shown_line(&text, wanted), "the chooser lacks {wanted:?}:\n{text}");
     }
     assert_eq!(chooser::title(), format!("How do you want to open {}?", meta::APP_NAME));
