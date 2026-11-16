@@ -1,11 +1,15 @@
 use app_core::records::{self, Record, Status};
 use app_core::theme::Severity;
-use egui::{Align, Button, ComboBox, Frame, Label, Layout, Margin, Panel, RichText, ScrollArea, TextEdit, Ui};
+use egui::{
+    Align, Button, CentralPanel, ComboBox, Frame, Label, Layout, Margin, Panel, RichText, ScrollArea, TextEdit, Ui,
+};
 
 use crate::forms::{danger, muted};
 use crate::model::{Dashboard, SEARCH_LIMIT, enabled_label, event_label};
 use crate::skin::{color, severity_icon, status_icon, subheading};
 use crate::table::{self, Cell, Spec, fixed, flexible};
+
+const DETAIL_WIDTH: f32 = 340.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum RecordAct {
@@ -173,44 +177,30 @@ impl Dashboard<'_> {
         });
     }
 
-    pub(crate) fn records_page(&mut self, ui: &mut Ui) {
-        let mut query = self.rec.query.clone();
-        let mut act = None;
-        let board = &*self;
-        board.record_toolbar(ui, &mut query, &mut act);
-        if let Some(record) = board.selected_record() {
-            let frame = Frame::new()
-                .fill(color(board.tokens.palette.surface))
-                .stroke((1.0, color(board.tokens.palette.divider)))
-                .corner_radius(board.tokens.radius)
-                .inner_margin(Margin::same(board.tokens.spacing.m.round() as i8));
-            Panel::right("record-detail").frame(frame).resizable(false).exact_size(320.0).show(ui, |ui| {
-                board.record_detail(ui, record, &mut act);
-            });
-        }
-        if board.rec.list.is_empty() {
-            ui.add(Label::new(board.empty_records_text()).wrap());
+    fn record_table(&self, ui: &mut Ui, act: &mut Option<RecordAct>) {
+        if self.rec.list.is_empty() {
+            ui.add(Label::new(self.empty_records_text()).wrap());
         } else {
-            let gap = board.tokens.spacing.s;
-            let columns = &board.rec.columns;
+            let gap = self.tokens.spacing.s;
+            let columns = &self.rec.columns;
             let specs: Vec<Spec> = columns.iter().map(|column| column_spec(column)).collect();
             let titles: Vec<&str> = columns.iter().map(|column| records::column_label(column)).collect();
             ui.with_layout(Layout::bottom_up(Align::LEFT), |ui| {
-                muted(ui, format!("{} records shown", board.rec.list.len()));
+                muted(ui, format!("{} records shown", self.rec.list.len()));
                 ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
                     let slots = table::layout(&specs, ui.available_width() - gap * 2.0, gap);
-                    table::header(ui, &board.tokens, &slots, &titles);
-                    let height = board.tokens.spacing.row_height;
+                    table::header(ui, &self.tokens, &slots, &titles);
+                    let height = self.tokens.spacing.row_height;
                     ScrollArea::vertical().id_salt("record-rows").auto_shrink(false).show_rows(
                         ui,
                         height,
-                        board.rec.list.len(),
+                        self.rec.list.len(),
                         |ui, range| {
-                            for record in &board.rec.list[range] {
-                                let cells = board.record_cells(record, columns);
-                                let selected = board.rec.selected == Some(record.id);
-                                if table::row(ui, &board.icons, &board.tokens, &slots, cells, selected).clicked() {
-                                    act = Some(if selected { RecordAct::Close } else { RecordAct::Select(record.id) });
+                            for record in &self.rec.list[range] {
+                                let cells = self.record_cells(record, columns);
+                                let selected = self.rec.selected == Some(record.id);
+                                if table::row(ui, &self.icons, &self.tokens, &slots, cells, selected).clicked() {
+                                    *act = Some(if selected { RecordAct::Close } else { RecordAct::Select(record.id) });
                                 }
                             }
                         },
@@ -218,6 +208,26 @@ impl Dashboard<'_> {
                 });
             });
         }
+    }
+
+    pub(crate) fn records_page(&mut self, ui: &mut Ui) {
+        let mut query = self.rec.query.clone();
+        let mut act = None;
+        let board = &*self;
+        board.record_toolbar(ui, &mut query, &mut act);
+        if let Some(record) = board.selected_record() {
+            let gap = board.tokens.spacing.m.round() as i8;
+            let frame = Frame::new()
+                .fill(color(board.tokens.palette.surface))
+                .stroke((1.0, color(board.tokens.palette.divider)))
+                .corner_radius(board.tokens.radius)
+                .inner_margin(Margin::same(gap))
+                .outer_margin(Margin { left: gap, right: 0, top: 0, bottom: 0 });
+            Panel::right("record-detail").frame(frame).resizable(false).exact_size(DETAIL_WIDTH).show(ui, |ui| {
+                board.record_detail(ui, record, &mut act);
+            });
+        }
+        CentralPanel::default().frame(Frame::NONE).show(ui, |ui| board.record_table(ui, &mut act));
         if query.sort != self.rec.query.sort || query.descending != self.rec.query.descending {
             let (key, descending) = (query.sort.clone(), query.descending);
             self.rec.query = query;

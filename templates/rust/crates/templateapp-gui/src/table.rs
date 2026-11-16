@@ -1,5 +1,5 @@
 use app_core::theme::Tokens;
-use egui::{Align, Color32, Label, Rect, Response, RichText, Sense, Ui, pos2, vec2};
+use egui::{Align, Color32, Label, Layout, Rect, Response, RichText, Sense, Ui, UiBuilder, Widget, pos2, vec2};
 
 use crate::icons::Icons;
 use crate::skin::{ICON_SCALE, alpha, color};
@@ -35,6 +35,10 @@ pub fn layout(specs: &[Spec], available: f32, gap: f32) -> Vec<(f32, f32)> {
         .collect()
 }
 
+fn place(ui: &mut Ui, area: Rect, widget: impl Widget) {
+    ui.scope_builder(UiBuilder::new().max_rect(area).layout(Layout::left_to_right(Align::Center)), |ui| ui.add(widget));
+}
+
 pub enum Cell {
     Text(String),
     Muted(String),
@@ -46,7 +50,7 @@ pub fn header(ui: &mut Ui, tokens: &Tokens, slots: &[(f32, f32)], titles: &[&str
     let (area, _) = ui.allocate_exact_size(vec2(ui.available_width(), height), Sense::hover());
     for ((left, width), title) in slots.iter().zip(titles) {
         let cell = Rect::from_min_size(pos2(area.left() + tokens.spacing.s + left, area.top()), vec2(*width, height));
-        ui.put(cell, Label::new(RichText::new(*title).small().strong()).truncate().halign(Align::LEFT));
+        place(ui, cell, Label::new(RichText::new(*title).small().strong()).truncate());
     }
     ui.painter().hline(area.x_range(), area.bottom(), (1.0, color(tokens.palette.divider)));
 }
@@ -74,20 +78,20 @@ pub fn row(
     }
     let gap = tokens.spacing.s;
     for ((left, width), cell) in slots.iter().zip(cells) {
-        let place = Rect::from_min_size(pos2(area.left() + gap + left, area.top()), vec2(*width, height));
+        let slot = Rect::from_min_size(pos2(area.left() + gap + left, area.top()), vec2(*width, height));
         match cell {
             Cell::Text(text) => {
-                ui.put(place, Label::new(text).truncate().halign(Align::LEFT));
+                place(ui, slot, Label::new(text).truncate());
             }
             Cell::Muted(text) => {
-                ui.put(place, Label::new(RichText::new(text).weak()).truncate().halign(Align::LEFT));
+                place(ui, slot, Label::new(RichText::new(text).weak()).truncate());
             }
             Cell::Icon(name, tint, text) => {
                 let size = tokens.type_scale.body * ICON_SCALE;
-                let mark = Rect::from_center_size(pos2(place.left() + size / 2.0, place.center().y), vec2(size, size));
+                let mark = Rect::from_center_size(pos2(slot.left() + size / 2.0, slot.center().y), vec2(size, size));
                 ui.put(mark, icons.image(ui.ctx(), name, size, tint));
-                let rest = Rect::from_min_max(pos2(place.left() + size + gap, place.top()), place.max);
-                ui.put(rest, Label::new(text).truncate().halign(Align::LEFT));
+                let rest = Rect::from_min_max(pos2(slot.left() + size + gap, slot.top()), slot.max);
+                place(ui, rest, Label::new(text).truncate());
             }
         }
     }

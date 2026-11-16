@@ -6,7 +6,10 @@ use app_core::service::{self, SHORTCUTS};
 use app_core::settings::{self, Kind, Value};
 use app_core::theme::{self, Color};
 use app_core::userconfig::{FRONT_END_GUI, FRONT_END_TUI};
-use egui::{Button, ComboBox, Key, Label, RichText, ScrollArea, Sense, TextEdit, Ui, vec2};
+use egui::{
+    Align, Button, CentralPanel, ComboBox, Frame, Key, Label, Layout, Margin, Panel, RichText, ScrollArea, Sense, TextEdit, Ui,
+    vec2,
+};
 
 use crate::forms::{danger, muted};
 use crate::model::{
@@ -17,6 +20,7 @@ use crate::table::{self, Cell, fixed, flexible};
 
 const CONTROL_WIDTH: f32 = 240.0;
 const LABEL_WIDTH: f32 = 300.0;
+const GUIDE_WIDTH: f32 = 280.0;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum SettingAct {
@@ -45,25 +49,28 @@ enum AboutAct {
     Check,
 }
 
-pub fn option_label<'a>(key: &str, option: &'a str) -> &'a str {
+pub fn option_label(key: &str, option: &str) -> String {
     if key == settings::KEY_THEME {
         let label = theme::label(option);
-        if label.is_empty() { option } else { label }
-    } else {
-        option
+        return if label.is_empty() { option.to_string() } else { label.to_string() };
+    }
+    let mut letters = option.chars();
+    match letters.next() {
+        Some(first) => first.to_uppercase().chain(letters).collect(),
+        None => String::new(),
     }
 }
 
 impl Dashboard<'_> {
     fn setting_row(&self, ui: &mut Ui, title: &str, help: &str, control: impl FnOnce(&mut Ui)) {
         ui.horizontal_top(|ui| {
-            ui.allocate_ui(vec2(LABEL_WIDTH.min(ui.available_width() * 0.45), 0.0), |ui| {
-                ui.vertical(|ui| {
-                    ui.label(RichText::new(title).strong());
-                    if !help.is_empty() {
-                        ui.add(Label::new(RichText::new(help).small().weak()).wrap());
-                    }
-                });
+            let width = LABEL_WIDTH.min(ui.available_width() * 0.45);
+            ui.allocate_ui_with_layout(vec2(width, 0.0), Layout::top_down(Align::LEFT), |ui| {
+                ui.set_width(width);
+                ui.label(RichText::new(title).strong());
+                if !help.is_empty() {
+                    ui.add(Label::new(RichText::new(help).small().weak()).wrap());
+                }
             });
             ui.vertical(control);
         });
@@ -85,7 +92,7 @@ impl Dashboard<'_> {
                 Kind::Enum => {
                     let mut chosen = saved.to_string();
                     ComboBox::from_id_salt(("setting", key))
-                        .selected_text(option_label(key, saved).to_string())
+                        .selected_text(option_label(key, saved))
                         .width(CONTROL_WIDTH)
                         .show_ui(ui, |ui| {
                             for option in value.definition.options {
@@ -136,11 +143,8 @@ impl Dashboard<'_> {
                 *act = Some(SettingAct::Reset(key.to_string()));
             }
         });
-        let mut source = value.source.label().to_string();
         let note = self.setting_note(value);
-        if !note.is_empty() {
-            source = format!("{source}, {note}");
-        }
+        let mut source = if note.is_empty() { option_label("", value.source.label()) } else { note };
         if value.definition.kind == Kind::Int {
             source = format!("{source}. Whole number from {} to {}", value.definition.min, value.definition.max);
         }
@@ -292,26 +296,30 @@ impl Dashboard<'_> {
         }
         ui.add_space(self.tokens.spacing.s);
         let page = &self.about;
+        let shown = page.section.or_else(|| page.hits.first().copied());
         if page.hits.is_empty() {
             ui.add(Label::new("No section mentions these words. Clear the search box to see the contents.").wrap());
             return;
         }
-        ui.horizontal_top(|ui| {
-            ui.allocate_ui(vec2(260.0_f32.min(ui.available_width() * 0.4), ui.available_height()), |ui| {
-                ScrollArea::vertical().id_salt("guide-contents").auto_shrink(false).show(ui, |ui| {
+        let gap = self.tokens.spacing.m.round() as i8;
+        let contents = Frame::NONE.inner_margin(Margin { left: 0, right: gap, top: 0, bottom: 0 });
+        Panel::left("guide-contents").frame(contents).resizable(false).exact_size(GUIDE_WIDTH).show(ui, |ui| {
+            ScrollArea::vertical().id_salt("guide-contents").auto_shrink(false).show(ui, |ui| {
+                ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
                     for index in &page.hits {
                         let section = &page.usage.sections[*index];
                         let indent = "   ".repeat(section.level.saturating_sub(1).min(3));
-                        let chosen = page.section == Some(*index);
+                        let chosen = shown == Some(*index);
                         if ui.selectable_label(chosen, format!("{indent}{}", section.title)).clicked() {
                             *act = Some(AboutAct::Section(Some(*index)));
                         }
                     }
                 });
             });
-            ui.separator();
+        });
+        let body = Frame::NONE.inner_margin(Margin { left: gap, right: 0, top: 0, bottom: 0 });
+        CentralPanel::default().frame(body).show(ui, |ui| {
             ScrollArea::vertical().id_salt("guide-section").auto_shrink(false).show(ui, |ui| {
-                let shown = page.section.or_else(|| page.hits.first().copied());
                 if let Some(section) = shown.and_then(|index| page.usage.sections.get(index)) {
                     ui.label(RichText::new(&section.title).text_style(subheading()).strong());
                     ui.add_space(self.tokens.spacing.xs);

@@ -27,6 +27,9 @@ unsafe_code = "forbid"
 [workspace.lints.clippy]
 all = { level = "deny", priority = -1 }
 
+[profile.dev.package.templateapp-gui]
+opt-level = 2
+
 [profile.release]
 lto = "thin"
 strip = "symbols"

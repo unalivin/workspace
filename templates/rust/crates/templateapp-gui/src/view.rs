@@ -256,12 +256,20 @@ impl Dashboard<'_> {
         let nav = self.nav;
         let item = &nav[index];
         let current = index == self.page;
-        let tint = if current { self.tokens.palette.accent } else { self.tokens.palette.text };
+        let tint = if current { self.tokens.on_accent } else { self.tokens.palette.text };
         let image = self.icon(ui.ctx(), nav_icon(item.id), tint);
         let label = self.nav_label(item);
-        let button = if self.collapsed { Button::image(image) } else { Button::image_and_text(image, label.clone()) };
-        let width = ui.available_width();
-        let button = button.selected(current).min_size(vec2(width, self.tokens.spacing.row_height));
+        let button = if self.collapsed {
+            Button::image(image)
+        } else {
+            Button::image_and_text(image, RichText::new(label.clone()).color(color(tint)))
+        };
+        let button = if current {
+            button.fill(color(self.tokens.palette.accent))
+        } else {
+            button.frame_when_inactive(false)
+        };
+        let button = button.min_size(vec2(ui.available_width(), self.tokens.spacing.row_height));
         let hint = if self.collapsed { format!("{label}: {}", item.hint) } else { item.hint.to_string() };
         if ui.add(button).on_hover_text(hint).clicked() {
             self.page = index;

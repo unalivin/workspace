@@ -11,7 +11,7 @@ use crate::skin;
 
 pub const WIDTH: f32 = 1180.0;
 pub const HEIGHT: f32 = 760.0;
-const FRAMES: usize = 4;
+const FRAMES: usize = 3;
 
 pub const NAMES: &[&str] = &[
     "first-start",
