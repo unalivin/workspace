@@ -194,8 +194,11 @@ fn is_copyright_line(line: &str) -> bool {
 }
 
 fn split_copyrights(raw: &str) -> (Vec<String>, String) {
-    let normalized: String =
-        raw.replace("\r\n", "\n").chars().filter(|letter| *letter == '\n' || *letter == '\t' || !letter.is_control()).collect();
+    let normalized: String = raw
+        .replace("\r\n", "\n")
+        .chars()
+        .filter(|letter| *letter == '\n' || *letter == '\t' || !letter.is_control())
+        .collect();
     let mut copyrights: Vec<String> = Vec::new();
     let mut body: Vec<String> = Vec::new();
     for line in normalized.lines().map(str::trim_end) {

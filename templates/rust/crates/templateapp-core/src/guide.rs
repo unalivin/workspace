@@ -31,9 +31,15 @@ fn anchor(title: &str, taken: &mut HashMap<String, usize>) -> String {
     }
     let trimmed = text.trim_matches('-');
     let base = if trimmed.is_empty() { "section".to_string() } else { trimmed.to_string() };
-    let count = taken.entry(base.clone()).or_insert(0);
-    *count += 1;
-    if *count == 1 { base } else { format!("{base}-{}", *count - 1) }
+    let mut candidate = base.clone();
+    let mut number = taken.get(&base).copied().unwrap_or(0);
+    while taken.contains_key(&candidate) {
+        number += 1;
+        candidate = format!("{base}-{number}");
+    }
+    taken.insert(base, number);
+    taken.entry(candidate.clone()).or_insert(0);
+    candidate
 }
 
 fn heading(line: &str) -> Option<(usize, String)> {
@@ -182,6 +188,9 @@ mod tests {
         assert!(guide.sections[2].body.contains("# not a heading"));
         assert_eq!(guide.find("getting-started-1"), Some(3));
         assert_eq!(guide.find("missing"), None);
+        let clashing = parse("# Step\n\n# Step\n\n# Step 1\n\n# Step\n\n# Step-1\n");
+        let anchors: Vec<&str> = clashing.sections.iter().map(|section| section.anchor.as_str()).collect();
+        assert_eq!(anchors, vec!["step", "step-1", "step-1-1", "step-2", "step-1-2"]);
         assert!(parse("").sections.is_empty());
         assert_eq!(parse("#NoSpace\n####### seven\n# \n").sections[0].title, "Introduction");
     }
@@ -213,7 +222,7 @@ mod tests {
 
     proptest! {
         #[test]
-        fn parsing_searching_and_flattening_never_panic(markdown in "[#`| a-zé…\\n-]{0,200}", query in ".{0,20}") {
+        fn parsing_searching_and_flattening_never_panic(markdown in "[#`| a-c0-2é…\\n-]{0,200}", query in ".{0,20}") {
             let guide = parse(&markdown);
             let _ = guide.search(&query);
             let _ = plain(&markdown);

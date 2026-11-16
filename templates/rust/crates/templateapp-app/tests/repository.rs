@@ -39,15 +39,15 @@ const REQUIRED_FILES: &[&str] = &[
 ];
 const REQUIRED_DIRECTORIES: &[&str] = &["migrations", "scripts", "assets", "testdata", "docs", "docs/adr", "fuzz"];
 const SKIPPED_DIRECTORIES: &[&str] = &[".git", "dist", "target", "node_modules", "corpus", "artifacts", "coverage"];
-const README_SECTIONS: &[&str] = &["Download", "Install", "Usage", "Documentation", "Security", "Contributing", "License"];
+const README_SECTIONS: &[&str] =
+    &["Download", "Install", "Usage", "Documentation", "Security", "Contributing", "License"];
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
 fn collect(directory: &Path, found: &mut Vec<PathBuf>) {
-    let mut entries: Vec<PathBuf> =
-        std::fs::read_dir(directory).unwrap().map(|entry| entry.unwrap().path()).collect();
+    let mut entries: Vec<PathBuf> = std::fs::read_dir(directory).unwrap().map(|entry| entry.unwrap().path()).collect();
     entries.sort();
     for path in entries {
         let name = path.file_name().unwrap().to_string_lossy().to_string();
@@ -312,7 +312,10 @@ fn no_email_address_appears_anywhere() {
 fn source_files_have_no_comments() {
     let marker = ["/", "/ note"].concat();
     assert_eq!(rust_comment_line(&format!("fn main() {{}}\n{marker}\n")), Some(2));
-    assert_eq!(rust_comment_line(&format!("let text = \"{marker}\";\nlet letter = '/';\nlet raw = r#\"{marker}\"#;\n")), None);
+    assert_eq!(
+        rust_comment_line(&format!("let text = \"{marker}\";\nlet letter = '/';\nlet raw = r#\"{marker}\"#;\n")),
+        None
+    );
     assert_eq!(rust_comment_line(&format!("fn pick<'a>(text: &'a str) -> &'a str {{ text }} {marker}")), Some(1));
     let mut sources = 0;
     for path in project_files() {
@@ -361,7 +364,8 @@ fn the_configuration_document_lists_every_setting() {
     for definition in settings::DEFINITIONS {
         let value = documented.get(definition.key);
         assert!(value.is_some(), "docs/CONFIGURATION.md does not document {}", definition.key);
-        let wanted = if definition.default.is_empty() { "empty".to_string() } else { format!("`{}`", definition.default) };
+        let wanted =
+            if definition.default.is_empty() { "empty".to_string() } else { format!("`{}`", definition.default) };
         assert_eq!(value, Some(&wanted), "docs/CONFIGURATION.md gives another default for {}", definition.key);
         for option in definition.options {
             assert!(
@@ -406,10 +410,12 @@ const STORAGE_MODULES: &[&str] = &[
     "crates/templateapp-core/src/records.rs",
     "crates/templateapp-core/src/notify.rs",
 ];
-const DATABASE_USERS: &[&str] = &["crates/templateapp-core/src/error.rs", "fuzz/fuzz_targets/records_search_expression.rs"];
+const DATABASE_USERS: &[&str] =
+    &["crates/templateapp-core/src/error.rs", "fuzz/fuzz_targets/records_search_expression.rs"];
 const STATEMENT_WORDS: &[&str] =
     &["SELECT ", "INSERT ", "UPDATE ", "DELETE ", "PRAGMA ", " WHERE ", "ORDER BY", " FROM ", "CREATE ", "DROP "];
-const ALLOWED_BUILDERS: &[&str] = &["format!(\"EXPLAIN QUERY PLAN {sql}\")", "ends_with(&format!(\"PRAGMA {marker}\"))"];
+const ALLOWED_BUILDERS: &[&str] =
+    &["format!(\"EXPLAIN QUERY PLAN {sql}\")", "ends_with(&format!(\"PRAGMA {marker}\"))"];
 const TEXT_BUILDERS: &[&str] = &["format!(", "push_str(", "concat!(", "write!(", "writeln!("];
 
 fn builds_a_statement(line: &str) -> bool {
