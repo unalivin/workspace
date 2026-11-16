@@ -197,7 +197,7 @@ pub fn prompt_terminal(input: &mut dyn BufRead, output: &mut dyn Write, default_
         write!(output, "Choice [Enter = {key}, remember: {}]: ", if remember { "on" } else { "off" })?;
         output.flush()?;
         let mut line = Vec::new();
-        let read = (&mut *input).take(4096).read_until(b'\n', &mut line)?;
+        let read = std::io::Read::take(&mut *input, 4096).read_until(b'\n', &mut line)?;
         let ended = read == 0 || line.last() != Some(&b'\n');
         let answer = String::from_utf8_lossy(&line).trim().to_lowercase();
         if ended && answer.is_empty() {
