@@ -1,0 +1,20 @@
+[package]
+name = "templateapp-tui"
+description = "Terminal UI of Template App"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lib]
+name = "app_tui"
+
+[lints]
+workspace = true
+
+[dependencies]
+app_core = { package = "templateapp-core", path = "../templateapp-core" }
+ratatui = { workspace = true }
+unicode-width = { workspace = true }

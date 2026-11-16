@@ -164,6 +164,10 @@ impl App {
         self.created
     }
 
+    pub fn dismiss_welcome(&mut self) {
+        self.created = false;
+    }
+
     pub fn now(&self) -> Timestamp {
         self.options.clock.now()
     }

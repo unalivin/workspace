@@ -12,9 +12,15 @@ pub enum AppError {
 
 pub type Result<T> = std::result::Result<T, AppError>;
 
+const BUSY: &str = "The database is busy: another program is writing to it. Wait a moment and try again.";
+
 impl AppError {
     pub fn invalid(field: &str, problem: impl Into<String>, fix: impl Into<String>) -> Self {
         AppError::Validation { field: field.to_string(), problem: problem.into(), fix: fix.into() }
+    }
+
+    pub fn is_busy(&self) -> bool {
+        matches!(self, AppError::Storage(message) if message == BUSY)
     }
 
     pub fn is_usage(&self) -> bool {
@@ -41,9 +47,7 @@ impl From<rusqlite::Error> for AppError {
     fn from(error: rusqlite::Error) -> Self {
         match error {
             rusqlite::Error::SqliteFailure(code, _) if code.code == rusqlite::ErrorCode::DatabaseBusy => {
-                AppError::Storage(
-                    "The database is busy: another program is writing to it. Wait a moment and try again.".to_string(),
-                )
+                AppError::Storage(BUSY.to_string())
             }
             other => AppError::Storage(format!("database error: {other}")),
         }

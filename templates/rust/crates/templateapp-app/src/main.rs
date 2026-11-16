@@ -5,7 +5,7 @@ use app_cli::{Env, Hooks};
 use app_core::launcher::Session;
 use app_core::notifier::{self, Autostart};
 use app_core::platform::{self, Os};
-use app_core::service::Options;
+use app_core::service::{App, Options};
 
 fn main() {
     let options = Options::system();
@@ -27,6 +27,19 @@ fn main() {
     let window = |program: &str, arguments: &[String]| {
         platform::open_terminal_window(os, program, arguments, &platform::spawn_detached)
     };
+    let open_url = move |url: &str| platform::open_repository_url(os, url, &platform::spawn_detached);
+    let open_tui = |app: &mut App| {
+        app_tui::run(
+            app,
+            app_tui::Options {
+                env: environment.clone(),
+                system_dark: app_tui::screen::dark_background(&environment),
+                autostart: Some(autostart()),
+                has_dashboard: false,
+                open_url: Some(Box::new(open_url)),
+            },
+        )
+    };
     let mut input = stdin.lock();
     let mut output = std::io::stdout();
     let mut errors = std::io::stderr();
@@ -42,6 +55,7 @@ fn main() {
             deliver: Some(&deliver),
             autostart: Some(&autostart),
             open_terminal_window: Some(&window),
+            open_tui: Some(&open_tui),
             ..Hooks::default()
         },
     });
