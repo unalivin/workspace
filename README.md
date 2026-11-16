@@ -45,7 +45,8 @@ What exists and what does not is stated in [docs/ROADMAP.md](docs/ROADMAP.md).
 | Path | Purpose |
 |---|---|
 | `scripts/` | Workspace tooling: project registry, checks, workflow generator, project creation, split and publish |
-| `templates/go` | Reusable Go application skeleton, copied into each Go project. The Rust and C++ templates are not written yet. |
+| `templates/go` | Reusable Go application skeleton, copied into each Go project |
+| `templates/rust` | Reusable Rust application skeleton, copied into each Rust project. The C++ template is not written yet. |
 | `templates/workflows/` | Workflow templates that `scripts/gen-workflows.sh` renders into `.github/workflows/` |
 | `docs/` | Workspace documentation |
 | `<project>/` | One independent application per folder |

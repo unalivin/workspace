@@ -29,6 +29,8 @@ make -C certwatch check
 | `TEMPLATE_ICON_CONCEPT` | Icon concept from the registry |
 | `templates/<language>` | Folder name |
 
+For a Rust project, run `make fmt docs notices` in the new folder before `make check`. The folder name replaces `templateapp` inside source lines, so `rustfmt` may wrap them differently, and the generated documents name the crates. No Rust project has been created from the template yet, so this step is expected but not exercised.
+
 ## A project that is not in the registry
 
 Add a row to `scripts/projects.tsv` first, with status `Not started`, seven topics and a description of about 200 to 280 characters. The registry check expects exactly 25 rows and the language split 14 Go, 8 Rust and 3 C++, so a new project also needs those expectations in `scripts/verify-repo.sh` updated in the same change.

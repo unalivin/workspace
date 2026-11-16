@@ -5,7 +5,7 @@ Every project has one primary language. SQL and Bash are supporting languages in
 | Language | Projects | Template | State of the template |
 |---|---|---|---|
 | Go | 14 | `templates/go` | Present. Checked by the workflow `CI template-go` on Linux, macOS and Windows. |
-| Rust | 8 | `templates/rust` | Not written yet |
+| Rust | 8 | `templates/rust` | Present. Checked by the workflow `CI template-rust` on Linux, macOS and Windows. |
 | C++ | 3 | `templates/cpp` | Not written yet |
 
 `scripts/new-project.sh` refuses a language whose template folder does not exist.
@@ -35,22 +35,30 @@ System packages for the dashboard build:
 
 `templates/go/scripts/dev-setup.sh` reports what is missing and `--install` installs it. The versions above are defined in `templates/go/go.mod` and `templates/go/scripts/lib.sh`; change them there.
 
-## Rust (planned profile)
+## Rust
 
 | | |
 |---|---|
-| Toolchain | Stable Rust pinned in `rust-toolchain.toml` |
-| Layout | Cargo workspace: `crates/<name>-core`, `-app`, `-tui`, `-gui` |
-| Dashboard | egui with eframe |
-| Terminal UI | ratatui with crossterm |
-| SQLite | `rusqlite` with the `bundled` feature and FTS5 |
-| Build without dashboard | `--no-default-features` |
-| Format and lint | `cargo fmt --check`, `cargo clippy -- -D warnings` |
-| Tests | `cargo test`, `proptest`, `cargo fuzz` for parsers |
-| Supply chain | `cargo audit`, `cargo deny` |
-| Packaging | `cargo-packager` or `cargo-bundle`, pinned |
+| Toolchain | Rust `1.100.0`, pinned in `rust-toolchain.toml`; edition 2024 |
+| Layout | Cargo workspace: `crates/<name>-core`, `-app`, `-tui`, `-gui`; `migrations/`, `testdata/`, `scripts/`, and `fuzz/` as its own workspace |
+| Dashboard | egui and eframe `0.37.0`, with the toolkit look replaced by the template's design tokens |
+| Terminal UI | ratatui `0.30.2` with crossterm `0.29.0` |
+| SQLite | `rusqlite` `0.43.0` with the `bundled` feature, which includes FTS5 |
+| Build with dashboard | `make build` |
+| Build without dashboard | `make build-nogui` (the core, terminal and application crates with `--no-default-features`) |
+| Format and lint | `cargo fmt --check`, `cargo clippy` with warnings as errors; `unsafe_code` is forbidden |
+| Tests | `cargo test`, `proptest` `1.12.0`, AddressSanitizer through `make race-or-sanitize`, `cargo fuzz` `0.13.2` through `make fuzz` |
+| Supply chain | `cargo audit` `0.23.0`, `cargo deny` `0.20.2`; license review by `make notices` |
+| Packaging | `cargo bundle` `0.12.0` for the macOS application bundle, wrapped by `scripts/package.sh` |
+| Scripts | `shellcheck` `0.11.0.1`, `shfmt` `4.2.0`, `bats` `1.13.0` |
 
-No version is recorded because the template does not exist yet.
+System packages:
+
+- Debian or Ubuntu: a C compiler for the bundled SQLite. The dashboard needs no extra headers to build; to run it needs the usual desktop libraries (X11 or Wayland, `libxkbcommon`, a graphics driver with Vulkan or OpenGL).
+- macOS: the Xcode command line tools
+- Windows: Build Tools for Visual Studio with the Windows SDK
+
+`templates/rust/scripts/dev-setup.sh` reports what is missing and `--install` installs it. The versions above are defined in `templates/rust/Cargo.toml`, `templates/rust/rust-toolchain.toml` and `templates/rust/scripts/lib.sh`; change them there.
 
 ## C++ (planned profile)
 
