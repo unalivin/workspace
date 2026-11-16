@@ -313,9 +313,7 @@ fn scan(row: &Row<'_>) -> rusqlite::Result<RawNotification> {
     Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?, row.get(6)?, row.get(7)?))
 }
 
-fn collect(
-    rows: impl Iterator<Item = rusqlite::Result<RawNotification>>,
-) -> Result<Vec<Notification>> {
+fn collect(rows: impl Iterator<Item = rusqlite::Result<RawNotification>>) -> Result<Vec<Notification>> {
     let mut list = Vec::new();
     for row in rows {
         let (id, event_type, severity, title, record_kind, record_id, created, read) = row?;

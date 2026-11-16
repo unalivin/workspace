@@ -20,5 +20,5 @@ workspace = true
 
 [dependencies]
 app_core = { package = "templateapp-core", path = "../templateapp-core" }
-clap = { workspace = true }
+serde = { workspace = true }
 serde_json = { workspace = true }
