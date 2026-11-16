@@ -103,8 +103,7 @@ const MENU: &[(&str, &str, MenuAction)] = &[
 ];
 
 const NO_DASHBOARD_HINT: &str = "Not available: this build has no dashboard";
-const NO_DASHBOARD: &str =
-    "This build has no dashboard. Download the standard build to use the dashboard window.";
+const NO_DASHBOARD: &str = "This build has no dashboard. Download the standard build to use the dashboard window.";
 
 pub struct Model<'a> {
     pub(crate) app: &'a mut App,
@@ -301,8 +300,7 @@ impl<'a> Model<'a> {
             self.run(action);
             return;
         }
-        self.confirm =
-            Some(Confirmation { title: title.to_string(), statement, accept: accept.to_string(), action });
+        self.confirm = Some(Confirmation { title: title.to_string(), statement, accept: accept.to_string(), action });
     }
 
     pub(crate) fn run(&mut self, action: Action) {
@@ -355,10 +353,7 @@ impl<'a> Model<'a> {
             return Err(AppError::Usage(link.reason.clone()));
         }
         let Some(open) = &self.options.open_url else {
-            return Err(AppError::Usage(format!(
-                "no browser can be started from here. Copy this link: {}",
-                link.url
-            )));
+            return Err(AppError::Usage(format!("no browser can be started from here. Copy this link: {}", link.url)));
         };
         open(&link.url).map_err(|error| AppError::Io(format!("{error}: {}", link.url)))?;
         Ok(format!("Opened {} in the browser", link.label))
@@ -690,11 +685,7 @@ impl<'a> Model<'a> {
         let mut lines = vec![Line::styled(confirm.title.clone(), Look::Heading), Line::new()];
         lines.extend(wrapped(&confirm.statement, size, Look::Plain));
         lines.push(Line::new());
-        lines.extend(wrapped(
-            &format!("▲ Press y to {}, or n or Esc to cancel.", confirm.accept),
-            size,
-            Look::Warning,
-        ));
+        lines.extend(wrapped(&format!("▲ Press y to {}, or n or Esc to cancel.", confirm.accept), size, Look::Warning));
         lines
     }
 
@@ -752,7 +743,9 @@ impl<'a> Model<'a> {
     fn overview_view(&self, size: usize) -> Vec<Line> {
         let overview = &self.overview;
         let card = |label: &str, value: i64, hint: &str| {
-            Line::plain(pad(label, 24)).with(pad(&value.to_string(), 6), Look::Accent).with(hint.to_string(), Look::Muted)
+            Line::plain(pad(label, 24))
+                .with(pad(&value.to_string(), 6), Look::Accent)
+                .with(hint.to_string(), Look::Muted)
         };
         let mut lines = vec![
             Line::styled("What needs attention", Look::Heading),
@@ -798,7 +791,6 @@ impl<'a> Model<'a> {
         }
         lines
     }
-
 }
 
 pub(crate) fn move_cursor(cursor: &mut usize, key: Key, count: usize) -> bool {

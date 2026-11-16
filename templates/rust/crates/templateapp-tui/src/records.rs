@@ -6,7 +6,7 @@ use app_core::settings::{self, split_columns, split_sort};
 use app_core::theme::Severity;
 
 use crate::model::{Action, LIST_LIMIT, Model, Notice, Preview, Submit, move_cursor};
-use crate::text::{Line, Look, pad, wrapped};
+use crate::text::{Line, Look, pad, width, wrapped};
 use crate::widgets::{Field, Form, Input as TextInput, Key, layout, row, selectable};
 
 const SEARCH_LIMIT: usize = 200;
@@ -52,11 +52,17 @@ impl RecordsPage {
 }
 
 pub(crate) fn severity_options() -> Vec<(String, String)> {
-    Severity::ALL.iter().map(|level| (level.as_str().to_string(), format!("{} {}", level.glyph(), level.label()))).collect()
+    Severity::ALL
+        .iter()
+        .map(|level| (level.as_str().to_string(), format!("{} {}", level.glyph(), level.label())))
+        .collect()
 }
 
 fn status_options() -> Vec<(String, String)> {
-    Status::ALL.iter().map(|status| (status.as_str().to_string(), format!("{} {}", status.glyph(), status.label()))).collect()
+    Status::ALL
+        .iter()
+        .map(|status| (status.as_str().to_string(), format!("{} {}", status.glyph(), status.label())))
+        .collect()
 }
 
 pub(crate) fn borrowed(options: &[(String, String)]) -> Vec<(&str, &str)> {
@@ -409,12 +415,19 @@ impl Model<'_> {
             return lines;
         }
         let chosen = self.values.get(settings::KEY_RECORD_COLUMNS).map(|value| split_columns(&value.raw));
-        let columns: Vec<(&str, usize, bool)> =
-            [("id", 5, false), ("name", 16, true), ("status", 13, false), ("severity", 12, false), ("updated", 16, false), ("state", 8, false)]
-                .into_iter()
-                .filter(|(key, _, _)| chosen.as_ref().is_none_or(|shown| shown.iter().any(|column| column == key)))
-                .filter(|(key, _, _)| size >= 84 || *key != "updated")
-                .collect();
+        let moment = self.rec.list.first().map(|record| width(&self.app.format_time(record.updated_at))).unwrap_or(16);
+        let columns: Vec<(&str, usize, bool)> = [
+            ("id", 5, false),
+            ("name", 16, true),
+            ("status", 13, false),
+            ("severity", 11, false),
+            ("updated", moment, false),
+            ("state", 8, false),
+        ]
+        .into_iter()
+        .filter(|(key, _, _)| chosen.as_ref().is_none_or(|shown| shown.iter().any(|column| column == key)))
+        .filter(|(key, _, _)| size >= 67 + moment || *key != "updated")
+        .collect();
         let shape: Vec<(usize, bool)> = columns.iter().map(|(_, column, flex)| (*column, *flex)).collect();
         let widths = layout(&shape, size.saturating_sub(2));
         let titles: Vec<String> = columns.iter().map(|(key, _, _)| records::column_label(key).to_uppercase()).collect();
@@ -450,7 +463,10 @@ impl Model<'_> {
             lines.push(Line::styled(pad(&format!("Record {}: {}", record.id, record.name), size), Look::Heading));
             lines.push(
                 Line::plain(format!("Status {} {} · Severity ", record.status.glyph(), record.status.label()))
-                    .with(format!("{} {}", record.severity.glyph(), record.severity.label()), Look::Level(record.severity))
+                    .with(
+                        format!("{} {}", record.severity.glyph(), record.severity.label()),
+                        Look::Level(record.severity),
+                    )
                     .with(format!(" · {} · Revision {}", enabled_label(record.enabled), record.revision), Look::Plain),
             );
             lines.push(Line::styled(

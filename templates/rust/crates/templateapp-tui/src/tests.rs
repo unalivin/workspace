@@ -178,7 +178,10 @@ fn an_edit_that_lost_a_race_keeps_the_form_open_and_explains() {
     write(&mut model, "Shared");
     press(&mut model, &[Key::Ctrl('s'), Key::Char('e')]);
     let current = other.records().get(1).unwrap();
-    other.records().update(1, current.revision, &Input { note: "changed elsewhere".to_string(), ..current.input() }).unwrap();
+    other
+        .records()
+        .update(1, current.revision, &Input { note: "changed elsewhere".to_string(), ..current.input() })
+        .unwrap();
     write(&mut model, " edited");
     model.handle(Key::Ctrl('s'));
     assert!(problem(&model).starts_with("another window changed this record"), "{}", problem(&model));
@@ -295,6 +298,7 @@ fn notifications_are_read_and_rules_are_edited() {
     let home = TempDir::new("tui-inbox");
     let mut app = open_app(&home);
     let mut model = Model::new(&mut app, options(&home, false, None));
+    model.resize(120, 30);
     press(&mut model, &[Key::Esc, Key::Char('3')]);
     assert!(model.screen().contains("No notifications. They appear when a record needs attention or is completed."));
     press(&mut model, &[Key::Char('1'), Key::Char('l'), Key::Char('3')]);
@@ -415,12 +419,17 @@ fn about_opens_links_only_on_request_and_shows_the_guide_and_diagnostics() {
     model.resize(120, 40);
     press(&mut model, &[Key::Esc, Key::Char('5')]);
     let screen = model.screen();
-    for wanted in ["License: MIT", "Source Code", "Report a vulnerability privately", "Nothing is sent by the application."] {
+    for wanted in
+        ["License: MIT", "Source Code", "Report a vulnerability privately", "Nothing is sent by the application."]
+    {
         assert!(screen.contains(wanted), "missing {wanted:?} in\n{screen}");
     }
     model.handle(Key::Enter);
     let (kind, text) = message(&model);
-    assert!(kind == Notice::Failure && text.starts_with("no browser can be started from here. Copy this link: https://"), "{text}");
+    assert!(
+        kind == Notice::Failure && text.starts_with("no browser can be started from here. Copy this link: https://"),
+        "{text}"
+    );
     drop(model);
     let opened: Opened = Rc::new(RefCell::new(Vec::new()));
     let mut model = Model::new(&mut app, options(&home, false, Some(opened.clone())));
@@ -430,7 +439,10 @@ fn about_opens_links_only_on_request_and_shows_the_guide_and_diagnostics() {
     assert_eq!(opened.borrow().as_slice(), [service::source_link().url]);
     press(&mut model, &[Key::Down, Key::Enter]);
     let screen = model.screen();
-    assert!(screen.contains("Report a bug") && screen.contains("Press Enter to open the report form in the browser"), "{screen}");
+    assert!(
+        screen.contains("Report a bug") && screen.contains("Press Enter to open the report form in the browser"),
+        "{screen}"
+    );
     assert_eq!(opened.borrow().len(), 1);
     model.handle(Key::Enter);
     assert_eq!(message(&model), (Notice::Success, "Opened Report a bug in the browser".to_string()));
@@ -519,7 +531,10 @@ fn every_screen_fills_the_terminal_exactly_at_every_size() {
     press(&mut model, &[Key::Char('2'), Key::Enter]);
     check(&mut model, "detail");
     model.handle(Key::Char('e'));
-    write(&mut model, " 日本語のテキスト and a very long name that keeps going beyond the width of a narrow terminal window");
+    write(
+        &mut model,
+        " 日本語のテキスト and a very long name that keeps going beyond the width of a narrow terminal window",
+    );
     check(&mut model, "form");
     press(&mut model, &[Key::Esc, Key::Char('d')]);
     check(&mut model, "confirm");

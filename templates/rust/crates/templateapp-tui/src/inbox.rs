@@ -6,7 +6,7 @@ use app_core::theme::Severity;
 
 use crate::model::{LIST_LIMIT, Model, Notice, Submit, move_cursor};
 use crate::records::{borrowed, severity_options};
-use crate::text::{Line, Look, window, wrapped};
+use crate::text::{Line, Look, width, window, wrapped};
 use crate::widgets::{Field, Form, Key, layout, row, selectable};
 
 #[derive(Default)]
@@ -189,7 +189,10 @@ impl Model<'_> {
         tabs.0.extend(tab("Rules", page.rules).0);
         let mut lines = vec![tabs, Line::new()];
         if page.rules {
-            let widths = layout(&[(22, true), (7, false), (12, false), (11, false), (7, false), (7, false)], size.saturating_sub(2));
+            let widths = layout(
+                &[(22, true), (7, false), (12, false), (11, false), (7, false), (7, false)],
+                size.saturating_sub(2),
+            );
             let titles = ["EVENT", "ENABLED", "MIN SEVERITY", "QUIET HOURS", "DEDUP", "SOURCE"];
             lines.push(Line::styled(format!("  {}", row(&titles, &widths)), Look::Muted));
             for (index, rule) in page.rule_list.iter().enumerate() {
@@ -208,7 +211,9 @@ impl Model<'_> {
                 ];
                 lines.push(selectable(&row(&cells, &widths), index == page.rule_cursor, size));
             }
-            if let Some(event) = page.rule_list.get(page.rule_cursor).and_then(|rule| notify::event_type(&rule.event_type)) {
+            if let Some(event) =
+                page.rule_list.get(page.rule_cursor).and_then(|rule| notify::event_type(&rule.event_type))
+            {
                 lines.push(Line::new());
                 lines.extend(wrapped(event.description, size, Look::Plain));
             }
@@ -229,25 +234,40 @@ impl Model<'_> {
             lines.extend(wrapped(message, size, Look::Plain));
             return lines;
         }
-        let widths = layout(&[(4, false), (16, false), (12, false), (6, false), (20, true), (10, false)], size.saturating_sub(2));
-        let titles = ["ID", "WHEN", "SEVERITY", "STATE", "TITLE", "LINK"];
+        let moment = page.list.first().map(|item| width(&self.app.format_time(item.created_at))).unwrap_or(16);
+        let columns: Vec<(&str, usize, bool)> = [
+            ("ID", 4, false),
+            ("WHEN", moment, false),
+            ("SEVERITY", 11, false),
+            ("STATE", 6, false),
+            ("TITLE", 20, true),
+            ("LINK", 10, false),
+        ]
+        .into_iter()
+        .filter(|(title, _, _)| size >= 54 + moment || *title != "WHEN")
+        .filter(|(title, _, _)| size >= 76 + moment || *title != "LINK")
+        .collect();
+        let shape: Vec<(usize, bool)> = columns.iter().map(|(_, column, flex)| (*column, *flex)).collect();
+        let widths = layout(&shape, size.saturating_sub(2));
+        let titles: Vec<&str> = columns.iter().map(|(title, _, _)| *title).collect();
         lines.push(Line::styled(format!("  {}", row(&titles, &widths)), Look::Muted));
         let rows = height.saturating_sub(lines.len() + 1).max(3);
         let (start, end) = window(page.list.len(), page.cursor, rows);
         for (index, item) in page.list.iter().enumerate().take(end).skip(start) {
-            let link = if item.record_id == 0 {
-                "-".to_string()
-            } else {
-                format!("{} {}", item.record_kind, item.record_id)
-            };
-            let cells = [
-                item.id.to_string(),
-                self.app.format_time(item.created_at),
-                format!("{} {}", item.severity.glyph(), item.severity.label()),
-                if item.unread() { "Unread" } else { "Read" }.to_string(),
-                item.title.clone(),
-                link,
-            ];
+            let link =
+                if item.record_id == 0 { "-".to_string() } else { format!("{} {}", item.record_kind, item.record_id) };
+            let state = if item.unread() { "Unread" } else { "Read" };
+            let cells: Vec<String> = columns
+                .iter()
+                .map(|(title, _, _)| match *title {
+                    "ID" => item.id.to_string(),
+                    "WHEN" => self.app.format_time(item.created_at),
+                    "SEVERITY" => format!("{} {}", item.severity.glyph(), item.severity.label()),
+                    "STATE" => state.to_string(),
+                    "TITLE" => item.title.clone(),
+                    _ => link.clone(),
+                })
+                .collect();
             let text = row(&cells, &widths);
             if index != page.cursor && item.unread() {
                 lines.push(Line::plain(format!("● {text}")));

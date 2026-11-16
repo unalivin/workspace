@@ -223,11 +223,13 @@ impl Form {
     }
 }
 
+const MIN_FLEXIBLE: usize = 8;
+
 pub fn layout(columns: &[(usize, bool)], size: usize) -> Vec<usize> {
-    let used: usize = columns.iter().map(|(column, _)| column + 2).sum();
+    let fixed: usize = columns.iter().map(|(column, flex)| if *flex { 2 } else { column + 2 }).sum();
     let flexible = columns.iter().filter(|(_, flex)| *flex).count();
-    let spare = if flexible > 0 { size.saturating_sub(used) / flexible } else { 0 };
-    columns.iter().map(|(column, flex)| if *flex { column + spare } else { *column }).collect()
+    let share = size.saturating_sub(fixed).checked_div(flexible).unwrap_or(0).max(MIN_FLEXIBLE);
+    columns.iter().map(|(column, flex)| if *flex { share } else { *column }).collect()
 }
 
 pub fn row<T: AsRef<str>>(cells: &[T], widths: &[usize]) -> String {
@@ -347,11 +349,15 @@ mod tests {
     #[test]
     fn columns_share_spare_room_and_rows_keep_their_widths() {
         assert_eq!(layout(&[(5, false), (16, true), (8, false)], 55), vec![5, 36, 8]);
-        assert_eq!(layout(&[(5, false), (16, true)], 10), vec![5, 16]);
+        assert_eq!(layout(&[(5, false), (16, true)], 10), vec![5, 8]);
+        assert_eq!(layout(&[(5, false), (7, false)], 40), vec![5, 7]);
         assert_eq!(row(&["7", "A long name"], &[3, 6]), "7    A lon…  ");
         assert_eq!(tail("/home/someone/data/app.db", 10), "…ta/app.db");
         assert_eq!(tail("short", 10), "short");
-        assert_eq!((clip_start("https://example.org/a/b", 5), clip_start("https://example.org/a/b", 9)), (String::new(), "https://…".to_string()));
+        assert_eq!(
+            (clip_start("https://example.org/a/b", 5), clip_start("https://example.org/a/b", 9)),
+            (String::new(), "https://…".to_string())
+        );
         assert_eq!(selectable("row", true, 8).text(), "▌ row   ");
         assert_eq!(selectable("row", false, 8).text(), "  row");
         assert_eq!((step(0, -1, 4), step(3, 1, 4), step(1, 10, 4), step(2, 1, 0)), (0, 3, 3, 0));

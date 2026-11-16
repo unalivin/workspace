@@ -121,15 +121,16 @@ impl Model<'_> {
                 ),
             )
         };
-        let action = |group: &str, label: &str, value: String, source: &str, help: String, action: RowAction| SettingRow {
-            group: group.to_string(),
-            label: label.to_string(),
-            value,
-            source: source.to_string(),
-            help,
-            key: None,
-            action: Some(action),
-        };
+        let action =
+            |group: &str, label: &str, value: String, source: &str, help: String, action: RowAction| SettingRow {
+                group: group.to_string(),
+                label: label.to_string(),
+                value,
+                source: source.to_string(),
+                help,
+                key: None,
+                action: Some(action),
+            };
         rows.push(action("Data", "Database location", path, &source, help, RowAction::Database));
         rows.push(action(
             "Data",
@@ -377,8 +378,12 @@ impl Model<'_> {
                 group = &row.group;
                 all.push(Line::styled(group.to_string(), Look::Heading));
             }
-            let text =
-                format!("{}  {}  {}", pad(&row.label, label_width), pad(&tail(&row.value, value_width), value_width), row.source);
+            let text = format!(
+                "{}  {}  {}",
+                pad(&row.label, label_width),
+                pad(&tail(&row.value, value_width), value_width),
+                row.source
+            );
             if index == page.cursor {
                 cursor_line = all.len();
             }

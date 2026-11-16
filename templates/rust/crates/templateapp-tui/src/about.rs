@@ -288,7 +288,9 @@ impl Model<'_> {
                 let widths = [22, size.saturating_sub(24)];
                 let mut body = vec![Line::styled(row(&["KEY", "ACTION"], &widths), Look::Muted)];
                 body.extend(
-                    service::SHORTCUTS.iter().map(|shortcut| Line::plain(row(&[shortcut.terminal, shortcut.action], &widths))),
+                    service::SHORTCUTS
+                        .iter()
+                        .map(|shortcut| Line::plain(row(&[shortcut.terminal, shortcut.action], &widths))),
                 );
                 body.extend(EXTRA_SHORTCUTS.iter().map(|(keys, action)| Line::plain(row(&[*keys, *action], &widths))));
                 body
