@@ -771,6 +771,12 @@ fn shown_line(text: &str, wanted: &str) -> bool {
     text.lines().any(|line| line == wanted)
 }
 
+fn rightmost(stage: &Stage, wanted: &str) -> egui::Pos2 {
+    let places = stage.locate_all(wanted);
+    let found = places.iter().copied().reduce(|best, next| if next.x > best.x { next } else { best });
+    found.unwrap_or_else(|| panic!("{wanted:?} is not painted:\n{}", stage.text()))
+}
+
 fn search_from_the_top_bar(stage: &mut Stage, board: &mut Dashboard<'_>, words: &str) {
     board.search.clear();
     stage.settle(2, |ui| board.ui(ui));
@@ -790,7 +796,8 @@ fn the_top_bar_searches_and_its_chip_bell_and_help_lead_somewhere() {
     let empty = painted(&mut stage, &mut board);
     assert!(!shown_line(&empty, "Demo data"), "an empty database shows the demo chip:\n{empty}");
     assert_eq!(board.bell_label(), "Notifications: nothing unread");
-    assert!(stage.click("Help", |ui| board.ui(ui)), "the top bar has no Help:\n{empty}");
+    let help = rightmost(&stage, "Help");
+    stage.click_at(help, |ui| board.ui(ui));
     assert_eq!((board.page_id(), board.about.tab), (NAV_ABOUT, AboutTab::Guide));
     board.show(NAV_OVERVIEW);
     let overview = painted(&mut stage, &mut board);
@@ -800,7 +807,7 @@ fn the_top_bar_searches_and_its_chip_bell_and_help_lead_somewhere() {
     let loaded = painted(&mut stage, &mut board);
     assert!(shown_line(&loaded, "Demo data"), "the demo chip is missing while demo data is loaded:\n{loaded}");
     assert_eq!(board.bell_label(), "Notifications: 2 unread");
-    let help = stage.locate("Help").unwrap();
+    let help = rightmost(&stage, "Help");
     let chip = stage.locate("Demo data").unwrap();
     let bell = stage
         .locate_all("2")
