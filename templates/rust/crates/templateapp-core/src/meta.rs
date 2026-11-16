@@ -32,8 +32,10 @@ pub fn build(dashboard: bool) -> BuildInfo {
 }
 
 pub fn env_name(suffix: &str) -> String {
-    let converted: String =
-        suffix.chars().map(|letter| if letter == '.' || letter == '-' { '_' } else { letter.to_ascii_uppercase() }).collect();
+    let converted: String = suffix
+        .chars()
+        .map(|letter| if letter == '.' || letter == '-' { '_' } else { letter.to_ascii_uppercase() })
+        .collect();
     format!("{ENV_PREFIX}_{converted}")
 }
 
@@ -73,7 +75,12 @@ pub fn is_repository_url(candidate: &str) -> bool {
     }
     let path = rest.split(['?', '#']).next().unwrap_or("");
     let lowered = path.to_ascii_lowercase();
-    !(path.contains("..") || path.contains("//") || path.contains('\\') || lowered.contains("%2f") || lowered.contains("%5c") || lowered.contains("%2e"))
+    !(path.contains("..")
+        || path.contains("//")
+        || path.contains('\\')
+        || lowered.contains("%2f")
+        || lowered.contains("%5c")
+        || lowered.contains("%2e"))
 }
 
 #[cfg(test)]

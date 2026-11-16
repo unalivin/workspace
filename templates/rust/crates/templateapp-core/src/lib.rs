@@ -1,7 +1,21 @@
 pub mod clock;
+pub mod csv;
 pub mod error;
+pub mod files;
+pub mod guide;
+pub mod launcher;
 pub mod meta;
+pub mod notifier;
+pub mod notify;
 pub mod platform;
+pub mod records;
+pub mod service;
+pub mod settings;
+pub mod store;
+pub mod testkit;
+pub mod theme;
+pub mod transfer;
+pub mod userconfig;
 pub mod words;
 
 pub use error::{AppError, Result};

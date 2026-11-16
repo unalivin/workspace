@@ -11,6 +11,7 @@ repository = "https://github.com/unalivin/workspace"
 publish = false
 
 [workspace.dependencies]
+chrono = { version = "=0.4.45", default-features = false, features = ["clock"] }
 clap = { version = "=4.6.7", default-features = false, features = ["std", "help", "usage", "error-context", "suggestions"] }
 proptest = { version = "=1.12.0", default-features = false, features = ["std"] }
 rusqlite = { version = "=0.43.0", features = ["bundled"] }

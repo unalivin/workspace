@@ -58,7 +58,9 @@ impl Timestamp {
             && (0..24).contains(&hour)
             && (0..60).contains(&minute)
             && (0..60).contains(&second);
-        valid.then(|| Timestamp(days_from_civil(year, month, day) * SECONDS_PER_DAY + hour * 3600 + minute * 60 + second))
+        valid.then(|| {
+            Timestamp(days_from_civil(year, month, day) * SECONDS_PER_DAY + hour * 3600 + minute * 60 + second)
+        })
     }
 
     pub fn now() -> Self {
@@ -113,6 +115,38 @@ impl Timestamp {
     pub fn minute_of_day(self, offset_minutes: i64) -> i64 {
         let (_, _, _, hour, minute, _) = self.civil(offset_minutes);
         hour * 60 + minute
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Zone {
+    Utc,
+    Local,
+    Fixed(i64),
+}
+
+impl Zone {
+    pub fn offset_minutes(self, moment: Timestamp) -> i64 {
+        match self {
+            Zone::Utc => 0,
+            Zone::Fixed(minutes) => minutes,
+            Zone::Local => {
+                use chrono::{Offset, TimeZone};
+                match chrono::Local.timestamp_opt(moment.unix(), 0) {
+                    chrono::LocalResult::Single(local) => i64::from(local.offset().fix().local_minus_utc()) / 60,
+                    _ => 0,
+                }
+            }
+        }
+    }
+
+    pub fn display(self, moment: Timestamp) -> String {
+        let text = moment.display(self.offset_minutes(moment));
+        if self == Zone::Utc { format!("{text} UTC") } else { text }
+    }
+
+    pub fn minute_of_day(self, moment: Timestamp) -> i64 {
+        moment.minute_of_day(self.offset_minutes(moment))
     }
 }
 
@@ -178,9 +212,28 @@ mod tests {
 
     #[test]
     fn parse_rejects_malformed_text() {
-        for text in ["", "2026-03-02", "2026-03-02T09:30:00", "2026-13-02T09:30:00Z", "2026-02-30T09:30:00Z", "2026-03-02 09:30:00Z", "2026-03-02T24:00:00Z", "２026-03-02T09:30:00Z"] {
+        for text in [
+            "",
+            "2026-03-02",
+            "2026-03-02T09:30:00",
+            "2026-13-02T09:30:00Z",
+            "2026-02-30T09:30:00Z",
+            "2026-03-02 09:30:00Z",
+            "2026-03-02T24:00:00Z",
+            "２026-03-02T09:30:00Z",
+        ] {
             assert_eq!(Timestamp::parse(text), None, "{text}");
         }
+    }
+
+    #[test]
+    fn zones_shift_the_display_and_the_minute_of_day() {
+        let moment = Timestamp::from_civil(2026, 3, 2, 23, 30, 0).unwrap();
+        assert_eq!(Zone::Utc.display(moment), "2026-03-02 23:30 UTC");
+        assert_eq!(Zone::Fixed(60).display(moment), "2026-03-03 00:30");
+        assert_eq!(Zone::Fixed(60).minute_of_day(moment), 30);
+        assert_eq!(Zone::Utc.minute_of_day(moment), 23 * 60 + 30);
+        assert!(Zone::Local.offset_minutes(moment).abs() <= 14 * 60);
     }
 
     #[test]

@@ -27,9 +27,10 @@ impl fmt::Display for AppError {
         match self {
             AppError::Validation { field, problem, fix } => write!(formatter, "{field}: {problem}. {fix}"),
             AppError::NotFound(what) => write!(formatter, "{what} was not found"),
-            AppError::Conflict(message) | AppError::Usage(message) | AppError::Storage(message) | AppError::Io(message) => {
-                formatter.write_str(message)
-            }
+            AppError::Conflict(message)
+            | AppError::Usage(message)
+            | AppError::Storage(message)
+            | AppError::Io(message) => formatter.write_str(message),
         }
     }
 }
@@ -39,9 +40,11 @@ impl std::error::Error for AppError {}
 impl From<rusqlite::Error> for AppError {
     fn from(error: rusqlite::Error) -> Self {
         match error {
-            rusqlite::Error::SqliteFailure(code, _) if code.code == rusqlite::ErrorCode::DatabaseBusy => AppError::Storage(
-                "The database is busy: another program is writing to it. Wait a moment and try again.".to_string(),
-            ),
+            rusqlite::Error::SqliteFailure(code, _) if code.code == rusqlite::ErrorCode::DatabaseBusy => {
+                AppError::Storage(
+                    "The database is busy: another program is writing to it. Wait a moment and try again.".to_string(),
+                )
+            }
             other => AppError::Storage(format!("database error: {other}")),
         }
     }

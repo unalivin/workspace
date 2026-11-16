@@ -103,11 +103,81 @@ pub fn browser_command(os: Os, url: &str) -> (String, Vec<String>) {
 
 pub fn open_repository_url(os: Os, url: &str, run: &dyn Fn(&str, &[String]) -> Result<()>) -> Result<()> {
     if !meta::is_repository_url(url) {
-        return Err(AppError::Usage(format!("only links under {} can be opened from the application", meta::REPOSITORY_URL)));
+        return Err(AppError::Usage(format!(
+            "only links under {} can be opened from the application",
+            meta::REPOSITORY_URL
+        )));
     }
     let (program, arguments) = browser_command(os, url);
     run(&program, &arguments)
         .map_err(|error| AppError::Io(format!("the browser could not be started, copy the link instead: {error}")))
+}
+
+fn shell_quote(word: &str) -> String {
+    format!("'{}'", word.replace('\'', "'\\''"))
+}
+
+pub fn terminal_commands(os: Os, executable: &str, arguments: &[String]) -> Vec<Vec<String>> {
+    let owned = |words: &[&str]| words.iter().map(|word| (*word).to_string()).collect::<Vec<String>>();
+    match os {
+        Os::Windows => {
+            let mut command = owned(&["cmd", "/c", "start", "", executable]);
+            command.extend(arguments.iter().cloned());
+            vec![command]
+        }
+        Os::Macos => {
+            let mut words = vec![shell_quote(executable)];
+            words.extend(arguments.iter().map(|argument| shell_quote(argument)));
+            let line = words.join(" ").replace('\\', "\\\\").replace('"', "\\\"");
+            vec![vec![
+                "osascript".to_string(),
+                "-e".to_string(),
+                format!("tell application \"Terminal\" to do script \"{line}\""),
+                "-e".to_string(),
+                "tell application \"Terminal\" to activate".to_string(),
+            ]]
+        }
+        Os::Linux => {
+            let terminals: [&[&str]; 8] = [
+                &["x-terminal-emulator", "-e"],
+                &["gnome-terminal", "--"],
+                &["konsole", "-e"],
+                &["xfce4-terminal", "-x"],
+                &["alacritty", "-e"],
+                &["kitty"],
+                &["foot"],
+                &["xterm", "-e"],
+            ];
+            terminals
+                .iter()
+                .map(|terminal| {
+                    let mut command = owned(terminal);
+                    command.push(executable.to_string());
+                    command.extend(arguments.iter().cloned());
+                    command
+                })
+                .collect()
+        }
+    }
+}
+
+pub fn open_terminal_window(
+    os: Os,
+    executable: &str,
+    arguments: &[String],
+    run: &dyn Fn(&str, &[String]) -> Result<()>,
+) -> Result<()> {
+    let mut failures = Vec::new();
+    for command in terminal_commands(os, executable, arguments) {
+        match run(&command[0], &command[1..]) {
+            Ok(()) => return Ok(()),
+            Err(error) => failures.push(error.to_string()),
+        }
+    }
+    Err(AppError::Io(format!(
+        "no terminal window could be opened, start the application from a terminal with --ui tui: {}",
+        failures.join("; ")
+    )))
 }
 
 pub fn spawn_detached(program: &str, arguments: &[String]) -> Result<()> {
@@ -143,8 +213,16 @@ mod tests {
     #[test]
     fn macos_and_windows_use_their_application_folders() {
         let env = Env::from_pairs(&[("HOME", "/Users/ada")]);
-        assert!(data_dir(Os::Macos, &env).unwrap().ends_with(PathBuf::from("Library").join("Application Support").join(meta::APP_NAME)));
-        let env = Env::from_pairs(&[("USERPROFILE", "C:/Users/ada"), ("LOCALAPPDATA", "C:/Local"), ("APPDATA", "C:/Roaming")]);
+        assert!(
+            data_dir(Os::Macos, &env)
+                .unwrap()
+                .ends_with(PathBuf::from("Library").join("Application Support").join(meta::APP_NAME))
+        );
+        let env = Env::from_pairs(&[
+            ("USERPROFILE", "C:/Users/ada"),
+            ("LOCALAPPDATA", "C:/Local"),
+            ("APPDATA", "C:/Roaming"),
+        ]);
         assert_eq!(data_dir(Os::Windows, &env).unwrap(), PathBuf::from("C:/Local").join(meta::APP_NAME));
         assert_eq!(config_dir(Os::Windows, &env).unwrap(), PathBuf::from("C:/Roaming").join(meta::APP_NAME));
     }
@@ -180,6 +258,30 @@ mod tests {
         assert!(started[0].starts_with("xdg-open https://"));
         assert!(started[1].starts_with("open https://"));
         assert!(started[2].starts_with("rundll32 url.dll,FileProtocolHandler https://"));
+    }
+
+    #[test]
+    fn terminal_windows_are_tried_in_order_and_arguments_are_quoted() {
+        let arguments = vec!["--ui".to_string(), "tui".to_string()];
+        let windows = terminal_commands(Os::Windows, "C:/Apps/app.exe", &arguments);
+        assert_eq!(windows, vec![vec!["cmd", "/c", "start", "", "C:/Apps/app.exe", "--ui", "tui"]]);
+        let mac = terminal_commands(Os::Macos, "/Applications/It's \"here\"/app", &arguments);
+        assert_eq!(mac[0][0], "osascript");
+        assert!(mac[0][2].contains("'/Applications/It'\\\\''s \\\"here\\\"/app' '--ui' 'tui'"), "{}", mac[0][2]);
+        let linux = terminal_commands(Os::Linux, "/usr/bin/app", &arguments);
+        assert_eq!(linux.len(), 8);
+        assert_eq!(linux[0], vec!["x-terminal-emulator", "-e", "/usr/bin/app", "--ui", "tui"]);
+        assert_eq!(linux[5], vec!["kitty", "/usr/bin/app", "--ui", "tui"]);
+        let tried: RefCell<Vec<String>> = RefCell::new(Vec::new());
+        let third_works = |program: &str, _: &[String]| -> Result<()> {
+            tried.borrow_mut().push(program.to_string());
+            if program == "konsole" { Ok(()) } else { Err(AppError::Io(format!("{program} missing"))) }
+        };
+        open_terminal_window(Os::Linux, "/usr/bin/app", &arguments, &third_works).unwrap();
+        assert_eq!(*tried.borrow(), vec!["x-terminal-emulator", "gnome-terminal", "konsole"]);
+        let none_work = |program: &str, _: &[String]| -> Result<()> { Err(AppError::Io(format!("{program} missing"))) };
+        let error = open_terminal_window(Os::Linux, "/usr/bin/app", &arguments, &none_work).unwrap_err().to_string();
+        assert!(error.contains("--ui tui") && error.contains("xterm missing"), "{error}");
     }
 
     #[test]
