@@ -7,7 +7,7 @@ use app_core::clock::{Clock, Zone};
 use app_core::notifier::Autostart;
 use app_core::platform::{Env, Os};
 use app_core::records::{DEMO_RECORDS, Input, Status};
-use app_core::service::{self, App, NAV_ABOUT, NAV_RECORDS, NAV_SETTINGS};
+use app_core::service::{self, App, NAV_ABOUT, NAV_RECORDS, NAV_SETTINGS, NAVIGATION};
 use app_core::settings;
 use app_core::testkit::{TempDir, fixed_time};
 use app_core::theme::Severity;
@@ -584,4 +584,58 @@ fn keys_and_styles_are_converted_and_the_screen_is_painted() {
     assert!(line(22).contains(": menu · ? guide · q quit"), "{}", line(22));
     let cell = buffer.cell((0, 0)).unwrap();
     assert_eq!(cell.fg, heading.fg.unwrap());
+}
+
+#[test]
+fn every_terminal_capability_is_reachable() {
+    let home = TempDir::new("tui-capabilities");
+    let mut app = open_app(&home);
+    let mut model = Model::new(&mut app, options(&home, true, None));
+    model.resize(140, 50);
+    let welcome = model.screen();
+    assert!(welcome.contains("Welcome to"), "{welcome}");
+    let mut screens: Vec<String> = Vec::new();
+    let mut hints: Vec<String> = Vec::new();
+    model.handle(Key::Esc);
+    hints.push(model.hints());
+    model.handle(Key::Char('l'));
+    for index in 0..NAVIGATION.len() {
+        let digit = char::from_digit(index as u32 + 1, 10).unwrap();
+        model.handle(Key::Char(digit));
+        screens.push(model.screen());
+        hints.push(model.hints());
+        for _ in 0..3 {
+            model.handle(Key::PageDown);
+            screens.push(model.screen());
+        }
+    }
+    press(&mut model, &[Key::Char('3'), Key::Right]);
+    screens.push(model.screen());
+    hints.push(model.hints());
+    press(&mut model, &[Key::Left, Key::Char('5')]);
+    for _ in 0..6 {
+        model.handle(Key::Right);
+        screens.push(model.screen());
+    }
+    press(&mut model, &[Key::Char('1'), Key::Char(':')]);
+    screens.push(model.screen());
+    let text = screens.join("\n");
+    let keys: Vec<&str> = hints.iter().flat_map(|line| line.split(" · ")).collect();
+    let mut missing = Vec::new();
+    for capability in service::CAPABILITIES {
+        if capability.terminal == service::NOT_APPLICABLE || capability.terminal == "First-start screen" {
+            continue;
+        }
+        for part in capability.terminal.split(", ") {
+            let found = if part.chars().count() <= 2 || part.contains(" and ") {
+                part.split(" and ").all(|key| keys.iter().any(|hint| hint.starts_with(&format!("{key} "))))
+            } else {
+                text.contains(part) || keys.iter().any(|hint| hint.starts_with(&format!("{part} ")))
+            };
+            if !found {
+                missing.push(format!("{}: {part}", capability.id));
+            }
+        }
+    }
+    assert!(missing.is_empty(), "not found in the terminal UI: {missing:?}\nhints: {keys:?}\n{text}");
 }

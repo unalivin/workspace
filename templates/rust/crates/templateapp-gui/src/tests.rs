@@ -9,7 +9,7 @@ use app_core::meta;
 use app_core::notifier::Autostart;
 use app_core::platform::{Env, Os};
 use app_core::records::{Input, Status};
-use app_core::service::{self, App, NAV_ABOUT, NAV_NOTIFICATIONS, NAV_RECORDS, NAV_SETTINGS, NAVIGATION};
+use app_core::service::{self, App, NAV_ABOUT, NAV_NOTIFICATIONS, NAV_OVERVIEW, NAV_RECORDS, NAV_SETTINGS, NAVIGATION};
 use app_core::settings;
 use app_core::testkit::{TempDir, fixed_time};
 use app_core::theme::Severity;
@@ -700,4 +700,66 @@ fn a_record_table_wider_than_its_space_scrolls_sideways() {
     let row = |picture: &Picture| -> Vec<[u8; 4]> { (230..520).map(|x| picture.pixel(x, 300)).collect() };
     assert_ne!(row(&before), row(&after), "the table did not move");
     assert_eq!(board.rec.selected, board.rec.list.first().map(|record| record.id));
+}
+
+fn painted(stage: &mut Stage, board: &mut Dashboard<'_>) -> String {
+    stage.settle(3, |ui| board.ui(ui));
+    stage.text()
+}
+
+#[test]
+fn every_dashboard_capability_is_reachable() {
+    let home = TempDir::new("gui-capabilities");
+    let (opened, terminals) = (Log::default(), Log::default());
+    let mut app = open_app(&home);
+    let mut board = Dashboard::new(&mut app, wired(&home, &opened, &terminals));
+    let mut stage = Stage::new(1280.0, 2600.0, 1.0);
+    let mut seen: Vec<String> = Vec::new();
+    let welcome = painted(&mut stage, &mut board);
+    assert!(welcome.contains(&format!("Welcome to {}", meta::APP_NAME)), "the first start shows no dialog:\n{welcome}");
+    seen.push("First-start dialog".to_string());
+    board.answer(false);
+    board.show(NAV_OVERVIEW);
+    let empty = painted(&mut stage, &mut board);
+    assert!(!empty.contains("Welcome to"), "the dialog stays open:\n{empty}");
+    seen.push(empty);
+    board.load_demo();
+    for item in NAVIGATION {
+        board.show(item.id);
+        seen.push(painted(&mut stage, &mut board));
+    }
+    board.show(NAV_RECORDS);
+    for enabled in [true, false] {
+        board.rec.selected = board.rec.list.iter().find(|record| record.enabled == enabled).map(|record| record.id);
+        let name = board.selected_record().map(|record| record.name.clone()).expect("the demo data has both kinds");
+        let detail = painted(&mut stage, &mut board);
+        assert!(detail.matches(name.as_str()).count() >= 2, "no detail panel for {name}:\n{detail}");
+        seen.push("row detail panel".to_string());
+        seen.push(detail);
+    }
+    board.show(NAV_NOTIFICATIONS);
+    board.inbox.rules = true;
+    seen.push(painted(&mut stage, &mut board));
+    board.inbox.rules = false;
+    for tab in [AboutTab::Overview, AboutTab::Guide, AboutTab::Shortcuts, AboutTab::Diagnostics, AboutTab::Licenses] {
+        board.show_about(tab);
+        seen.push(painted(&mut stage, &mut board));
+    }
+    board.show(NAV_OVERVIEW);
+    stage.settle(2, |ui| board.ui(ui));
+    assert!(stage.click("Menu", |ui| board.ui(ui)), "the menu bar has no Menu:\n{}", stage.text());
+    seen.push(stage.text());
+    let text = seen.join("\n");
+    let mut missing = Vec::new();
+    for capability in service::CAPABILITIES {
+        if capability.dashboard == service::NOT_APPLICABLE {
+            continue;
+        }
+        for part in capability.dashboard.split(", ") {
+            if !text.contains(part) {
+                missing.push(format!("{}: {part}", capability.id));
+            }
+        }
+    }
+    assert!(missing.is_empty(), "not found in the dashboard: {missing:?}\n{text}");
 }

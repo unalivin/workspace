@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use egui::epaint::{ClippedPrimitive, ImageDelta, Mesh, Primitive, TextureId, Vertex, textures::TextureFilter};
+use egui::epaint::{ClippedPrimitive, ImageDelta, Mesh, Primitive, Shape, TextureId, Vertex, textures::TextureFilter};
 use egui::{Color32, ColorImage, Context, Event, ImageData, Pos2, RawInput, Rect, TexturesDelta, Ui, pos2, vec2};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -185,8 +185,23 @@ pub fn paint(picture: &mut Picture, textures: &Textures, primitives: &[ClippedPr
     }
 }
 
+fn collect_texts(shape: &Shape, found: &mut Vec<(String, Rect)>) {
+    match shape {
+        Shape::Vec(list) => {
+            for inner in list {
+                collect_texts(inner, found);
+            }
+        }
+        Shape::Text(text) if !text.galley.text().trim().is_empty() => {
+            found.push((text.galley.text().to_string(), text.visual_bounding_rect()));
+        }
+        _ => {}
+    }
+}
+
 pub struct Stage {
     pub ctx: Context,
+    texts: Vec<(String, Rect)>,
     textures: Textures,
     width: f32,
     height: f32,
@@ -199,7 +214,7 @@ impl Stage {
     pub fn new(width: f32, height: f32, scale: f32) -> Stage {
         let ctx = Context::default();
         ctx.set_pixels_per_point(scale);
-        Stage { ctx, textures: Textures::default(), width, height, scale, time: 0.0, fill: Color32::BLACK }
+        Stage { ctx, texts: Vec::new(), textures: Textures::default(), width, height, scale, time: 0.0, fill: Color32::BLACK }
     }
 
     pub fn frame(&mut self, events: Vec<Event>, mut draw: impl FnMut(&mut Ui)) -> Picture {
@@ -216,6 +231,10 @@ impl Stage {
         self.textures.update(&output.textures_delta);
         output.textures_delta.clear();
         self.fill = self.ctx.global_style().visuals.panel_fill;
+        self.texts.clear();
+        for clipped in &output.shapes {
+            collect_texts(&clipped.shape, &mut self.texts);
+        }
         let primitives = self.ctx.tessellate(output.shapes, output.pixels_per_point);
         let mut picture =
             Picture::new((self.width * self.scale).round() as usize, (self.height * self.scale).round() as usize);
@@ -225,6 +244,32 @@ impl Stage {
         }
         paint(&mut picture, &self.textures, &primitives, output.pixels_per_point);
         picture
+    }
+
+    pub fn text(&self) -> String {
+        let lines: Vec<&str> = self.texts.iter().map(|(text, _)| text.as_str()).collect();
+        lines.join("\n")
+    }
+
+    pub fn locate(&self, wanted: &str) -> Option<Pos2> {
+        self.texts.iter().find(|(text, _)| text == wanted).map(|(_, area)| area.center())
+    }
+
+    pub fn click(&mut self, wanted: &str, mut draw: impl FnMut(&mut Ui)) -> bool {
+        let Some(pos) = self.locate(wanted) else {
+            return false;
+        };
+        let button = |pressed: bool| Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        };
+        self.frame(vec![Event::PointerMoved(pos)], &mut draw);
+        self.frame(vec![button(true)], &mut draw);
+        self.frame(vec![button(false)], &mut draw);
+        self.frame(Vec::new(), &mut draw);
+        true
     }
 
     pub fn settle(&mut self, frames: usize, mut draw: impl FnMut(&mut Ui)) -> Picture {
@@ -249,6 +294,28 @@ mod tests {
                 ui.allocate_space(ui.available_size());
             });
         }
+    }
+
+    #[test]
+    fn painted_text_is_listed_located_and_clickable() {
+        let mut stage = Stage::new(240.0, 120.0, 1.0);
+        let mut presses = 0;
+        let mut draw = |ui: &mut Ui| {
+            ui.label("First line");
+            if ui.button("Press here").clicked() {
+                presses += 1;
+            }
+        };
+        stage.settle(2, &mut draw);
+        let text = stage.text();
+        assert!(text.contains("First line") && text.contains("Press here"), "{text}");
+        let label = stage.locate("First line").unwrap();
+        let button = stage.locate("Press here").unwrap();
+        assert!(label.y < button.y && button.x < 120.0, "{label:?} {button:?}");
+        assert!(stage.locate("Missing").is_none());
+        assert!(!stage.click("Missing", &mut draw));
+        assert!(stage.click("Press here", &mut draw));
+        assert_eq!(presses, 1);
     }
 
     #[test]
