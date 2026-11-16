@@ -36,12 +36,20 @@ func anchor(title string, taken map[string]int) string {
 	if base == "" {
 		base = "section"
 	}
+	candidate := base
 	count := taken[base]
-	taken[base] = count + 1
-	if count == 0 {
-		return base
+	for {
+		if _, used := taken[candidate]; !used {
+			break
+		}
+		count++
+		candidate = base + "-" + strings.Repeat("i", count)
 	}
-	return base + "-" + strings.Repeat("i", count)
+	taken[base] = count
+	if _, known := taken[candidate]; !known {
+		taken[candidate] = 0
+	}
+	return candidate
 }
 
 func heading(line string) (int, string, bool) {

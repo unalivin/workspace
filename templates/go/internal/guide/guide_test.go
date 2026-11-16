@@ -55,6 +55,13 @@ func TestParseEdgeCases(t *testing.T) {
 	if got := Parse("# !!!\n# ???\n"); got.Sections[0].Anchor != "section" || got.Sections[1].Anchor != "section-i" {
 		t.Fatalf("symbol-only titles: %+v", got)
 	}
+	var clashing []string
+	for _, section := range Parse("# Step\n# Step\n# Step i\n# Step\n# Step-i\n").Sections {
+		clashing = append(clashing, section.Anchor)
+	}
+	if got := strings.Join(clashing, "|"); got != "step|step-i|step-i-i|step-ii|step-i-ii" {
+		t.Fatalf("anchors of clashing titles: %s", got)
+	}
 	if got := Parse("## Trailing ##\n"); got.Sections[0].Title != "Trailing" {
 		t.Fatalf("closing hashes: %+v", got)
 	}

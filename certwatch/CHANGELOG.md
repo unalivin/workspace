@@ -4,6 +4,10 @@ All notable changes to CertWatch are recorded here. The format follows [Keep a C
 
 ## [Unreleased]
 
+### Fixed
+
+- Usage guide: a heading whose title ends like the suffix of a repeated title (for example "Step", "Step" and "Step i") no longer gets the same anchor as another section.
+
 ## [0.1.0-dev]
 
 ### Added
