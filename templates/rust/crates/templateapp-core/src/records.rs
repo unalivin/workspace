@@ -911,7 +911,11 @@ mod tests {
         let fixture = fixture("records-plans");
         for (name, sql, parameters) in HOT_QUERIES.iter().chain(notify::HOT_QUERIES) {
             let plan = fixture.store.query_plan(sql, *parameters).unwrap();
-            let indexed = |step: &String| ["USING INDEX", "USING COVERING INDEX", "USING INTEGER PRIMARY KEY"].iter().any(|marker| step.contains(marker));
+            let indexed = |step: &String| {
+                ["USING INDEX", "USING COVERING INDEX", "USING INTEGER PRIMARY KEY"]
+                    .iter()
+                    .any(|marker| step.contains(marker))
+            };
             let full_scan = |step: &String| step.starts_with("SCAN") && !indexed(step);
             assert!(plan.iter().any(indexed) && !plan.iter().any(full_scan), "{name}: {}", plan.join(" | "));
         }

@@ -116,16 +116,17 @@ fn run_overview(env: &mut Env<'_>, call: &Call, app: &mut App) -> Result<()> {
         .collect();
     env.table(&["SEVERITY", "COUNT"], &rows);
     if overview.demo > 0 {
-        env.line(format!(
-            "\nDemo data is loaded: {} sample records are labeled \"Demo:\".",
-            overview.demo
-        ));
+        env.line(format!("\nDemo data is loaded: {} sample records are labeled \"Demo:\".", overview.demo));
     }
     Ok(())
 }
 
 pub(crate) fn overview_command() -> Command {
-    Command::leaf("overview", "Show what needs attention", run_overview).flags(&[text("format", "table", "table or json")])
+    Command::leaf("overview", "Show what needs attention", run_overview).flags(&[text(
+        "format",
+        "table",
+        "table or json",
+    )])
 }
 
 pub(crate) fn records_command() -> Command {
@@ -143,9 +144,11 @@ pub(crate) fn records_command() -> Command {
                 number("limit", "500", "largest number of rows"),
                 text("format", "table", "table, json or csv"),
             ]),
-            Command::leaf("show", "Show one record", run_show)
-                .args("<id>")
-                .flags(&[text("format", "table", "table or json")]),
+            Command::leaf("show", "Show one record", run_show).args("<id>").flags(&[text(
+                "format",
+                "table",
+                "table or json",
+            )]),
             Command::leaf("add", "Add a record", run_add).flags(&[
                 INPUT_FLAGS[0],
                 INPUT_FLAGS[1],

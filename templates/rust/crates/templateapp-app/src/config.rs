@@ -1,10 +1,10 @@
+use app_core::Result;
 use app_core::guide;
 use app_core::meta;
 use app_core::service::{self, App, Location, MoveMode};
 use app_core::settings::{self, Value};
 use app_core::theme::{self, Mode, Profile};
 use app_core::userconfig;
-use app_core::Result;
 use serde::Serialize;
 
 use crate::cli::{Call, Command, Env, failure, switch, text, usage};
@@ -89,7 +89,12 @@ fn run_list(env: &mut Env<'_>, call: &Call, app: &mut App) -> Result<()> {
     let rows: Vec<Vec<String>> = values
         .iter()
         .map(|value| {
-            vec![value.key.clone(), shown(&value.raw).to_string(), source_text(value), value.definition.label.to_string()]
+            vec![
+                value.key.clone(),
+                shown(&value.raw).to_string(),
+                source_text(value),
+                value.definition.label.to_string(),
+            ]
         })
         .collect();
     env.table(&["KEY", "VALUE", "SOURCE", "MEANING"], &rows);
@@ -151,7 +156,10 @@ fn run_theme_list(env: &mut Env<'_>, call: &Call, app: &mut App) -> Result<()> {
     call.no_arguments()?;
     let current = app.settings().text(settings::KEY_THEME)?;
     let accent = |name: &str, mode: Mode| {
-        theme::resolve(&theme::Options { name: name.to_string(), mode, ..theme::Options::default() }).palette.accent.hex()
+        theme::resolve(&theme::Options { name: name.to_string(), mode, ..theme::Options::default() })
+            .palette
+            .accent
+            .hex()
     };
     let rows: Vec<Vec<String>> = theme::names()
         .into_iter()
@@ -306,9 +314,7 @@ pub(crate) fn database_command() -> Command {
                 app.store().integrity_check()?;
                 app.store().foreign_key_check()?;
                 let version = app.store().schema_version()?;
-                env.line(format!(
-                    "Database is healthy: integrity check ok, foreign keys ok, schema version {version}"
-                ));
+                env.line(format!("Database is healthy: integrity check ok, foreign keys ok, schema version {version}"));
                 Ok(())
             }),
         ],
@@ -334,7 +340,8 @@ fn run_move(env: &mut Env<'_>, call: &Call, app: &mut App) -> Result<()> {
 pub(crate) fn run_diagnostics(env: &mut Env<'_>, call: &Call, app: &mut App) -> Result<()> {
     call.no_arguments()?;
     let report = app.diagnostics(env.hooks.open_gui.is_some());
-    let rows: Vec<Vec<String>> = report.lines().into_iter().map(|(label, value)| vec![label.to_string(), value]).collect();
+    let rows: Vec<Vec<String>> =
+        report.lines().into_iter().map(|(label, value)| vec![label.to_string(), value]).collect();
     env.table(&["ITEM", "VALUE"], &rows);
     if report.integrity != "ok" {
         return Err(failure(

@@ -1,6 +1,6 @@
 use std::cell::RefCell;
-use std::io::Write;
 
+use app_core::Result;
 use app_core::meta;
 use app_core::notifier::{self, Autostart, Runner};
 use app_core::notify::{self, Filter, Rule};
@@ -8,7 +8,6 @@ use app_core::records;
 use app_core::service::App;
 use app_core::settings;
 use app_core::theme::Severity;
-use app_core::Result;
 use serde::Serialize;
 
 use crate::cli::{Call, Command, Env, enabled_text, failure, number, switch, text, usage};
@@ -36,11 +35,7 @@ pub(crate) fn notifications_command() -> Command {
                         text("min-severity", "", "lowest severity that raises a notification"),
                         text("quiet-start", "", "start of quiet hours as HH:MM, empty for none"),
                         text("quiet-end", "", "end of quiet hours as HH:MM, empty for none"),
-                        text(
-                            "dedup-minutes",
-                            "",
-                            "minutes in which a repeated event is not raised again, 0 for off",
-                        ),
+                        text("dedup-minutes", "", "minutes in which a repeated event is not raised again, 0 for off"),
                     ]),
                     Command::leaf("reset", "Return the rule of an event type to its defaults", run_rules_reset)
                         .args("<event>"),

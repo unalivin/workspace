@@ -51,7 +51,8 @@ impl Harness {
     }
 
     fn environment(&self) -> platform::Env {
-        let pairs: Vec<(&str, &str)> = self.variables.iter().map(|(name, value)| (name.as_str(), value.as_str())).collect();
+        let pairs: Vec<(&str, &str)> =
+            self.variables.iter().map(|(name, value)| (name.as_str(), value.as_str())).collect();
         platform::Env::from_pairs(&pairs)
     }
 
@@ -163,7 +164,9 @@ impl Harness {
 fn help_version_and_unknown_commands() {
     let harness = Harness::new("cli-help");
     let help = harness.ok(&["--help"]);
-    for expected in ["Usage:", "Commands:", "records", "Global flags:", "--db <value>", "Environment:", &meta::env_name("ui")] {
+    for expected in
+        ["Usage:", "Commands:", "records", "Global flags:", "--db <value>", "Environment:", &meta::env_name("ui")]
+    {
         assert!(help.contains(expected), "{expected}\n{help}");
     }
     assert_eq!(harness.ok(&["help"]), help);
@@ -204,7 +207,8 @@ fn records_are_added_listed_changed_and_removed() {
     assert!(listed.contains("Renew the lease") && !listed.contains("Archive"), "{listed}");
     let all = harness.ok(&["records", "list", "--all", "--sort", "name", "--desc"]);
     assert!(all.find("Renew the lease").unwrap() < all.find("Archive").unwrap(), "{all}");
-    let json: serde_json::Value = serde_json::from_str(&harness.ok(&["records", "list", "--all", "--format", "json"])).unwrap();
+    let json: serde_json::Value =
+        serde_json::from_str(&harness.ok(&["records", "list", "--all", "--format", "json"])).unwrap();
     assert_eq!(json.as_array().unwrap().len(), 2);
     assert_eq!(json[0]["name"], "Archive");
     assert_eq!(json[0]["enabled"], false);
@@ -213,12 +217,15 @@ fn records_are_added_listed_changed_and_removed() {
     assert!(csv.starts_with("name,status,severity,note,enabled"), "{csv}");
     let shown = harness.ok(&["records", "show", "2"]);
     assert!(shown.contains("kept / for later") && shown.contains("Enabled   no"), "{shown}");
-    let shown: serde_json::Value = serde_json::from_str(&harness.ok(&["records", "show", "1", "--format", "json"])).unwrap();
+    let shown: serde_json::Value =
+        serde_json::from_str(&harness.ok(&["records", "show", "1", "--format", "json"])).unwrap();
     assert_eq!((shown["severity"].as_str(), shown["revision"].as_i64()), (Some("high"), Some(1)));
     assert_eq!(harness.ok(&["records", "edit", "1", "--status", "in_progress"]), "Updated record 1 (revision 2)\n");
     assert_eq!(harness.ok(&["records", "disable", "1"]), "Record 1 is disabled\n");
     assert_eq!(harness.ok(&["records", "enable", "1"]), "Record 1 is enabled\n");
-    assert!(harness.ok(&["records", "list", "--search", "lease", "--status", "in_progress"]).contains("Renew the lease"));
+    assert!(
+        harness.ok(&["records", "list", "--search", "lease", "--status", "in_progress"]).contains("Renew the lease")
+    );
     assert!(harness.ok(&["records", "list", "--search", "nothing"]).contains("No records match"));
     harness.fails(&["records", "add"], EXIT_USAGE, "a name is required");
     harness.fails(&["records", "add", "--name", ""], EXIT_USAGE, "name");
@@ -251,20 +258,29 @@ fn removal_asks_on_an_interactive_terminal_unless_confirmation_is_off() {
     harness.set("CI", "true");
     harness.fails(&["records", "remove", "2"], EXIT_USAGE, "--yes");
     harness.terminal = false;
-    assert_eq!(harness.ok(&["--set", "safety.confirm_destructive=false", "records", "remove", "2"]), "Removed record 2\n");
+    assert_eq!(
+        harness.ok(&["--set", "safety.confirm_destructive=false", "records", "remove", "2"]),
+        "Removed record 2\n"
+    );
 }
 
 #[test]
 fn records_are_imported_and_exported() {
     let mut harness = Harness::new("cli-transfer");
     let source = harness.path("in.csv");
-    std::fs::write(&source, "name,status,severity,note,enabled\nAlpha,open,high,first,true\nBeta,done,low,,false\n,open,low,,true\n").unwrap();
+    std::fs::write(
+        &source,
+        "name,status,severity,note,enabled\nAlpha,open,high,first,true\nBeta,done,low,,false\n,open,low,,true\n",
+    )
+    .unwrap();
     let (output, errors, code) = harness.run(&["records", "import", &source, "--dry-run"]);
     assert_eq!(code, EXIT_OK, "{errors}");
     assert!(output.starts_with("Dry run: would have created 2"), "{output}");
     assert!(errors.contains("rejected row 4"), "{errors}");
     assert!(harness.ok(&["records", "list", "--all"]).contains("No records yet"));
-    assert!(harness.ok(&["records", "import", &source]).starts_with("Created 2, updated 0, unchanged 0, rejected 1 row"));
+    assert!(
+        harness.ok(&["records", "import", &source]).starts_with("Created 2, updated 0, unchanged 0, rejected 1 row")
+    );
     assert!(harness.ok(&["records", "import", &source]).starts_with("Created 0, updated 0, unchanged 2"));
     let exported = harness.ok(&["records", "export"]);
     assert!(exported.contains("Alpha,open,high,first,true") && exported.contains("Beta,done,low,,false"), "{exported}");
@@ -277,7 +293,8 @@ fn records_are_imported_and_exported() {
     harness.ok(&["records", "export", "--output", &target, "--force", "--format", "csv"]);
     assert!(std::fs::read_to_string(&target).unwrap().starts_with("name,"));
     harness.fails(&["records", "export", "--format", "xml"], EXIT_USAGE, "use csv or json");
-    harness.stdin = "[{\"name\":\"Gamma\",\"status\":\"open\",\"severity\":\"info\",\"note\":\"\",\"enabled\":true}]".to_string();
+    harness.stdin =
+        "[{\"name\":\"Gamma\",\"status\":\"open\",\"severity\":\"info\",\"note\":\"\",\"enabled\":true}]".to_string();
     assert!(harness.ok(&["records", "import", "-", "--format", "json"]).starts_with("Created 1"));
     harness.fails(&["records", "import", "-"], EXIT_USAGE, "--format csv or --format json");
     harness.fails(&["records", "import"], EXIT_USAGE, "give one file to import");
@@ -306,13 +323,16 @@ fn demo_data_feeds_the_overview_and_the_notifications() {
     assert!(unread > 0, "{json}");
     let listed = harness.ok(&["notifications", "list"]);
     assert!(listed.starts_with("ID  WHEN") && listed.contains("unread") && listed.contains("record "), "{listed}");
-    let rows: serde_json::Value = serde_json::from_str(&harness.ok(&["notifications", "list", "--unread", "--format", "json"])).unwrap();
+    let rows: serde_json::Value =
+        serde_json::from_str(&harness.ok(&["notifications", "list", "--unread", "--format", "json"])).unwrap();
     assert_eq!(rows.as_array().unwrap().len() as i64, unread);
     let first = rows[0]["id"].as_i64().unwrap().to_string();
     assert_eq!(harness.ok(&["notifications", "read", &first]), format!("Marked notification {first} as read\n"));
     assert_eq!(harness.ok(&["notifications", "read", "all"]), format!("Marked {} notifications as read\n", unread - 1));
     assert!(harness.ok(&["notifications", "list", "--unread"]).contains("No notifications"));
-    assert!(harness.ok(&["notifications", "list", "--severity", "critical", "--event", "record.urgent"]).contains("read"));
+    assert!(
+        harness.ok(&["notifications", "list", "--severity", "critical", "--event", "record.urgent"]).contains("read")
+    );
     harness.fails(&["notifications", "read"], EXIT_USAGE, "the word all");
     harness.fails(&["notifications", "read", "x"], EXIT_USAGE, "is not a notification identifier");
     harness.fails(&["notifications", "read", "9999"], EXIT_FAILURE, "was not found");
@@ -330,8 +350,20 @@ fn notification_rules_are_listed_changed_and_reset() {
     let listed = harness.ok(&["notifications", "rules", "list"]);
     assert!(listed.contains("record.urgent") && listed.contains("default") && listed.contains("none"), "{listed}");
     let changed = harness.ok(&[
-        "notifications", "rules", "set", "record.urgent", "--enabled", "no", "--min-severity", "HIGH", "--quiet-start", "22:00",
-        "--quiet-end", "07:00", "--dedup-minutes", "5",
+        "notifications",
+        "rules",
+        "set",
+        "record.urgent",
+        "--enabled",
+        "no",
+        "--min-severity",
+        "HIGH",
+        "--quiet-start",
+        "22:00",
+        "--quiet-end",
+        "07:00",
+        "--dedup-minutes",
+        "5",
     ]);
     assert_eq!(
         changed,
@@ -340,13 +372,32 @@ fn notification_rules_are_listed_changed_and_reset() {
     let listed = harness.ok(&["notifications", "rules", "list"]);
     assert!(listed.contains("22:00 to 07:00") && listed.contains("changed"), "{listed}");
     harness.fails(&["notifications", "rules", "set", "record.urgent"], EXIT_USAGE, "nothing to change");
-    harness.fails(&["notifications", "rules", "set", "record.urgent", "--enabled", "maybe"], EXIT_USAGE, "true or false");
-    harness.fails(&["notifications", "rules", "set", "record.urgent", "--quiet-start", "25:00"], EXIT_USAGE, "time of day");
-    harness.fails(&["notifications", "rules", "set", "record.urgent", "--dedup-minutes", "x"], EXIT_USAGE, "whole number");
-    harness.fails(&["notifications", "rules", "set", "record.urgent", "--min-severity", "loud"], EXIT_USAGE, "info, low");
+    harness.fails(
+        &["notifications", "rules", "set", "record.urgent", "--enabled", "maybe"],
+        EXIT_USAGE,
+        "true or false",
+    );
+    harness.fails(
+        &["notifications", "rules", "set", "record.urgent", "--quiet-start", "25:00"],
+        EXIT_USAGE,
+        "time of day",
+    );
+    harness.fails(
+        &["notifications", "rules", "set", "record.urgent", "--dedup-minutes", "x"],
+        EXIT_USAGE,
+        "whole number",
+    );
+    harness.fails(
+        &["notifications", "rules", "set", "record.urgent", "--min-severity", "loud"],
+        EXIT_USAGE,
+        "info, low",
+    );
     harness.fails(&["notifications", "rules", "set", "nope", "--enabled", "true"], EXIT_USAGE, "unknown event type");
     harness.fails(&["notifications", "rules", "set"], EXIT_USAGE, "give one event type: record.urgent");
-    assert_eq!(harness.ok(&["notifications", "rules", "reset", "record.urgent"]), "Rule for record.urgent is back to its defaults\n");
+    assert_eq!(
+        harness.ok(&["notifications", "rules", "reset", "record.urgent"]),
+        "Rule for record.urgent is back to its defaults\n"
+    );
     assert!(!harness.ok(&["notifications", "rules", "list"]).contains("changed"));
 }
 
@@ -367,7 +418,10 @@ fn the_notifier_delivers_new_items_and_manages_the_sign_in_entry() {
     let status = harness.ok(&["notifier", "status"]);
     assert!(status.starts_with("Start at sign-in: off") && status.contains("not verified"), "{status}");
     let planned = harness.ok(&["notifier", "install", "--dry-run"]);
-    assert!(planned.starts_with("Dry run: would write") && planned.contains("/opt/app/templateapp notifier run"), "{planned}");
+    assert!(
+        planned.starts_with("Dry run: would write") && planned.contains("/opt/app/templateapp notifier run"),
+        "{planned}"
+    );
     assert!(harness.ok(&["notifier", "uninstall"]).contains("is not set to start at sign-in"));
     assert!(harness.ok(&["notifier", "install"]).starts_with("Wrote "));
     let entry = harness.home.path().join(".config").join("autostart").join(format!("{}-notifier.desktop", meta::SLUG));
@@ -387,9 +441,13 @@ fn settings_themes_and_the_launcher_preference_are_managed() {
     assert_eq!(harness.ok(&["config", "get", "appearance.density"]), "comfortable\n");
     assert_eq!(harness.ok(&["config", "set", "appearance.density", "compact"]), "appearance.density = compact\n");
     assert_eq!(harness.ok(&["config", "get", "appearance.density"]), "compact\n");
-    let (output, errors, code) = harness.run(&["--set", "appearance.density=comfortable", "config", "get", "appearance.density"]);
+    let (output, errors, code) =
+        harness.run(&["--set", "appearance.density=comfortable", "config", "get", "appearance.density"]);
     assert_eq!((code, output.as_str()), (EXIT_OK, "comfortable\n"));
-    assert!(errors.contains("overridden by command-line flag --set appearance.density") && errors.contains("\"compact\""), "{errors}");
+    assert!(
+        errors.contains("overridden by command-line flag --set appearance.density") && errors.contains("\"compact\""),
+        "{errors}"
+    );
     let variable = app_core::settings::env_name("appearance.density");
     harness.set(&variable, "nonsense");
     let (_, errors, code) = harness.run(&["config", "list"]);
@@ -404,7 +462,10 @@ fn settings_themes_and_the_launcher_preference_are_managed() {
     assert_eq!((density["value"].as_str(), density["source"].as_str()), (Some("comfortable"), Some("environment")));
     assert!(density["overridden_by"].as_str().unwrap().contains(&variable));
     harness.variables.remove(&variable);
-    assert_eq!(harness.ok(&["config", "reset", "appearance.density"]), "appearance.density is back to its default: comfortable\n");
+    assert_eq!(
+        harness.ok(&["config", "reset", "appearance.density"]),
+        "appearance.density is back to its default: comfortable\n"
+    );
     harness.fails(&["config", "set", "appearance.density", "huge"], EXIT_USAGE, "compact");
     harness.fails(&["config", "get", "no.such"], EXIT_USAGE, "no.such");
     harness.fails(&["config", "set", "appearance.density"], EXIT_USAGE, "give a key and a value");
@@ -415,7 +476,9 @@ fn settings_themes_and_the_launcher_preference_are_managed() {
     harness.fails(&["config", "theme", "set", "neon"], EXIT_USAGE, "slate");
     harness.fails(&["config", "theme", "set"], EXIT_USAGE, "give one theme name: slate");
     let shown = harness.ok(&["config", "theme", "show"]);
-    for expected in ["Theme", "green", "system (the terminal cannot ask", "Colors listed    light", "Terminal colors", "contrast"] {
+    for expected in
+        ["Theme", "green", "system (the terminal cannot ask", "Colors listed    light", "Terminal colors", "contrast"]
+    {
         assert!(shown.contains(expected), "{expected}\n{shown}");
     }
     assert!(harness.ok(&["config", "launcher", "show"]).contains("not set, the application asks at start"));
@@ -438,12 +501,18 @@ fn the_database_is_created_located_moved_and_checked() {
     assert!(!PathBuf::from(output.trim_end()).exists());
     assert!(harness.ok(&["db", "init"]).starts_with("Database ready at"));
     assert!(harness.ok(&["db", "init"]).starts_with("The database already exists at"));
-    assert_eq!(harness.ok(&["db", "check"]), "Database is healthy: integrity check ok, foreign keys ok, schema version 1\n");
+    assert_eq!(
+        harness.ok(&["db", "check"]),
+        "Database is healthy: integrity check ok, foreign keys ok, schema version 1\n"
+    );
     harness.ok(&["records", "add", "--name", "Travels"]);
     let target = harness.path("moved/copy.db");
     harness.fails(&["db", "move", &target], EXIT_USAGE, "--yes");
     let planned = harness.ok(&["db", "move", &target, "--dry-run"]);
-    assert!(planned.starts_with("Dry run: Copy the current database to") && planned.ends_with("Nothing was changed.\n"), "{planned}");
+    assert!(
+        planned.starts_with("Dry run: Copy the current database to") && planned.ends_with("Nothing was changed.\n"),
+        "{planned}"
+    );
     assert!(harness.ok(&["db", "move", &target, "--yes"]).starts_with("Now using "));
     let (output, errors, _) = harness.run(&["db", "path"]);
     assert!(output.contains("copy.db") && errors.contains("set by: saved location, exists"), "{output}{errors}");
@@ -456,7 +525,11 @@ fn the_database_is_created_located_moved_and_checked() {
     let (output, errors, _) = harness.run(&["--db", &target, "db", "path"]);
     assert!(output.contains("copy.db") && errors.contains("command-line flag --db"), "{output}{errors}");
     assert!(harness.ok(&["--db", &target, "records", "list"]).contains("Travels"));
-    harness.fails(&["--db", &target, "db", "move", &other, "--switch", "--yes"], EXIT_USAGE, "remove the override first");
+    harness.fails(
+        &["--db", &target, "db", "move", &other, "--switch", "--yes"],
+        EXIT_USAGE,
+        "remove the override first",
+    );
     harness.set(&meta::env_name("db"), &target);
     let (_, errors, _) = harness.run(&["db", "path"]);
     assert!(errors.contains(&format!("environment variable {}", meta::env_name("db"))), "{errors}");
@@ -570,7 +643,10 @@ fn every_capability_names_a_real_command_and_every_command_has_help() {
     }
     let reference = cli::reference();
     assert_eq!(reference.lines().count(), paths.len() + 2);
-    assert!(reference.contains(&format!("| `{} records import` | `<file\\|->` `--dry-run` `--format` |", meta::SLUG)), "{reference}");
+    assert!(
+        reference.contains(&format!("| `{} records import` | `<file\\|->` `--dry-run` `--format` |", meta::SLUG)),
+        "{reference}"
+    );
     assert!(!harness.home.path().join(".config").exists());
 }
 
@@ -579,14 +655,18 @@ fn flags_and_positional_arguments_can_be_mixed() {
     let flags = [switch("all", ""), text("format", "table", ""), number("limit", "10", "")];
     assert_eq!(flags[2].kind, Kind::Number);
     let words = |list: &[&str]| list.iter().map(|word| (*word).to_string()).collect::<Vec<String>>();
-    let (values, given, positional) = parse_flags(&flags, &words(&["7", "--all", "-format=json", "x", "--", "--limit", "3"])).unwrap();
+    let (values, given, positional) =
+        parse_flags(&flags, &words(&["7", "--all", "-format=json", "x", "--", "--limit", "3"])).unwrap();
     assert_eq!(positional, words(&["7", "x", "--limit", "3"]));
     assert_eq!((values["all"].as_str(), values["format"].as_str(), values["limit"].as_str()), ("true", "json", "10"));
     assert!(given.contains("all") && given.contains("format") && !given.contains("limit"));
     let (values, _, positional) = parse_flags(&flags, &words(&["--limit", "3", "--all=false", "-"])).unwrap();
     assert_eq!((values["limit"].as_str(), values["all"].as_str(), positional), ("3", "false", words(&["-"])));
     assert_eq!(parse_flags(&flags, &words(&["--format"])).unwrap_err(), "flag --format needs a value");
-    assert_eq!(parse_flags(&flags, &words(&["--all=perhaps"])).unwrap_err(), "flag --all needs true or false, found \"perhaps\"");
+    assert_eq!(
+        parse_flags(&flags, &words(&["--all=perhaps"])).unwrap_err(),
+        "flag --all needs true or false, found \"perhaps\""
+    );
     assert_eq!(parse_flags(&flags, &words(&["--nope"])).unwrap_err(), "unknown flag --nope");
     assert_eq!(tabulate("a\tbbb\tc\nlong\tb\tc\nplain\n\tx\ty"), "a     bbb  c\nlong  b    c\nplain\n  x  y");
 }

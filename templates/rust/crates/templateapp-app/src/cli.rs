@@ -145,7 +145,6 @@ impl Command {
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Call {
     pub globals: Globals,
-    pub path: String,
     pub parent: String,
     pub args: Vec<String>,
     values: BTreeMap<&'static str, String>,
@@ -656,10 +655,9 @@ fn execute(
     parent: String,
     arguments: &[String],
 ) -> Result<()> {
-    let (values, given, args) = parse_flags(&target.flags, arguments).map_err(|problem| {
-        usage(format!("{problem}: run \"{} help {path}\" to see the flags", meta::SLUG))
-    })?;
-    let call = Call { globals, path, parent, args, values, given };
+    let (values, given, args) = parse_flags(&target.flags, arguments)
+        .map_err(|problem| usage(format!("{problem}: run \"{} help {path}\" to see the flags", meta::SLUG)))?;
+    let call = Call { globals, parent, args, values, given };
     match runner {
         Run::Standalone(run) => run(env, &call),
         Run::Database(run) => {
