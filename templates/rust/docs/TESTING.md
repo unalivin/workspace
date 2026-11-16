@@ -43,7 +43,7 @@ Rust has no race detector that works on the stable compiler, and the workspace f
 | Dashboard | `crates/templateapp-gui/src/tests.rs` and the module tests beside it | The interface code is driven with events: every page, forms, confirmations, the skin, icons, the table layout |
 | Capability matrix | `service.rs` and the tests of the three interface crates | Every capability is listed once, names a real command, is painted somewhere in the dashboard and is shown in the terminal UI; `docs/COMMANDS.md` matches |
 | Fuzz | `fuzz/fuzz_targets`, `make fuzz` | The parsers hold their invariants on arbitrary input |
-| Repository | `crates/templateapp-app/tests/repository.rs` | Required files, links between documents, no email address, no source comments, settings documented, test names in the documents exist, SQL only in the storage modules |
+| Repository | `crates/templateapp-app/tests/repository.rs` | Required files, links between documents, no email address, no source comments, settings documented, test names in the documents exist, the generated command tables are current, SQL only in the storage modules, one version number everywhere |
 | Scripts | `scripts/tests/*.bats` | Setup, checks, packaging, release verification and publishing in dry-run and against fakes |
 
 ## Fuzz targets
