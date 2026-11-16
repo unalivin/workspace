@@ -11,9 +11,10 @@ The full guide, with the commit types, the allowed scopes, the branch naming rul
 
 Rules that are enforced by tests:
 
-- No comments in Go, SQL or Bash source files. Express intent through names, small packages and tests, and explain decisions in `docs/`.
+- No comments in Rust, SQL or Bash source files. Express intent through names, small functions and tests, and explain decisions in `docs/`.
 - No email address anywhere in the repository. Commit with a GitHub noreply address.
-- Every SQL statement uses bound parameters.
-- Every capability is reachable from the dashboard, the terminal UI and the commands, and is listed in `docs/COMMANDS.md`.
+- SQL is written as constants with bound parameters, only in the storage modules.
+- Every command has a row in the capability list, every row names a real command, and `docs/COMMANDS.md` is generated from the list.
+- A test name written in a document must exist.
 
 Security problems are reported privately, see [SECURITY.md](SECURITY.md).

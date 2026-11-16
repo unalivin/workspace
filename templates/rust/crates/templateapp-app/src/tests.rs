@@ -77,21 +77,24 @@ impl Harness {
         self.home.path().join(name).to_string_lossy().into_owned()
     }
 
+    fn front_end<'a>(
+        &'a self,
+        name: &'static str,
+        script: &'a [&'static str],
+    ) -> impl Fn(&mut App) -> Result<String> + 'a {
+        move |_: &mut App| -> Result<String> {
+            let visit = self.opened.borrow().iter().filter(|entry| entry.as_str() == name).count();
+            self.opened.borrow_mut().push(name.to_string());
+            Ok(script.get(visit).copied().unwrap_or("").to_string())
+        }
+    }
+
     fn run(&self, arguments: &[&str]) -> (String, String, i32) {
         let mut input = Cursor::new(self.stdin.clone().into_bytes());
         let mut output: Vec<u8> = Vec::new();
         let mut errors: Vec<u8> = Vec::new();
-        let front_end = |name: &'static str, script: &'static [&'static str]| {
-            move |_: &mut App| -> Result<String> {
-                let visit = self.opened.borrow().iter().filter(|entry| entry.as_str() == name).count();
-                self.opened.borrow_mut().push(name.to_string());
-                Ok(script.get(visit).copied().unwrap_or("").to_string())
-            }
-        };
-        let gui_script: &'static [&'static str] = self.gui.clone().map(|script| &*script.leak()).unwrap_or(&[]);
-        let tui_script: &'static [&'static str] = self.tui.clone().map(|script| &*script.leak()).unwrap_or(&[]);
-        let open_gui = front_end("gui", gui_script);
-        let open_tui = front_end("tui", tui_script);
+        let open_gui = self.front_end("gui", self.gui.as_deref().unwrap_or(&[]));
+        let open_tui = self.front_end("tui", self.tui.as_deref().unwrap_or(&[]));
         let chooser = |default: &str| -> Result<PromptResult> {
             self.opened.borrow_mut().push(format!("chooser default {default}"));
             self.chooser.clone().ok_or_else(|| AppError::Io("no chooser answer".to_string()))

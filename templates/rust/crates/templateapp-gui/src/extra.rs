@@ -308,7 +308,8 @@ impl Dashboard<'_> {
                     let mut slot = ui.available_rect_before_wrap();
                     slot.min.x += depth * self.tokens.spacing.m;
                     let entry = UiBuilder::new().max_rect(slot).layout(Layout::top_down_justified(Align::LEFT));
-                    let clicked = ui.scope_builder(entry, |ui| ui.selectable_label(chosen, section.title.as_str()).clicked());
+                    let clicked =
+                        ui.scope_builder(entry, |ui| ui.selectable_label(chosen, section.title.as_str()).clicked());
                     if clicked.inner {
                         *act = Some(AboutAct::Section(Some(*index)));
                     }

@@ -31,6 +31,10 @@ cargo run -q -p templateapp-app --no-default-features --example gendocs >"$EVIDE
 printf 'gendocs exit status: %s\n' "$?"
 cargo run -q -p templateapp-app --no-default-features --example gennotices >>"$EVIDENCE_DIR/generated.log" 2>&1
 printf 'gennotices exit status: %s\n' "$?"
+for target in docs-check assets-check notices-check; do
+  make "$target" >>"$EVIDENCE_DIR/generated.log" 2>&1
+  printf 'make %s exit status: %s\n' "$target" "$?"
+done
 cargo check --manifest-path fuzz/Cargo.toml >"$EVIDENCE_DIR/fuzz.log" 2>&1
 printf 'fuzz check exit status: %s\n' "$?"
 scripts/sanitize.sh >"$EVIDENCE_DIR/sanitize.log" 2>&1

@@ -13,7 +13,8 @@ fuzz_target!(|data: &[u8]| {
     let accent = Color { r: red, g: green, b: blue }.hex();
     let mode = if dark % 2 == 1 { Mode::Dark } else { Mode::Light };
     for name in theme::names() {
-        let tokens = theme::resolve(&Options { name: name.to_string(), mode, accent: accent.clone(), ..Options::default() });
+        let tokens =
+            theme::resolve(&Options { name: name.to_string(), mode, accent: accent.clone(), ..Options::default() });
         for surface in [tokens.palette.background, tokens.palette.surface, tokens.palette.surface_alt] {
             assert!(theme::contrast(tokens.palette.accent, surface) >= MIN_TEXT_CONTRAST);
         }

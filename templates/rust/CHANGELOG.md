@@ -16,7 +16,7 @@ All notable changes to Template App are recorded here. The format follows [Keep 
 - Opt-in background notifier with a per-user start-at-sign-in entry.
 - Settings stored in the database, validated before saving, with reset per setting and a visible source when a flag or environment variable overrides a value.
 - Seven color themes in light and dark mode, a contrast-checked custom accent, density, text size, and a terminal palette that honors `NO_COLOR`.
-- About with the offline usage guide, shortcuts, diagnostics, licenses, and links that open only after a confirmation that shows the full address.
+- About with the offline usage guide, shortcuts, diagnostics, licenses, and links that open only when chosen and only inside the project repository.
 - Labeled demo data that is loaded and removed with one action.
 - Scripts for setup, checks, fuzzing, packaging and release verification.
 

@@ -6,6 +6,7 @@ use app_core::meta;
 use serde_json::Value;
 
 const MAX_DEPTH: usize = 4;
+const MAX_LICENSE_BYTES: usize = 200_000;
 const ADDRESS_OMITTED: &str = "(address omitted)";
 const SKIPPED_DIRECTORIES: &[&str] = &["target", "tests", "benches", "examples", "src", ".git", ".github"];
 const SKIPPED_EXTENSIONS: &[&str] =
@@ -49,7 +50,8 @@ fn shipped_ids(graph: &Value) -> BTreeSet<String> {
         let mut targets = Vec::new();
         for dependency in node.get("deps").and_then(Value::as_array).into_iter().flatten() {
             let kinds = dependency.get("dep_kinds").and_then(Value::as_array).cloned().unwrap_or_default();
-            let used = kinds.is_empty() || kinds.iter().any(|kind| kind.get("kind").and_then(Value::as_str) != Some("dev"));
+            let used =
+                kinds.is_empty() || kinds.iter().any(|kind| kind.get("kind").and_then(Value::as_str) != Some("dev"));
             if used {
                 targets.push(text(dependency, "pkg"));
             }
@@ -179,14 +181,27 @@ fn omit_addresses(line: &str) -> String {
     result
 }
 
+fn is_copyright_line(line: &str) -> bool {
+    if line.len() >= 200 {
+        return false;
+    }
+    let lower = line.to_lowercase();
+    let Some(rest) = lower.strip_prefix("copyright") else {
+        return false;
+    };
+    let rest = rest.trim_start();
+    rest.starts_with("(c)") || rest.starts_with('©') || rest.starts_with(|letter: char| letter.is_ascii_digit())
+}
+
 fn split_copyrights(raw: &str) -> (Vec<String>, String) {
-    let normalized = raw.replace("\r\n", "\n");
+    let normalized: String =
+        raw.replace("\r\n", "\n").chars().filter(|letter| *letter == '\n' || *letter == '\t' || !letter.is_control()).collect();
     let mut copyrights: Vec<String> = Vec::new();
     let mut body: Vec<String> = Vec::new();
     for line in normalized.lines().map(str::trim_end) {
         let cleaned = omit_addresses(line);
         let trimmed = cleaned.trim();
-        if trimmed.to_lowercase().starts_with("copyright") && trimmed.len() < 200 {
+        if is_copyright_line(trimmed) {
             if !copyrights.iter().any(|known| known == trimmed) {
                 copyrights.push(trimmed.to_string());
             }
@@ -230,6 +245,9 @@ fn render(list: &[Component]) -> String {
             let Ok(raw) = std::fs::read(&path) else {
                 continue;
             };
+            if raw.len() > MAX_LICENSE_BYTES || raw.iter().take(8000).any(|byte| *byte == 0) {
+                continue;
+            }
             let (copyrights, body) = split_copyrights(&String::from_utf8_lossy(&raw));
             if body.trim().is_empty() {
                 continue;

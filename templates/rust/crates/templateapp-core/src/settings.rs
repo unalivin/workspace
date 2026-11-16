@@ -215,8 +215,8 @@ pub const DEFINITIONS: &[Definition] = &[
         definition(
             KEY_REFRESH_SECONDS,
             "Data",
-            "Terminal refresh interval",
-            "Seconds between automatic refreshes of the terminal UI.",
+            "Refresh interval",
+            "Seconds between checks for changes made by another window or command.",
             Kind::Int,
             "2",
         ),

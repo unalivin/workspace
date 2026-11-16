@@ -22,7 +22,8 @@ run does not have.
                 debug assertions turned on.
 
 The sanitized build has its own directory under target/, so it does not
-disturb the normal build.
+disturb the normal build. When llvm-symbolizer is installed, reports name the
+functions and lines.
 
   --dry-run  Print the commands instead of running them
   --help     Show this help
@@ -54,12 +55,20 @@ case "$(host_os)" in
       [ "$DRY_RUN" = "1" ] || die "rustc is not installed: run scripts/dev-setup.sh"
       triple="<host-triple>"
     fi
-    run env RUSTC_BOOTSTRAP=1 RUSTFLAGS="-Zsanitizer=address" \
-      cargo test --locked "${packages[@]}" --no-default-features --lib --bins --tests --target "$triple"
+    settings=(RUSTC_BOOTSTRAP=1 RUSTFLAGS="-Zsanitizer=address")
+    symbolizer="$(command -v llvm-symbolizer || true)"
+    if [ -z "$symbolizer" ]; then
+      symbolizer="$(find /usr/bin -maxdepth 1 -name 'llvm-symbolizer-*' 2>/dev/null | sort -V | tail -n 1)"
+    fi
+    if [ -n "$symbolizer" ]; then
+      settings+=(ASAN_SYMBOLIZER_PATH="$symbolizer")
+    fi
+    run env "${settings[@]}" \
+      cargo test --locked "${packages[@]}" --no-default-features --lib --bins --tests --no-fail-fast --target "$triple"
     ;;
   windows)
     run env RUSTFLAGS="-C overflow-checks=on -C debug-assertions=on" CARGO_TARGET_DIR="target/checked" \
-      cargo test --locked --release "${packages[@]}" --no-default-features
+      cargo test --locked --release "${packages[@]}" --no-default-features --no-fail-fast
     ;;
   *) die "unsupported operating system: $(uname -s)" ;;
 esac
