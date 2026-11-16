@@ -1,0 +1,24 @@
+[package]
+name = "templateapp-app"
+description = "TEMPLATE_DESCRIPTION"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "templateapp"
+path = "src/main.rs"
+
+[lib]
+name = "app_cli"
+
+[lints]
+workspace = true
+
+[dependencies]
+app_core = { package = "templateapp-core", path = "../templateapp-core" }
+clap = { workspace = true }
+serde_json = { workspace = true }

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Template App
+Comment=TEMPLATE_TAGLINE
+Exec=templateapp
+Icon=templateapp
+Terminal=false
+Categories=Utility;

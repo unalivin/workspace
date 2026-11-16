@@ -1,0 +1,64 @@
+name: Dev evidence
+
+on:
+  push:
+    branches:
+      - arena/9925821e-workspace
+    paths:
+      - .github/dev-evidence/**
+
+permissions:
+  contents: read
+
+jobs:
+  collect:
+    name: collect (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Run request
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/evidence"
+          export EVIDENCE_DIR="$RUNNER_TEMP/evidence"
+          status=0
+          bash .github/dev-evidence/request.sh > "$EVIDENCE_DIR/request.log" 2>&1 || status=$?
+          printf 'request exit status: %s\n' "$status" >> "$EVIDENCE_DIR/request.log"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: evidence-${{ matrix.os }}
+          path: ${{ runner.temp }}/evidence
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  store:
+    name: store evidence ref
+    needs: collect
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          path: evidence
+      - name: Push evidence ref
+        shell: bash
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          cd evidence
+          git init -q
+          git add -A
+          git -c user.name=ci-evidence -c user.email=ci-evidence commit -q -m "evidence for ${GITHUB_SHA}"
+          git push -q "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "+HEAD:refs/ci-evidence/${GITHUB_SHA}"
