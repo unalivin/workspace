@@ -35,11 +35,32 @@ fn main() {
                 env: environment.clone(),
                 system_dark: app_tui::screen::dark_background(&environment),
                 autostart: Some(autostart()),
-                has_dashboard: false,
+                has_dashboard: cfg!(feature = "gui"),
                 open_url: Some(Box::new(open_url)),
             },
         )
     };
+    #[cfg(feature = "gui")]
+    let open_gui = |app: &mut App| {
+        let program = executable.to_string_lossy().into_owned();
+        app_gui::run(
+            app,
+            app_gui::Options {
+                env: environment.clone(),
+                system_dark: false,
+                autostart: Some(autostart()),
+                in_terminal: terminals.0 && terminals.1,
+                open_terminal: Some(Box::new(move |arguments: &[String]| {
+                    platform::open_terminal_window(os, &program, arguments, &platform::spawn_detached)
+                })),
+                open_url: Some(Box::new(open_url)),
+            },
+        )
+    };
+    #[cfg(feature = "gui")]
+    let hooks = Hooks { open_gui: Some(&open_gui), show_chooser: Some(&app_gui::choose), ..Hooks::default() };
+    #[cfg(not(feature = "gui"))]
+    let hooks = Hooks::default();
     let mut input = stdin.lock();
     let mut output = std::io::stdout();
     let mut errors = std::io::stderr();
@@ -56,7 +77,7 @@ fn main() {
             autostart: Some(&autostart),
             open_terminal_window: Some(&window),
             open_tui: Some(&open_tui),
-            ..Hooks::default()
+            ..hooks
         },
     });
     drop(input);

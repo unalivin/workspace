@@ -18,8 +18,13 @@ name = "app_cli"
 [lints]
 workspace = true
 
+[features]
+default = ["gui"]
+gui = ["dep:app_gui"]
+
 [dependencies]
 app_core = { package = "templateapp-core", path = "../templateapp-core" }
+app_gui = { package = "templateapp-gui", path = "../templateapp-gui", optional = true }
 app_tui = { package = "templateapp-tui", path = "../templateapp-tui" }
 serde = { workspace = true }
 serde_json = { workspace = true }

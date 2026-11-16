@@ -207,7 +207,11 @@ pub fn files(name: &str, comment: &str, slug: &str) -> Vec<(String, Vec<u8>)> {
     list
 }
 
-pub fn write_files(directory: &std::path::Path, list: &[(String, Vec<u8>)], check: bool) -> Result<Vec<String>, String> {
+pub fn write_files(
+    directory: &std::path::Path,
+    list: &[(String, Vec<u8>)],
+    check: bool,
+) -> Result<Vec<String>, String> {
     let mut written = Vec::new();
     for (name, wanted) in list {
         let path = directory.join(name);
@@ -273,7 +277,9 @@ mod tests {
             assert!(!source.contains("<image"));
             assert_eq!(source.matches('<').count(), source.matches('>').count());
         }
-        assert!(svg("Icon").contains("<rect x=\"10.24\" y=\"10.24\" width=\"235.52\" height=\"235.52\" rx=\"51.2\" fill=\"#1F3A5F\"/>"));
+        assert!(svg("Icon").contains(
+            "<rect x=\"10.24\" y=\"10.24\" width=\"235.52\" height=\"235.52\" rx=\"51.2\" fill=\"#1F3A5F\"/>"
+        ));
     }
 
     fn number(data: &[u8], at: usize, little: bool) -> usize {
@@ -335,14 +341,12 @@ mod tests {
     }
 
     #[test]
-    fn the_committed_text_assets_match_the_generator() {
+    fn the_committed_assets_match_the_generator() {
         let assets = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets");
+        let files = files(meta::APP_NAME, meta::TAGLINE, meta::SLUG);
+        assert_eq!(files.len(), 8 + SIZES.len());
+        assert_eq!(write_files(&assets, &files, true), Ok(Vec::new()));
         let files = text_files(meta::APP_NAME, meta::TAGLINE, meta::SLUG);
-        assert_eq!(files.len(), 4);
-        for (name, wanted) in &files {
-            let current = std::fs::read_to_string(assets.join(name)).unwrap_or_default();
-            assert_eq!(&current, wanted, "assets/{name} is out of date: run make assets");
-        }
         let entry = &files[2].1;
         for line in [
             format!("Name={}", meta::APP_NAME),
