@@ -27,7 +27,7 @@ The Cargo workspace has four crates. The library names used in `use` lines are `
 | `crates/templateapp-core` | Everything that is not presentation: the modules in the next table |
 | `crates/templateapp-app` | The binary `templateapp` (`main.rs`) and the command line (`cli.rs`, `records.rs`, `notifications.rs`, `config.rs`); the feature `gui` links the dashboard and is on by default; `build.rs` embeds the icon into the Windows executable |
 | `crates/templateapp-tui` | Terminal UI on ratatui with crossterm |
-| `crates/templateapp-gui` | Dashboard on egui with eframe: the skin that replaces the toolkit look (`skin.rs`), icons (`icons.rs`), tables and forms, pages, the window host (`host.rs`), the chooser, and a software renderer for tests and screenshots (`render.rs`) |
+| `crates/templateapp-gui` | Dashboard on egui with eframe: the skin that replaces the toolkit look (`skin.rs`), icons (`icons.rs`), the overview tally (`ledger.rs`), tables and forms, pages, the window host (`host.rs`), the chooser, and a software renderer for tests and screenshots (`render.rs`) |
 | `fuzz` | The fuzz targets, a separate package outside the workspace |
 
 | Module of `templateapp-core` | Responsibility |
@@ -90,14 +90,15 @@ The interface follows one direction, and a change to it should fit these five li
 - Character: plain, exact, calm.
 - World: an operations logbook. Surfaces are cool grey paper, text is near-black ink, and one cobalt accent marks the current place and the main action.
 - Where color goes: the breakdown of enabled records on the Overview and the count of open records. Navigation, top bar and settings stay grey.
-- Signature: severity as an icon and a word in its own color, next to the count as a figure.
+- Signature: the tally square. One square stands for a fixed number of records, in the color of its severity, next to the count as a figure.
 
 The rules that follow from it:
 
-- Spacing sits on a four pixel grid: 4, 8, 12, 16, 24. Rows are 32 high, 24 in compact density. Text sizes are 12, 14, 16 and 24, multiplied by the text size setting.
+- Spacing sits on a four pixel grid: 4, 8, 12, 16, 24. Rows are 32 high, 24 in compact density. Text sizes are 12, 14, 16, 24 and 28, multiplied by the text size setting.
+- One text family in two weights, regular and medium, plus a monospaced face for counts. `skin.rs` embeds both weights from `crates/templateapp-gui/fonts` and installs them when a window is created.
 - The seven themes share one grey ramp. A named theme moves the hue of the greys slightly and sets the accent; severity colors never change with the theme.
 - Severity and status are always an icon and a word. Color is an addition, never the only carrier.
-- The Overview draws only stored data.
+- The Overview draws only stored data. The tally (`ledger.rs`) and the table next to it read the same rows.
 - Text and icons meet WCAG AA contrast on every surface of every theme; the `theme` module tests this for all themes, both modes and custom accents.
 
 ## Builds

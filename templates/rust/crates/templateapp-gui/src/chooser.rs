@@ -1,11 +1,11 @@
 use app_core::launcher::{MODE_GUI, MODE_TUI};
 use app_core::meta;
 use app_core::theme::Tokens;
-use egui::{Align, Button, CentralPanel, Frame, Label, Layout, Margin, RichText, Ui, vec2};
+use egui::{Align, Button, CentralPanel, Frame, Label, Layout, Margin, Ui, vec2};
 
 use crate::forms::{muted, primary};
 use crate::icons::Icons;
-use crate::skin::{color, subheading};
+use crate::skin::{color, strong, subheading};
 
 pub const DASHBOARD: &str = "Dashboard (graphical window)";
 pub const TERMINAL: &str = "Terminal (text interface)";
@@ -37,7 +37,7 @@ pub fn show(
     CentralPanel::default().frame(frame).show(ui, |ui| {
         ui.horizontal(|ui| {
             ui.add(icons.logo(ui.ctx(), 48.0));
-            ui.add(Label::new(RichText::new(title()).text_style(subheading()).strong()).wrap());
+            ui.add(Label::new(strong(title()).text_style(subheading())).wrap());
         });
         ui.add_space(tokens.spacing.s);
         let size = vec2(ui.available_width(), tokens.spacing.row_height);

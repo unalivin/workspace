@@ -10,8 +10,12 @@ All notable changes to Template App are recorded here. The format follows [Keep 
 - The Windows version resource carries the company name and the copyright line of `LICENSE`, and the macOS bundle carries the copyright text; the packaging script reads the values back and stops when they differ.
 - `.github/PULL_REQUEST_TEMPLATE.md` with the commit scope, test commands, platforms and rules of this project.
 
+- The overview of the dashboard has a tally of enabled records by severity and status next to the table with the same numbers.
+- Noto Sans in the regular and the medium weight is embedded for the text of the dashboard; its license is in the notices.
+
 ### Changed
 
+- The four overview figures share one panel instead of four equal cards, and the first one is wider and drawn in the accent color.
 - The dashboard uses the grey ramp shared by all themes, a four pixel spacing grid, larger text sizes and a marker for the current page in the navigation. Severity colors in light mode are darker so that they pass AA contrast on every surface.
 
 ## [0.1.0-dev]

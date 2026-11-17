@@ -15,7 +15,7 @@ use crate::forms::{danger, muted};
 use crate::model::{
     ABOUT_TABS, AboutTab, Dashboard, NOTIFIER_MISSING, NOTIFIER_OFF, NotifierState, front_end_label, saved_value,
 };
-use crate::skin::{color, subheading};
+use crate::skin::{color, strong, subheading};
 use crate::table::{self, Cell, fixed, flexible};
 
 const CONTROL_WIDTH: f32 = 240.0;
@@ -67,7 +67,7 @@ impl Dashboard<'_> {
             let width = LABEL_WIDTH.min(ui.available_width() * 0.45);
             ui.allocate_ui_with_layout(vec2(width, 0.0), Layout::top_down(Align::LEFT), |ui| {
                 ui.set_width(width);
-                ui.label(RichText::new(title).strong());
+                ui.label(strong(title));
                 if !help.is_empty() {
                     ui.add(Label::new(RichText::new(help).small().weak()).wrap());
                 }
@@ -321,7 +321,7 @@ impl Dashboard<'_> {
         CentralPanel::default().frame(body).show(ui, |ui| {
             ScrollArea::vertical().id_salt("guide-section").auto_shrink(false).show(ui, |ui| {
                 if let Some(section) = shown.and_then(|index| page.usage.sections.get(index)) {
-                    ui.label(RichText::new(&section.title).text_style(subheading()).strong());
+                    ui.label(strong(&section.title).text_style(subheading()));
                     ui.add_space(self.tokens.spacing.xs);
                     ui.add(Label::new(guide::plain(&section.body)).wrap());
                 }

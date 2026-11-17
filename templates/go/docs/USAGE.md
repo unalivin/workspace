@@ -15,7 +15,7 @@ On the first start the application creates its database and tells you where the 
 
 ## Overview
 
-Overview shows what needs attention: open records, urgent records (open with high or critical severity), unread notifications and disabled records, followed by a table of enabled records by status and severity. The dashboard, the terminal UI and `templateapp overview` read the same numbers from the same database views.
+Overview shows what needs attention: open records, urgent records (open with high or critical severity), unread notifications and disabled records, followed by a table of enabled records by status and severity. The dashboard also draws those numbers as a tally: one row per severity, one column per status, one square per record. When a count does not fit, a square stands for more records and the line under the tally says how many. The dashboard, the terminal UI and `templateapp overview` read the same numbers from the same database views.
 
 ## Records
 

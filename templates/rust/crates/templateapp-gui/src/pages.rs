@@ -6,7 +6,7 @@ use egui::{
 
 use crate::forms::{danger, muted};
 use crate::model::{Dashboard, SEARCH_LIMIT, enabled_label, event_label};
-use crate::skin::{color, severity_icon, status_icon, subheading};
+use crate::skin::{color, severity_icon, status_icon, strong, subheading};
 use crate::table::{self, Cell, Spec, fixed, flexible};
 
 const DETAIL_WIDTH: f32 = 340.0;
@@ -139,7 +139,7 @@ impl Dashboard<'_> {
 
     fn record_detail(&self, ui: &mut Ui, record: &Record, act: &mut Option<RecordAct>) {
         ui.horizontal(|ui| {
-            ui.add(Label::new(RichText::new(&record.name).text_style(subheading()).strong()).wrap());
+            ui.add(Label::new(strong(&record.name).text_style(subheading())).wrap());
         });
         ui.add_space(self.tokens.spacing.xs);
         ui.label(self.record_details(record));

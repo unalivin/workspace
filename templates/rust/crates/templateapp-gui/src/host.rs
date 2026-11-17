@@ -106,6 +106,7 @@ pub fn run(app: &mut App, mut options: Options) -> Result<String> {
     let outcome = {
         let next = &next;
         let creator: eframe::AppCreator<'_> = Box::new(move |creation| {
+            skin::install(&creation.egui_ctx);
             if let Some(dark) = system_dark(&creation.egui_ctx) {
                 options.system_dark = dark;
             }
@@ -179,7 +180,8 @@ pub fn choose(default_mode: &str) -> Result<PromptResult> {
     let outcome = {
         let result = &result;
         let default_mode = default_mode.to_string();
-        let creator: eframe::AppCreator<'_> = Box::new(move |_| {
+        let creator: eframe::AppCreator<'_> = Box::new(move |creation| {
+            skin::install(&creation.egui_ctx);
             Ok(Box::new(Prompt {
                 default_mode,
                 remember: false,

@@ -213,6 +213,7 @@ pub struct Stage {
 impl Stage {
     pub fn new(width: f32, height: f32, scale: f32) -> Stage {
         let ctx = Context::default();
+        crate::skin::install(&ctx);
         ctx.set_pixels_per_point(scale);
         Stage {
             ctx,
@@ -260,8 +261,12 @@ impl Stage {
         lines.join("\n")
     }
 
+    pub fn areas(&self, wanted: &str) -> Vec<Rect> {
+        self.texts.iter().filter(|(text, _)| text == wanted).map(|(_, area)| *area).collect()
+    }
+
     pub fn locate_all(&self, wanted: &str) -> Vec<Pos2> {
-        self.texts.iter().filter(|(text, _)| text == wanted).map(|(_, area)| area.center()).collect()
+        self.areas(wanted).iter().map(Rect::center).collect()
     }
 
     pub fn locate(&self, wanted: &str) -> Option<Pos2> {

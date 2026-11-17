@@ -8,6 +8,7 @@ use serde_json::Value;
 const MAX_DEPTH: usize = 4;
 const MAX_LICENSE_BYTES: usize = 200_000;
 const ADDRESS_OMITTED: &str = "(address omitted)";
+const FONT_DIRECTORY: &str = "crates/templateapp-gui/fonts";
 const SKIPPED_DIRECTORIES: &[&str] = &["target", "tests", "benches", "examples", "src", ".git", ".github"];
 const SKIPPED_EXTENSIONS: &[&str] =
     &["rs", "toml", "json", "yml", "yaml", "py", "sh", "html", "js", "css", "lock", "c", "h", "cpp", "hpp", "png"];
@@ -235,7 +236,7 @@ fn fence(body: &str) -> String {
     "`".repeat(longest + 1)
 }
 
-fn render(list: &[Component]) -> String {
+fn render(list: &[Component], font_license: &str) -> String {
     let mut texts: Vec<(String, Vec<Notice>)> = Vec::new();
     let mut positions: BTreeMap<String, usize> = BTreeMap::new();
     let mut bare: Vec<&Component> = Vec::new();
@@ -291,6 +292,12 @@ fn render(list: &[Component]) -> String {
     page.push_str("- Fonts shipped by the dashboard toolkit egui in the crate `epaint_default_fonts`. Their license files are reproduced below under that crate.\n");
     page.push_str("- The SQLite library (public domain), compiled in through `libsqlite3-sys`.\n\n");
     page.push_str("The application's own icons (navigation, status, severity and action icons, and the application icon) are original drawings released under the application's license.\n\n");
+    page.push_str("## Fonts embedded by the application\n\n");
+    page.push_str(&format!(
+        "The regular and the medium weight of Noto Sans 2.015 (SIL Open Font License 1.1), which the dashboard embeds unchanged from `{FONT_DIRECTORY}`. Their license file is reproduced here.\n\n"
+    ));
+    let marks = fence(font_license);
+    page.push_str(&format!("{marks}text\n{}\n{marks}\n\n", font_license.trim_end()));
     page.push_str("## Components\n\n| Crate | Version | License | Source |\n|---|---|---|---|\n");
     for component in list {
         let source = if component.repository.is_empty() {
@@ -337,7 +344,11 @@ fn run(check: bool) -> Result<(), String> {
     if list.is_empty() {
         return Err("cargo metadata listed no third-party crate".to_string());
     }
-    let wanted = render(&list);
+    let license_path = root.join(FONT_DIRECTORY).join("OFL.txt");
+    let font_license = std::fs::read_to_string(&license_path)
+        .map_err(|problem| format!("{} cannot be read: {problem}", license_path.display()))?
+        .replace("\r\n", "\n");
+    let wanted = render(&list, &omit_addresses(&font_license));
     let path = root.join("THIRD_PARTY_NOTICES.md");
     let current = std::fs::read_to_string(&path).unwrap_or_default().replace("\r\n", "\n");
     if wanted == current {

@@ -1,19 +1,25 @@
 use app_core::meta;
 use app_core::records::DEMO_RECORDS;
 use app_core::service::{NAV_ABOUT, NAV_NOTIFICATIONS, NAV_OVERVIEW, NAV_RECORDS, NAV_SETTINGS};
+use app_core::theme::Tokens;
+use egui::epaint::RectShape;
+use egui::layers::ShapeIdx;
 use egui::{
     Align, Button, CentralPanel, Context, Frame, Image, Key, Label, Layout, Margin, MenuBar, Modifiers, Panel, Rect,
-    RichText, ScrollArea, TextEdit, Ui, pos2, vec2,
+    RichText, ScrollArea, Sense, Shape, Stroke, StrokeKind, TextEdit, Ui, UiBuilder, pos2, vec2,
 };
 
-use crate::forms::{Verdict, muted};
+use crate::forms::Verdict;
+use crate::ledger;
 use crate::model::{AboutTab, Dashboard, SEARCH_LIMIT, Shortcut, Tone};
-use crate::skin::{self, ICON_SCALE, alpha, color, severity_icon, status_icon, subheading};
+use crate::skin::{self, ICON_SCALE, alpha, color, medium, severity_icon, status_icon, strong, subheading};
 use crate::table::{self, Cell, fixed, flexible};
 
 const PAGE_KEYS: [Key; 5] = [Key::Num1, Key::Num2, Key::Num3, Key::Num4, Key::Num5];
 const SIDEBAR_WIDTH: f32 = 224.0;
 const NAV_MARKER: f32 = 4.0;
+const FIGURE_SHARES: [f32; 4] = [3.0, 2.0, 2.0, 2.0];
+const CHART_SHARES: [f32; 2] = [5.0, 3.0];
 const FLASH_SECONDS: f32 = 0.6;
 pub(crate) const SEARCH_HINT: &str = "Search records and the usage guide, then press Enter";
 pub(crate) const DEMO_NOTE: &str =
@@ -351,32 +357,37 @@ impl Dashboard<'_> {
 
     pub(crate) fn section(&self, ui: &mut Ui, title: &str) {
         ui.add_space(self.tokens.spacing.s);
-        ui.label(RichText::new(title).text_style(subheading()).strong());
+        ui.label(strong(title).text_style(subheading()));
         ui.add_space(self.tokens.spacing.xs);
     }
 
     fn overview_page(&mut self, ui: &mut Ui) {
         let mut load = false;
+        let gaps = self.tokens.spacing;
         ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
-            self.section(ui, "What needs attention");
             let overview = &self.overview;
-            let cards = [
+            let figures = [
                 ("Open records", overview.open, "not done and enabled"),
                 ("Urgent records", overview.urgent, "open with high or critical severity"),
                 ("Unread notifications", overview.unread_notifications, "see Notifications"),
                 ("Disabled records", overview.disabled, "kept but not counted"),
             ];
-            ui.columns(cards.len(), |columns| {
-                for (column, (title, number, note)) in columns.iter_mut().zip(cards) {
-                    self.card(column, |ui| {
-                        ui.set_width(ui.available_width());
-                        ui.label(title);
-                        ui.label(RichText::new(number.to_string()).heading().strong());
-                        muted(ui, note);
-                    });
-                }
+            self.card(ui, |ui| {
+                ui.set_width(ui.available_width());
+                share(ui, None, &FIGURE_SHARES, gaps.xl, |index, ui| {
+                    let (title, number, note) = figures[index];
+                    let tint = if index == 0 { self.tokens.palette.accent } else { self.tokens.palette.text };
+                    ui.label(RichText::new(title).small().weak());
+                    ui.label(
+                        RichText::new(number.to_string())
+                            .family(medium())
+                            .size(self.tokens.type_scale.figure)
+                            .color(color(tint)),
+                    );
+                    ui.add(Label::new(RichText::new(note).small().weak()).wrap());
+                });
             });
-            self.section(ui, "Enabled records by status and severity");
+            ui.add_space(gaps.l);
             if overview.total() == 0 {
                 ui.add(
                     Label::new(
@@ -385,28 +396,40 @@ impl Dashboard<'_> {
                     .wrap(),
                 );
             } else {
-                let gap = self.tokens.spacing.s;
-                let width = ui.available_width().min(640.0);
-                let slots = table::layout(&[flexible(1.0, 120.0), flexible(1.0, 120.0), fixed(80.0)], width - gap * 2.0, gap);
-                table::header(ui, &self.tokens, &slots, &["Status", "Severity", "Records"]);
-                for line in &overview.breakdown {
-                    let cells = vec![
-                        Cell::Icon(
-                            status_icon(line.status),
-                            color(self.tokens.palette.text_muted),
-                            line.status.label().to_string(),
-                        ),
-                        Cell::Icon(
-                            severity_icon(line.severity),
-                            color(self.tokens.semantic.severity(line.severity)),
-                            line.severity.label().to_string(),
-                        ),
-                        Cell::Text(line.total.to_string()),
-                    ];
-                    table::row(ui, &self.icons, &self.tokens, &slots, cells, false);
-                }
+                share(ui, Some(&self.tokens), &CHART_SHARES, gaps.l, |index, ui| {
+                    if index == 0 {
+                        ui.label(strong("Enabled records by severity and status").text_style(subheading()));
+                        ui.add_space(gaps.s);
+                        let unit = ledger::show(ui, &self.icons, &self.tokens, &overview.breakdown);
+                        ui.add_space(gaps.s);
+                        ui.add(Label::new(RichText::new(ledger::caption(unit)).small().weak()).wrap());
+                        return;
+                    }
+                    ui.label(strong("The same as a table").text_style(subheading()));
+                    ui.add_space(gaps.s);
+                    let gap = gaps.s;
+                    let specs = [flexible(1.0, 96.0), flexible(1.0, 96.0), fixed(64.0)];
+                    let slots = table::layout(&specs, ui.available_width() - gap * 2.0, gap);
+                    table::header(ui, &self.tokens, &slots, &["Status", "Severity", "Records"]);
+                    for line in &overview.breakdown {
+                        let cells = vec![
+                            Cell::Icon(
+                                status_icon(line.status),
+                                color(self.tokens.palette.text_muted),
+                                line.status.label().to_string(),
+                            ),
+                            Cell::Icon(
+                                severity_icon(line.severity),
+                                color(self.tokens.semantic.severity(line.severity)),
+                                line.severity.label().to_string(),
+                            ),
+                            Cell::Text(line.total.to_string()),
+                        ];
+                        table::row(ui, &self.icons, &self.tokens, &slots, cells, false);
+                    }
+                });
             }
-            ui.add_space(self.tokens.spacing.m);
+            ui.add_space(gaps.l);
             if overview.demo > 0 {
                 let note = format!(
                     "Demo data is loaded: {} sample records whose names start with \"Demo:\". Remove them in Settings, Data, Remove demo data.",
@@ -425,4 +448,48 @@ impl Dashboard<'_> {
             self.load_demo();
         }
     }
+}
+
+pub(crate) fn share(
+    ui: &mut Ui,
+    panel: Option<&Tokens>,
+    shares: &[f32],
+    gap: f32,
+    mut add: impl FnMut(usize, &mut Ui),
+) {
+    let total: f32 = shares.iter().sum();
+    if shares.is_empty() || total <= 0.0 {
+        return;
+    }
+    let pad = panel.map_or(0.0, |tokens| tokens.spacing.m);
+    let origin = ui.cursor().min;
+    let width = ui.available_width();
+    let usable = (width - gap * (shares.len() - 1) as f32).max(0.0);
+    let backs: Vec<ShapeIdx> = shares.iter().map(|_| ui.painter().add(Shape::Noop)).collect();
+    let mut spans = Vec::with_capacity(shares.len());
+    let mut left = origin.x;
+    let mut bottom = origin.y;
+    for (index, part) in shares.iter().enumerate() {
+        let span = usable * part / total;
+        let inner = Rect::from_min_size(pos2(left + pad, origin.y + pad), vec2((span - pad * 2.0).max(0.0), 0.0));
+        let used = ui
+            .scope_builder(UiBuilder::new().max_rect(inner).layout(Layout::top_down(Align::Min)), |ui| {
+                ui.set_width(inner.width());
+                add(index, ui);
+            })
+            .response
+            .rect;
+        bottom = bottom.max(used.bottom() + pad);
+        spans.push((left, span));
+        left += span + gap;
+    }
+    if let Some(tokens) = panel {
+        for ((left, span), back) in spans.into_iter().zip(backs) {
+            let area = Rect::from_min_max(pos2(left, origin.y), pos2(left + span, bottom));
+            let border = Stroke::new(1.0, color(tokens.palette.divider));
+            let shape = RectShape::new(area, tokens.radius, color(tokens.palette.surface), border, StrokeKind::Inside);
+            ui.painter().set(back, shape);
+        }
+    }
+    ui.allocate_rect(Rect::from_min_max(origin, pos2(origin.x + width, bottom)), Sense::hover());
 }

@@ -2,7 +2,7 @@ use app_core::theme::Tokens;
 use egui::{Align, Color32, Label, Layout, Rect, Response, RichText, Sense, Ui, UiBuilder, Widget, pos2, vec2};
 
 use crate::icons::Icons;
-use crate::skin::{ICON_SCALE, alpha, color};
+use crate::skin::{ICON_SCALE, alpha, color, strong};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Spec {
@@ -54,7 +54,7 @@ pub fn header(ui: &mut Ui, tokens: &Tokens, slots: &[(f32, f32)], titles: &[&str
     let (area, _) = ui.allocate_exact_size(vec2(ui.available_width(), height), Sense::hover());
     for ((left, width), title) in slots.iter().zip(titles) {
         let cell = Rect::from_min_size(pos2(area.left() + tokens.spacing.s + left, area.top()), vec2(*width, height));
-        place(ui, cell, Label::new(RichText::new(*title).small().strong()).truncate());
+        place(ui, cell, Label::new(strong(*title).small()).truncate());
     }
     ui.painter().hline(area.x_range(), area.bottom(), (1.0, color(tokens.palette.divider)));
 }

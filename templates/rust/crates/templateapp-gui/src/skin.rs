@@ -1,11 +1,41 @@
 use app_core::records::Status;
 use app_core::theme::{self, Color, Severity, Tokens};
 use egui::{
-    Color32, Context, CornerRadius, FontFamily, FontId, Margin, Shadow, Stroke, Style, TextStyle, Theme, Visuals, vec2,
+    Color32, Context, CornerRadius, FontData, FontDefinitions, FontFamily, FontId, Margin, RichText, Shadow, Stroke,
+    Style, TextStyle, Theme, Visuals, vec2,
 };
 
 pub const SUBHEADING: &str = "subheading";
+pub const MEDIUM: &str = "medium";
 pub const ICON_SCALE: f32 = 1.3;
+pub const REGULAR_FACE: &str = "NotoSans-Regular";
+pub const MEDIUM_FACE: &str = "NotoSans-Medium";
+static REGULAR_BYTES: &[u8] = include_bytes!("../fonts/NotoSans-Regular.ttf");
+static MEDIUM_BYTES: &[u8] = include_bytes!("../fonts/NotoSans-Medium.ttf");
+
+pub fn medium() -> FontFamily {
+    FontFamily::Name(MEDIUM.into())
+}
+
+pub fn strong(text: impl Into<String>) -> RichText {
+    RichText::new(text).family(medium()).strong()
+}
+
+pub fn fonts() -> FontDefinitions {
+    let mut fonts = FontDefinitions::default();
+    fonts.font_data.insert(REGULAR_FACE.to_string(), std::sync::Arc::new(FontData::from_static(REGULAR_BYTES)));
+    fonts.font_data.insert(MEDIUM_FACE.to_string(), std::sync::Arc::new(FontData::from_static(MEDIUM_BYTES)));
+    let fallback = fonts.families.get(&FontFamily::Proportional).cloned().unwrap_or_default();
+    let mut emphasis = vec![MEDIUM_FACE.to_string()];
+    emphasis.extend(fallback);
+    fonts.families.insert(medium(), emphasis);
+    fonts.families.entry(FontFamily::Proportional).or_default().insert(0, REGULAR_FACE.to_string());
+    fonts
+}
+
+pub fn install(ctx: &Context) {
+    ctx.set_fonts(fonts());
+}
 
 pub fn color(value: Color) -> Color32 {
     Color32::from_rgb(value.r, value.g, value.b)
@@ -54,8 +84,8 @@ pub fn style(tokens: &Tokens) -> Style {
         (TextStyle::Body, FontId::new(sizes.body, FontFamily::Proportional)),
         (TextStyle::Button, FontId::new(sizes.body, FontFamily::Proportional)),
         (TextStyle::Monospace, FontId::new(sizes.body, FontFamily::Monospace)),
-        (TextStyle::Heading, FontId::new(sizes.heading, FontFamily::Proportional)),
-        (subheading(), FontId::new(sizes.subheading, FontFamily::Proportional)),
+        (TextStyle::Heading, FontId::new(sizes.heading, medium())),
+        (subheading(), FontId::new(sizes.subheading, medium())),
     ]
     .into();
     let mut style = Style { text_styles, animation_time: if tokens.motion { 0.12 } else { 0.0 }, ..Style::default() };
@@ -211,6 +241,37 @@ mod tests {
         options.density = "compact".to_string();
         let tight = style(&theme::resolve(&options));
         assert!(tight.spacing.interact_size.y < roomy.spacing.interact_size.y);
+    }
+
+    #[test]
+    fn the_embedded_faces_lead_their_families_and_headings_use_the_medium_weight() {
+        let fonts = fonts();
+        for face in [REGULAR_FACE, MEDIUM_FACE] {
+            assert!(fonts.font_data.contains_key(face), "{face} is not embedded");
+        }
+        let body = &fonts.families[&FontFamily::Proportional];
+        let emphasis = &fonts.families[&medium()];
+        assert_eq!(body.first().map(String::as_str), Some(REGULAR_FACE));
+        assert_eq!(emphasis.first().map(String::as_str), Some(MEDIUM_FACE));
+        assert_eq!(body[1..], emphasis[1..], "the two families fall back to different faces");
+        assert!(body.len() > 1, "no fallback face for symbols");
+        for names in fonts.families.values() {
+            for name in names {
+                assert!(fonts.font_data.contains_key(name), "{name} has no font data");
+            }
+        }
+        assert_ne!(REGULAR_BYTES, MEDIUM_BYTES);
+        let license = include_str!("../fonts/OFL.txt");
+        assert!(license.contains("SIL OPEN FONT LICENSE Version 1.1"));
+        assert!(license.contains("The Noto Project Authors"));
+        let notices = app_core::meta::NOTICES_TEXT;
+        assert!(notices.contains("## Fonts embedded by the application"), "the notices do not name the fonts");
+        assert!(notices.contains(license.trim_end()), "the notices do not reproduce the font license");
+        let look = style(&tokens("slate", Mode::Light));
+        assert_eq!(look.text_styles[&TextStyle::Heading].family, medium());
+        assert_eq!(look.text_styles[&subheading()].family, medium());
+        assert_eq!(look.text_styles[&TextStyle::Body].family, FontFamily::Proportional);
+        assert!(look.text_styles[&TextStyle::Heading].size < tokens("slate", Mode::Light).type_scale.figure);
     }
 
     #[test]

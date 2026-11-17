@@ -786,6 +786,76 @@ fn rightmost(stage: &Stage, wanted: &str) -> egui::Pos2 {
     found.unwrap_or_else(|| panic!("{wanted:?} is not painted:\n{}", stage.text()))
 }
 
+fn leftmost(stage: &Stage, wanted: &str) -> egui::Rect {
+    let areas = stage.areas(wanted);
+    let found = areas.iter().copied().reduce(|best, next| if next.left() < best.left() { next } else { best });
+    found.unwrap_or_else(|| panic!("{wanted:?} is not painted:\n{}", stage.text()))
+}
+
+fn tinted(picture: &Picture, row: usize, from: usize, to: usize, tint: app_core::theme::Color) -> usize {
+    let matches = |x: &usize| {
+        let pixel = picture.pixel(*x, row);
+        [tint.r, tint.g, tint.b].iter().zip(pixel).all(|(wanted, got)| wanted.abs_diff(got) <= 2)
+    };
+    (from..to.min(picture.width)).filter(matches).count()
+}
+
+#[test]
+fn the_overview_draws_a_tally_beside_the_table_with_the_same_numbers() {
+    let home = TempDir::new("gui-overview-tally");
+    let mut app = open_app(&home);
+    let mut board = started(&mut app, options(&home));
+    let mut stage = Stage::new(shots::WIDTH, shots::HEIGHT, 1.0);
+    board.show(NAV_OVERVIEW);
+    let empty = painted(&mut stage, &mut board);
+    assert!(empty.contains("No records yet."), "an empty database is not explained:\n{empty}");
+    assert!(!empty.contains("One square is"), "an empty database shows a tally:\n{empty}");
+    board.load_demo();
+    let picture = stage.settle(3, |ui| board.ui(ui));
+    let text = stage.text();
+    for wanted in ["Enabled records by severity and status", "The same as a table", "One square is one enabled record."]
+    {
+        assert!(shown_line(&text, wanted), "the overview lacks {wanted:?}:\n{text}");
+    }
+
+    let titles = ["Open records", "Urgent records", "Unread notifications", "Disabled records"]
+        .map(|title| leftmost(&stage, title));
+    let line = titles[0].center().y;
+    assert!(titles.iter().all(|area| (area.center().y - line).abs() < 2.0), "the figures are not on one line");
+    let (first, second, third) =
+        (titles[1].left() - titles[0].left(), titles[2].left() - titles[1].left(), titles[3].left() - titles[2].left());
+    assert!((second - third).abs() < 2.0, "the later figures differ in width: {second} and {third}");
+    assert!(first > second * 1.3 && first < second * 1.5, "the first figure is not the widest: {first} and {second}");
+
+    let tokens = board.tokens.clone();
+    let square = tokens.spacing.m;
+    let table = leftmost(&stage, "Status").left();
+    let faded = app_core::theme::mix(tokens.semantic.severity(Severity::Medium), tokens.palette.surface, 0.6);
+    let rows = [
+        (Severity::Critical, 1.0, 0.0),
+        (Severity::High, 1.0, 0.0),
+        (Severity::Medium, 1.0, 1.0),
+        (Severity::Low, 1.0, 0.0),
+        (Severity::Info, 0.0, 0.0),
+    ];
+    let mut above = line;
+    for (level, strong, pale) in rows {
+        let label = leftmost(&stage, level.label());
+        assert!(label.right() < table, "{} is not a row of the tally", level.label());
+        assert!(label.center().y > above, "{} is out of order", level.label());
+        above = label.center().y;
+        let row = label.center().y.round() as usize;
+        let (from, to) = ((label.right() + 4.0) as usize, (table - square * 2.0) as usize);
+        for (tint, wanted) in [(tokens.semantic.severity(level), strong), (faded, pale)] {
+            let drawn = tinted(&picture, row, from, to, tint) as f32;
+            let (least, most) = (wanted * (square - 2.0), wanted * (square + 1.0));
+            assert!(drawn >= least && drawn <= most, "{}: {drawn} pixels of {tint:?}, wanted {least} to {most}", level.label());
+        }
+    }
+    assert_eq!(stage.areas("Medium").len(), 3, "the table does not repeat the tally:\n{text}");
+    assert_eq!(stage.areas("Info").len(), 1, "a disabled record is counted:\n{text}");
+}
+
 fn search_from_the_top_bar(stage: &mut Stage, board: &mut Dashboard<'_>, words: &str) {
     board.search.clear();
     stage.settle(2, |ui| board.ui(ui));

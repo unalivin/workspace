@@ -185,6 +185,7 @@ pub struct TypeScale {
     pub body: f32,
     pub subheading: f32,
     pub heading: f32,
+    pub figure: f32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -382,6 +383,7 @@ pub fn resolve(options: &Options) -> Tokens {
             body: 14.0 * scale,
             subheading: 16.0 * scale,
             heading: 24.0 * scale,
+            figure: 28.0 * scale,
         },
         radius: if selected.name == "contrast" { 0.0 } else { 8.0 },
         motion: !options.reduced_motion,

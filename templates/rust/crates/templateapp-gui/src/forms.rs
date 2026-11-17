@@ -2,7 +2,7 @@ use app_core::service::{Link, MovePlan};
 use app_core::theme::{self, Tokens};
 use egui::{Button, ComboBox, Context, Id, Key, Modal, RichText, ScrollArea, TextEdit, Ui};
 
-use crate::skin::color;
+use crate::skin::{color, strong};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
@@ -111,7 +111,7 @@ impl Form {
             let fresh = std::mem::take(&mut self.fresh);
             ScrollArea::vertical().max_height(ui.ctx().content_rect().height() - 220.0).show(ui, |ui| {
                 for (index, field) in self.fields.iter_mut().enumerate() {
-                    let name = ui.label(RichText::new(&field.label).strong());
+                    let name = ui.label(strong(&field.label));
                     if !field.options.is_empty() {
                         let chosen = field.shown().to_string();
                         let picker = ComboBox::from_id_salt(("form-field", index))
