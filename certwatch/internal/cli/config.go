@@ -407,6 +407,7 @@ func runAbout(ctx context.Context, in *invocation) error {
 	in.table([]string{"ITEM", "VALUE"}, [][]string{
 		{"Application", meta.AppName + " " + meta.Version},
 		{"About", meta.Tagline},
+		{"Publisher", meta.Publisher},
 		{"License", meta.License},
 		{"Source Code", app.SourceLink().URL},
 		{"Report a bug", meta.RepositoryURL + "/issues/new"},

@@ -40,6 +40,44 @@ What exists and what does not is stated in [docs/ROADMAP.md](docs/ROADMAP.md).
 | 25 | `securebaseline` | SecureBaseline | C++ | Configuration Compliance | Not started | - |
 <!-- projects:end -->
 
+## Where each project will be published
+
+The projects are developed here and published later as separate repositories. Some go to the company, the others stay personal. The table is generated from `scripts/projects.tsv` and checked in CI.
+
+<!-- destinations:start -->
+17 projects will be published in the GitHub organization [Sonix-Devs](https://github.com/Sonix-Devs), which belongs to the company. 8 projects stay on the personal profile [unalivin](https://github.com/unalivin). The copyright holder follows the destination: Sonix Devs for the company projects, Unalivin for the personal ones.
+
+| Project | Language | Destination |
+|---|---|---|
+| `netpulse` | Go | Sonix-Devs organization (company) |
+| `ipam-pro` | Go | Sonix-Devs organization (company) |
+| `netauto` | Go | Sonix-Devs organization (company) |
+| `fleetops` | Go | Sonix-Devs organization (company) |
+| `incidentflow` | Go | Sonix-Devs organization (company) |
+| `cloudfence` | Go | Sonix-Devs organization (company) |
+| `kubeguard` | Go | Sonix-Devs organization (company) |
+| `pipelineshield` | Go | Sonix-Devs organization (company) |
+| `vulntrack` | Go | Sonix-Devs organization (company) |
+| `secops-copilot` | Go | Sonix-Devs organization (company) |
+| `sbom-navigator` | Rust | Sonix-Devs organization (company) |
+| `iac-sentinel` | Rust | Sonix-Devs organization (company) |
+| `sigmalab` | Rust | Sonix-Devs organization (company) |
+| `logforge-siem` | Rust | Sonix-Devs organization (company) |
+| `forensicflow` | Rust | Sonix-Devs organization (company) |
+| `netgraph` | C++ | Sonix-Devs organization (company) |
+| `securebaseline` | C++ | Sonix-Devs organization (company) |
+| `certwatch` | Go | Personal profile (unalivin) |
+| `dns-sentinel` | Go | Personal profile (unalivin) |
+| `portwatch` | Go | Personal profile (unalivin) |
+| `threatatlas` | Go | Personal profile (unalivin) |
+| `secretsentry` | Rust | Personal profile (unalivin) |
+| `phishlens` | Rust | Personal profile (unalivin) |
+| `netconfig-auditor` | Rust | Personal profile (unalivin) |
+| `routescope` | C++ | Personal profile (unalivin) |
+<!-- destinations:end -->
+
+`scripts/split-project.sh <project>` reads the destination and prepares the standalone repository for the right owner, see [docs/RELEASING.md](docs/RELEASING.md).
+
 ## Layout
 
 | Path | Purpose |
@@ -48,6 +86,7 @@ What exists and what does not is stated in [docs/ROADMAP.md](docs/ROADMAP.md).
 | `templates/go` | Reusable Go application skeleton, copied into each Go project |
 | `templates/rust` | Reusable Rust application skeleton, copied into each Rust project. The C++ template is not written yet. |
 | `templates/workflows/` | Workflow templates that `scripts/gen-workflows.sh` renders into `.github/workflows/` |
+| `templates/pull-request/` | Source of the root pull request template; each language template carries the project pull request template in its `.github/` |
 | `docs/` | Workspace documentation |
 | `<project>/` | One independent application per folder |
 
@@ -66,12 +105,13 @@ Details, system packages and tool versions are in [docs/LANGUAGES.md](docs/LANGU
 ## Workspace commands
 
 ```bash
-make check                      # root checks: shellcheck, shfmt, bats, structure, emails, comments, workflows
+make check                      # root checks: shellcheck, shfmt, bats and scripts/verify-repo.sh
 scripts/list-projects.sh        # print the project table
 scripts/check-all.sh            # run "make check" in every template and project that exists
 scripts/check-all.sh certwatch  # run it for selected targets
 scripts/new-project.sh certwatch go
-scripts/gen-workflows.sh        # regenerate .github/workflows
+scripts/gen-workflows.sh        # regenerate .github/workflows and the pull request templates
+scripts/sync-readme.sh          # regenerate the project table and the destination tables
 scripts/split-project.sh certwatch
 ```
 
@@ -93,4 +133,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT
 
 ## License
 
-MIT, see [LICENSE](LICENSE). Third-party components keep their own licenses, recorded in each project's `THIRD_PARTY_NOTICES.md`.
+MIT, see [LICENSE](LICENSE). Each project carries its own `LICENSE` with the copyright holder of its destination: Sonix Devs for the projects that go to the company, Unalivin for the personal ones. Third-party components keep their own licenses, recorded in each project's `THIRD_PARTY_NOTICES.md`.

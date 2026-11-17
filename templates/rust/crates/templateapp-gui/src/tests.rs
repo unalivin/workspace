@@ -574,6 +574,8 @@ fn about_opens_links_only_on_request_and_shows_the_guide_and_diagnostics() {
     let mut app = open_app(&home);
     let mut board = started(&mut app, wired(&home, &opened, &terminals));
     board.show(NAV_ABOUT);
+    let publisher = format!("Publisher: {}", meta::PUBLISHER);
+    shows(&board, &[publisher.as_str(), "License: MIT"]);
     board.follow(&service::source_link());
     assert_eq!(opened.borrow().as_slice(), [meta::source_url()]);
     shows(&board, &["Opened Source Code in your browser"]);

@@ -18,6 +18,7 @@ const (
 	IconConcept   = "TEMPLATE_ICON_CONCEPT"
 	RepositoryURL = "https://github.com/unalivin/workspace"
 	License       = "MIT"
+	Publisher     = "Unalivin"
 )
 
 type BuildInfo struct {

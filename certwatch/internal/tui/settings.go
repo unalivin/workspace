@@ -563,7 +563,7 @@ func (p *aboutPage) view(m *Model, width, height int) []string {
 	case aboutOverview:
 		lines = append(lines, m.st.heading.Render(meta.AppName+" "+meta.Version), "")
 		lines = append(lines, wrap(meta.Tagline, width)...)
-		lines = append(lines, "", "License: "+meta.License, "")
+		lines = append(lines, "", "Publisher: "+meta.Publisher, "License: "+meta.License, "")
 		lines = append(lines, wrap(app.PrivacyNote, width)...)
 		lines = append(lines, "")
 		for index, link := range p.links() {

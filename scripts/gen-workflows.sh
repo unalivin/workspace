@@ -5,7 +5,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 usage() {
   cat <<'USAGE'
-Usage: scripts/gen-workflows.sh [--check] [--dry-run]
+Usage: scripts/gen-workflows.sh [--check] [--dry-run] [--only workflows|pull-requests]
        scripts/gen-workflows.sh --standalone <project> --output <directory>
 
 Generates .github/workflows from templates/workflows:
@@ -19,8 +19,22 @@ Each generated workflow has a path filter so a change to one project only
 runs that project's jobs. Workflow files that are no longer generated are
 removed.
 
-  --check        Exit with status 1 if the committed workflows differ
+Generates the pull request templates:
+
+  <project>/.github/PULL_REQUEST_TEMPLATE.md   created from the template of
+                                               the project's language when
+                                               it is missing; afterwards the
+                                               project owns and edits it
+  .github/PULL_REQUEST_TEMPLATE/<project>.md   exact copy of the project's
+                                               template, selectable with
+                                               ?template=<project>.md
+  .github/PULL_REQUEST_TEMPLATE.md             root default from
+                                               templates/pull-request/root.md,
+                                               listing every project template
+
+  --check        Exit with status 1 if a committed file is missing or differs
   --dry-run      Print the files that would be written or removed
+  --only         Handle only the workflows or only the pull request templates
   --standalone   Write ci.yml and release.yml for a project that lives at the
                  root of its own repository (used by scripts/split-project.sh)
   --output       Target directory for --standalone
@@ -31,6 +45,7 @@ USAGE
 check=0
 standalone=""
 output=""
+only=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --check) check=1 ;;
@@ -45,6 +60,14 @@ while [ "$#" -gt 0 ]; do
       output="$2"
       shift
       ;;
+    --only)
+      [ "$#" -ge 2 ] || die "--only needs workflows or pull-requests"
+      case "$2" in
+        workflows | pull-requests) only="$2" ;;
+        *) die "unknown --only value: $2 (use workflows or pull-requests)" ;;
+      esac
+      shift
+      ;;
     --help | -h)
       usage
       exit 0
@@ -56,10 +79,6 @@ done
 
 templates_dir="$WORKSPACE_ROOT/templates/workflows"
 workflows_dir="$WORKSPACE_ROOT/.github/workflows"
-
-escape_replacement() {
-  printf '%s' "$1" | sed -e 's/[\\&|]/\\&/g'
-}
 
 render() {
   local template="$1" target="$2" name="$3" app="$4" workdir="$5" path_filter="$6" tag_pattern="$7" self="$8"
@@ -96,62 +115,136 @@ fi
 
 staging="$(mktemp -d)"
 trap 'rm -rf "$staging"' EXIT
-
-if [ -f "$templates_dir/root-ci.yml" ]; then
-  cp "$templates_dir/root-ci.yml" "$staging/root-ci.yml"
-fi
-
-while IFS= read -r language; do
-  render "$templates_dir/$language-ci.yml" "$staging/template-$language-ci.yml" \
-    "template-$language" "Template App" "templates/$language" "templates/$language/**" "template-$language/v*" \
-    ".github/workflows/template-$language-ci.yml"
-done < <(existing_templates)
-
-while IFS= read -r project; do
-  language="$(project_language "$project")"
-  app="$(project_app "$project")"
-  render "$templates_dir/$language-ci.yml" "$staging/$project-ci.yml" \
-    "$project" "$app" "$project" "$project/**" "$project/v*" ".github/workflows/$project-ci.yml"
-  render "$templates_dir/$language-release.yml" "$staging/$project-release.yml" \
-    "$project" "$app" "$project" "$project/**" "$project/v*" ".github/workflows/$project-release.yml"
-done < <(existing_projects)
-
 changed=0
-mkdir -p "$workflows_dir"
-for generated in "$staging"/*.yml; do
-  [ -e "$generated" ] || continue
-  name="${generated##*/}"
-  if [ ! -f "$workflows_dir/$name" ] || ! cmp -s "$generated" "$workflows_dir/$name"; then
-    changed=1
-    if [ "$check" = "1" ]; then
-      printf 'out of date: .github/workflows/%s\n' "$name" >&2
-    elif [ "$DRY_RUN" = "1" ]; then
-      note "dry-run: would write .github/workflows/$name"
-    else
-      cp "$generated" "$workflows_dir/$name"
-      note "wrote .github/workflows/$name"
-    fi
+
+report() {
+  local action="$1" relative="$2"
+  changed=1
+  if [ "$check" = "1" ]; then
+    case "$action" in
+      write) printf 'out of date: %s\n' "$relative" >&2 ;;
+      create) printf 'missing: %s\n' "$relative" >&2 ;;
+      remove) printf 'not generated: %s\n' "$relative" >&2 ;;
+    esac
+    return 1
   fi
-done
-for existing in "$workflows_dir"/*.yml; do
-  [ -e "$existing" ] || continue
-  name="${existing##*/}"
-  if [ ! -f "$staging/$name" ]; then
-    changed=1
-    if [ "$check" = "1" ]; then
-      printf 'not generated: .github/workflows/%s\n' "$name" >&2
-    elif [ "$DRY_RUN" = "1" ]; then
-      note "dry-run: would remove .github/workflows/$name"
-    else
+  if [ "$DRY_RUN" = "1" ]; then
+    case "$action" in
+      remove) note "dry-run: would remove $relative" ;;
+      *) note "dry-run: would write $relative" ;;
+    esac
+    return 1
+  fi
+  return 0
+}
+
+sync_file() {
+  local generated="$1" relative="$2" target="$WORKSPACE_ROOT/$2"
+  if [ -f "$target" ] && cmp -s "$generated" "$target"; then
+    return 0
+  fi
+  if report write "$relative"; then
+    mkdir -p "$(dirname "$target")"
+    cp "$generated" "$target"
+    note "wrote $relative"
+  fi
+}
+
+sync_directory() {
+  local source_dir="$1" relative_dir="$2" extension="$3" generated existing name
+  for generated in "$source_dir"/*."$extension"; do
+    [ -e "$generated" ] || continue
+    sync_file "$generated" "$relative_dir/${generated##*/}"
+  done
+  for existing in "$WORKSPACE_ROOT/$relative_dir"/*."$extension"; do
+    [ -e "$existing" ] || continue
+    name="${existing##*/}"
+    if [ ! -f "$source_dir/$name" ] && report remove "$relative_dir/$name"; then
       rm -f "$existing"
-      note "removed .github/workflows/$name"
+      note "removed $relative_dir/$name"
     fi
+  done
+}
+
+generate_workflows() {
+  local stage="$staging/workflows" language project app
+  mkdir -p "$stage"
+  if [ -f "$templates_dir/root-ci.yml" ]; then
+    cp "$templates_dir/root-ci.yml" "$stage/root-ci.yml"
   fi
-done
+  while IFS= read -r language; do
+    render "$templates_dir/$language-ci.yml" "$stage/template-$language-ci.yml" \
+      "template-$language" "Template App" "templates/$language" "templates/$language/**" "template-$language/v*" \
+      ".github/workflows/template-$language-ci.yml"
+  done < <(existing_templates)
+  while IFS= read -r project; do
+    language="$(project_language "$project")"
+    app="$(project_app "$project")"
+    render "$templates_dir/$language-ci.yml" "$stage/$project-ci.yml" \
+      "$project" "$app" "$project" "$project/**" "$project/v*" ".github/workflows/$project-ci.yml"
+    render "$templates_dir/$language-release.yml" "$stage/$project-release.yml" \
+      "$project" "$app" "$project" "$project/**" "$project/v*" ".github/workflows/$project-release.yml"
+  done < <(existing_projects)
+  mkdir -p "$workflows_dir"
+  sync_directory "$stage" ".github/workflows" yml
+}
+
+generate_pull_request_templates() {
+  local stage="$staging/pull-requests" project language source own tokens list root
+  mkdir -p "$stage"
+  list="$staging/pull-request-list"
+  : >"$list"
+  while IFS= read -r project; do
+    language="$(project_language "$project")"
+    own="$project/.github/PULL_REQUEST_TEMPLATE.md"
+    if [ ! -f "$WORKSPACE_ROOT/$own" ]; then
+      source="$WORKSPACE_ROOT/templates/$language/.github/PULL_REQUEST_TEMPLATE.md"
+      [ -f "$source" ] || die "templates/$language has no .github/PULL_REQUEST_TEMPLATE.md to create $own from"
+      if report create "$own"; then
+        tokens="$staging/tokens-$project"
+        project_token_script "$project" >"$tokens"
+        mkdir -p "$WORKSPACE_ROOT/$project/.github"
+        cp "$source" "$WORKSPACE_ROOT/$own"
+        apply_token_script "$tokens" "$WORKSPACE_ROOT/$own"
+        note "wrote $own"
+      fi
+    fi
+    if [ -f "$WORKSPACE_ROOT/$own" ]; then
+      cp "$WORKSPACE_ROOT/$own" "$stage/$project.md"
+    fi
+    printf -- "- \`%s\` (%s): \`?template=%s.md\`\n" "$project" "$(project_app "$project")" "$project" >>"$list"
+  done < <(existing_projects)
+  if [ ! -s "$list" ]; then
+    printf -- '- No project folder exists yet.\n' >"$list"
+  fi
+  mkdir -p "$WORKSPACE_ROOT/.github/PULL_REQUEST_TEMPLATE"
+  sync_directory "$stage" ".github/PULL_REQUEST_TEMPLATE" md
+  root="$WORKSPACE_ROOT/templates/pull-request/root.md"
+  [ -f "$root" ] || die "templates/pull-request/root.md not found"
+  grep -q '^__PROJECT_TEMPLATES__$' "$root" || die "templates/pull-request/root.md has no __PROJECT_TEMPLATES__ line"
+  awk -v list="$list" '
+    $0 == "__PROJECT_TEMPLATES__" {
+      while ((getline row < list) > 0) {
+        print row
+      }
+      close(list)
+      next
+    }
+    { print }
+  ' "$root" >"$staging/root-default.md"
+  sync_file "$staging/root-default.md" ".github/PULL_REQUEST_TEMPLATE.md"
+}
+
+if [ -z "$only" ] || [ "$only" = "workflows" ]; then
+  generate_workflows
+fi
+if [ -z "$only" ] || [ "$only" = "pull-requests" ]; then
+  generate_pull_request_templates
+fi
 
 if [ "$check" = "1" ] && [ "$changed" = "1" ]; then
   exit 1
 fi
 if [ "$changed" = "0" ]; then
-  note "workflows are up to date"
+  note "workflows and pull request templates are up to date"
 fi

@@ -229,6 +229,7 @@ impl Model<'_> {
                 lines.push(Line::new());
                 lines.extend(wrapped(meta::TAGLINE, size, Look::Plain));
                 lines.push(Line::new());
+                lines.push(Line::plain(format!("Publisher: {}", meta::PUBLISHER)));
                 lines.push(Line::plain(format!("License: {}", meta::LICENSE)));
                 lines.push(Line::new());
                 for (index, (label, link, _)) in page.links().iter().enumerate() {

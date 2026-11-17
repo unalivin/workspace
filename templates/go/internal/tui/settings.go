@@ -560,7 +560,7 @@ func (p *aboutPage) view(m *Model, width, height int) []string {
 	case aboutOverview:
 		lines = append(lines, m.st.heading.Render(meta.AppName+" "+meta.Version), "")
 		lines = append(lines, wrap(meta.Tagline, width)...)
-		lines = append(lines, "", "License: "+meta.License, "")
+		lines = append(lines, "", "Publisher: "+meta.Publisher, "License: "+meta.License, "")
 		for index, link := range p.links() {
 			text := fit(link.label, 42) + m.st.muted.Render(shorten(link.link.URL, width-46))
 			if index == p.cursor {

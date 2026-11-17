@@ -9,13 +9,24 @@ Usage: scripts/verify-repo.sh [check...]
 
 Runs repository-wide structural checks. Without arguments every check runs.
 
-  registry   The project registry has 25 valid rows and truthful statuses
-  files      The root, every template and every project has every required file
-  emails     No email address appears in any tracked or untracked file
-  comments   No Go, Rust, C++, SQL or Bash source file contains a comment
-  workflows  .github/workflows matches the output of scripts/gen-workflows.sh
-  readme     The project table in README.md matches the registry
-  --help     Show this help
+  registry       The project registry has 25 valid rows, truthful statuses,
+                 17 company and 8 personal destinations and the copyright
+                 holder that belongs to each destination
+  files          The root, every template and every project has every
+                 required file
+  emails         No email address appears in any tracked or untracked file
+  comments       No Go, Rust, C++, SQL or Bash source file contains a comment
+  workflows      .github/workflows matches the output of
+                 scripts/gen-workflows.sh
+  pull-requests  Every project has its own pull request template, the root
+                 copies are identical to them and the root default lists them
+  readme         The project table in README.md matches the registry
+  destinations   The table of project, language and destination in README.md,
+                 docs/WORKSPACE.md and docs/ROADMAP.md matches the registry
+  holders        The license, the README, the notices, the publisher shown by
+                 the application and the package metadata of every project
+                 and template name the copyright holder from the registry
+  --help         Show this help
 USAGE
 }
 
@@ -33,8 +44,8 @@ repo_files() {
   git -C "$WORKSPACE_ROOT" ls-files -co --exclude-standard
 }
 
-root_required="README.md LICENSE CONTRIBUTING.md SECURITY.md CODE_OF_CONDUCT.md CHANGELOG.md .editorconfig .gitattributes .gitignore Makefile scripts/list-projects.sh scripts/check-all.sh scripts/gen-workflows.sh scripts/new-project.sh scripts/split-project.sh scripts/publish-github.sh docs/WORKSPACE.md docs/LANGUAGES.md docs/ADD_PROJECT.md docs/RELEASING.md .github/PULL_REQUEST_TEMPLATE.md"
-project_required_files="README.md CHANGELOG.md CONTRIBUTING.md CODE_OF_CONDUCT.md SECURITY.md LICENSE Makefile .gitignore .gitattributes .env.example THIRD_PARTY_NOTICES.md docs/README.md docs/CONTRIBUTING.md docs/INSTALLATION.md docs/USAGE.md docs/COMMANDS.md docs/CONFIGURATION.md docs/TROUBLESHOOTING.md docs/SECURITY.md docs/THREAT_MODEL.md docs/PLATFORM_SUPPORT.md docs/TESTING.md docs/ARCHITECTURE.md docs/ROADMAP.md docs/RELEASING.md docs/RELEASE_NOTES.md docs/LICENSES.md scripts/publish-github.sh scripts/dev-setup.sh scripts/check.sh scripts/demo.sh scripts/package.sh"
+root_required="README.md LICENSE CONTRIBUTING.md SECURITY.md CODE_OF_CONDUCT.md CHANGELOG.md .editorconfig .gitattributes .gitignore Makefile scripts/list-projects.sh scripts/check-all.sh scripts/gen-workflows.sh scripts/new-project.sh scripts/split-project.sh scripts/publish-github.sh docs/WORKSPACE.md docs/LANGUAGES.md docs/ADD_PROJECT.md docs/RELEASING.md docs/ROADMAP.md .github/PULL_REQUEST_TEMPLATE.md templates/pull-request/root.md"
+project_required_files="README.md CHANGELOG.md CONTRIBUTING.md CODE_OF_CONDUCT.md SECURITY.md LICENSE Makefile .gitignore .gitattributes .env.example THIRD_PARTY_NOTICES.md docs/README.md docs/CONTRIBUTING.md docs/INSTALLATION.md docs/USAGE.md docs/COMMANDS.md docs/CONFIGURATION.md docs/TROUBLESHOOTING.md docs/SECURITY.md docs/THREAT_MODEL.md docs/PLATFORM_SUPPORT.md docs/TESTING.md docs/ARCHITECTURE.md docs/ROADMAP.md docs/RELEASING.md docs/RELEASE_NOTES.md docs/LICENSES.md .github/PULL_REQUEST_TEMPLATE.md scripts/lib.sh scripts/publish-github.sh scripts/dev-setup.sh scripts/check.sh scripts/demo.sh scripts/package.sh"
 project_required_dirs="migrations scripts assets testdata docs docs/adr"
 project_make_targets="fmt fmt-check lint test race-or-sanitize build build-nogui check clean"
 project_readme_sections="Download Install Usage Documentation Security Contributing License"
@@ -63,10 +74,10 @@ check_project_dir() {
 }
 
 check_registry() {
-  local count number folder app lang status tagline topics icon description topic_count expected=1
+  local count number folder app lang status tagline topics icon description destination holder topic_count expected=1
   count="$(registry_rows | wc -l | tr -d ' ')"
   [ "$count" = "25" ] || fail "registry: expected 25 projects, found $count"
-  while IFS=$'\t' read -r number folder app lang status tagline topics icon description; do
+  while IFS=$'\t' read -r number folder app lang status tagline topics icon description destination holder; do
     [ "$number" = "$expected" ] || fail "registry: row $expected has number $number"
     expected=$((expected + 1))
     [[ "$folder" =~ ^[a-z][a-z0-9-]*$ ]] || fail "registry: invalid folder name $folder"
@@ -89,10 +100,20 @@ check_registry() {
     if [ "${#description}" -lt 180 ] || [ "${#description}" -gt 300 ]; then
       fail "registry: $folder description has ${#description} characters, expected about 200 to 280"
     fi
+    if valid_destination "$destination"; then
+      [ "$holder" = "$(destination_holder "$destination")" ] ||
+        fail "registry: $folder goes to $destination, so its copyright holder must be $(destination_holder "$destination"), not \"$holder\""
+    else
+      fail "registry: $folder has unknown destination \"$destination\" (use sonix-devs or personal)"
+    fi
   done < <(registry_rows)
   for lang in go:14 rust:8 cpp:3; do
     count="$(registry_rows | awk -F'\t' -v language="${lang%%:*}" '$4 == language' | wc -l | tr -d ' ')"
     [ "$count" = "${lang##*:}" ] || fail "registry: expected ${lang##*:} ${lang%%:*} projects, found $count"
+  done
+  for destination in sonix-devs:17 personal:8; do
+    count="$(registry_rows | awk -F'\t' -v wanted="${destination%%:*}" '$10 == wanted' | wc -l | tr -d ' ')"
+    [ "$count" = "${destination##*:}" ] || fail "registry: expected ${destination##*:} projects for ${destination%%:*}, found $count"
   done
 }
 
@@ -155,18 +176,48 @@ check_comments() {
 
 check_workflows() {
   local output
-  if ! output="$("$WORKSPACE_ROOT/scripts/gen-workflows.sh" --check 2>&1)"; then
+  if ! output="$("$WORKSPACE_ROOT/scripts/gen-workflows.sh" --check --only workflows 2>&1)"; then
     fail "workflows are out of date: run scripts/gen-workflows.sh"
+    printf '%s\n' "$output" >&2
+  fi
+}
+
+check_pull_requests() {
+  local output
+  if ! output="$("$WORKSPACE_ROOT/scripts/gen-workflows.sh" --check --only pull-requests 2>&1)"; then
+    fail "pull request templates are missing or differ: run scripts/gen-workflows.sh"
     printf '%s\n' "$output" >&2
   fi
 }
 
 check_readme() {
   local output
-  if ! output="$("$WORKSPACE_ROOT/scripts/sync-readme.sh" --check 2>&1)"; then
+  if ! output="$("$WORKSPACE_ROOT/scripts/sync-readme.sh" --check projects 2>&1)"; then
     fail "README.md project table is out of date: run scripts/sync-readme.sh"
     printf '%s\n' "$output" >&2
   fi
+}
+
+check_destinations() {
+  local output
+  if ! output="$("$WORKSPACE_ROOT/scripts/sync-readme.sh" --check destinations 2>&1)"; then
+    fail "the destination table disagrees with the registry: run scripts/sync-readme.sh"
+    printf '%s\n' "$output" >&2
+  fi
+}
+
+check_holders() {
+  local language folder problem
+  while IFS= read -r language; do
+    while IFS= read -r problem; do
+      fail "holder: $problem"
+    done < <(holder_problems "$WORKSPACE_ROOT/templates/$language" "templates/$language" "$PERSONAL_HOLDER")
+  done < <(existing_templates)
+  while IFS= read -r folder; do
+    while IFS= read -r problem; do
+      fail "holder: $problem"
+    done < <(holder_problems "$WORKSPACE_ROOT/$folder" "$folder" "$(project_copyright_holder "$folder")")
+  done < <(existing_projects)
 }
 
 checks=()
@@ -176,18 +227,18 @@ while [ "$#" -gt 0 ]; do
       usage
       exit 0
       ;;
-    registry | files | emails | comments | workflows | readme) checks+=("$1") ;;
+    registry | files | emails | comments | workflows | pull-requests | readme | destinations | holders) checks+=("$1") ;;
     *) die "unknown check: $1 (see --help)" ;;
   esac
   shift
 done
 if [ "${#checks[@]}" -eq 0 ]; then
-  checks=(registry files emails comments workflows readme)
+  checks=(registry files emails comments workflows pull-requests readme destinations holders)
 fi
 
 for check in "${checks[@]}"; do
   before="$failures"
-  "check_$check"
+  "check_${check//-/_}"
   if [ "$failures" = "$before" ]; then
     note "ok   $check"
   fi

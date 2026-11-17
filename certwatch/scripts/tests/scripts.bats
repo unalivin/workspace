@@ -45,10 +45,31 @@ teardown() {
   copy_project_scripts "$SANDBOX/project"
   run "$SANDBOX/project/scripts/package.sh" --dry-run
   [ "$status" -eq 0 ]
-  [[ "$output" == *"fyne package --target"* ]]
-  [[ "$output" == *"--app-version 0.1.0"* ]]
+  case "$(uname -s)" in
+    MINGW* | MSYS* | CYGWIN*)
+      [[ "$output" == *"goversioninfo@$(project_value GOVERSIONINFO_VERSION)"* ]]
+      [[ "$output" == *" -company "*" -copyright "*" -product-name "* ]]
+      [[ "$output" == *"-H=windowsgui"* ]]
+      [[ "$output" == *"names the company $(project_value APP_PUBLISHER)"* ]]
+      ;;
+    *)
+      [[ "$output" == *"fyne package --target"* ]]
+      [[ "$output" == *"--app-version 0.1.0"* ]]
+      ;;
+  esac
   [[ "$output" == *"no_animations"* ]]
   [ ! -e "$SANDBOX/project/dist" ]
+}
+
+@test "package refuses a license whose copyright line names somebody else" {
+  copy_project_scripts "$SANDBOX/project"
+  sed -i.bak 's/^Copyright (c) \([0-9]*\) .*/Copyright (c) \1 Somebody Else/' "$SANDBOX/project/LICENSE"
+  run "$SANDBOX/project/scripts/package.sh" --dry-run
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"does not name the publisher $(project_value APP_PUBLISHER)"* ]]
+  rm "$SANDBOX/project/LICENSE"
+  run "$SANDBOX/project/scripts/package.sh" --dry-run
+  [ "$status" -ne 0 ]
 }
 
 @test "demo --dry-run uses a scratch database and config directory" {
@@ -151,6 +172,12 @@ teardown() {
   [ "$(project_value APP_VERSION)" = "$(sed -n 's/^[[:space:]]*Version[[:space:]]*= "\(.*\)"$/\1/p' "$meta")" ]
   [ "$(project_value APP_REPOSITORY_URL)" = "$(sed -n 's/^[[:space:]]*RepositoryURL[[:space:]]*= "\(.*\)"$/\1/p' "$meta")" ]
   [ "$(project_value APP_NUMERIC_VERSION)" = "$(project_value APP_VERSION | sed 's/-.*//')" ]
+  publisher="$(project_value APP_PUBLISHER)"
+  [ -n "$publisher" ]
+  [ "$publisher" = "$(sed -n 's/^[[:space:]]*Publisher[[:space:]]*= "\(.*\)"$/\1/p' "$meta")" ]
+  grep -Eq "^Copyright \(c\) [0-9]{4}(-[0-9]{4})? ${publisher}\$" "$REAL_PROJECT/LICENSE"
+  head -n 8 "$REAL_PROJECT/THIRD_PARTY_NOTICES.md" | grep -Fq "published by $publisher under"
+  sed -n '/^## License$/,$p' "$REAL_PROJECT/README.md" | grep -Fq "$publisher"
   [ "$(project_value GO_VERSION)" = "$(sed -n 's/^go //p' "$REAL_PROJECT/go.mod")" ]
 }
 
@@ -178,6 +205,9 @@ teardown() {
     [[ "$listing" == *"/$entry"* ]]
   done
   [[ "$listing" == *".desktop"* ]]
+  readme="$(tar -xzOf "$archive" --wildcards '*/README.txt')"
+  [[ "$readme" == *"Publisher: $(project_value APP_PUBLISHER)"* ]]
+  [[ "$readme" == *"$(grep -m 1 '^Copyright (c) ' "$REAL_PROJECT/LICENSE")"* ]]
   [ -z "$(find "$REAL_PROJECT" -maxdepth 2 -name '*.tar.xz')" ]
 }
 

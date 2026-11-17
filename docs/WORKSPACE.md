@@ -22,8 +22,78 @@
 | `topics` | Exactly seven GitHub topics, comma separated |
 | `icon_concept` | Concept for the original application icon |
 | `description` | GitHub description, one sentence of about 200 to 280 characters |
+| `destination` | Where the project will be published: `sonix-devs` (the company organization) or `personal` |
+| `copyright_holder` | `Sonix Devs` when the destination is `sonix-devs`, `Unalivin` when it is `personal` |
 
 `Not started` is valid only while the folder does not exist. `In progress` and `Complete` require the folder.
+
+## Destinations
+
+<!-- destinations:start -->
+17 projects will be published in the GitHub organization [Sonix-Devs](https://github.com/Sonix-Devs), which belongs to the company. 8 projects stay on the personal profile [unalivin](https://github.com/unalivin). The copyright holder follows the destination: Sonix Devs for the company projects, Unalivin for the personal ones.
+
+| Project | Language | Destination |
+|---|---|---|
+| `netpulse` | Go | Sonix-Devs organization (company) |
+| `ipam-pro` | Go | Sonix-Devs organization (company) |
+| `netauto` | Go | Sonix-Devs organization (company) |
+| `fleetops` | Go | Sonix-Devs organization (company) |
+| `incidentflow` | Go | Sonix-Devs organization (company) |
+| `cloudfence` | Go | Sonix-Devs organization (company) |
+| `kubeguard` | Go | Sonix-Devs organization (company) |
+| `pipelineshield` | Go | Sonix-Devs organization (company) |
+| `vulntrack` | Go | Sonix-Devs organization (company) |
+| `secops-copilot` | Go | Sonix-Devs organization (company) |
+| `sbom-navigator` | Rust | Sonix-Devs organization (company) |
+| `iac-sentinel` | Rust | Sonix-Devs organization (company) |
+| `sigmalab` | Rust | Sonix-Devs organization (company) |
+| `logforge-siem` | Rust | Sonix-Devs organization (company) |
+| `forensicflow` | Rust | Sonix-Devs organization (company) |
+| `netgraph` | C++ | Sonix-Devs organization (company) |
+| `securebaseline` | C++ | Sonix-Devs organization (company) |
+| `certwatch` | Go | Personal profile (unalivin) |
+| `dns-sentinel` | Go | Personal profile (unalivin) |
+| `portwatch` | Go | Personal profile (unalivin) |
+| `threatatlas` | Go | Personal profile (unalivin) |
+| `secretsentry` | Rust | Personal profile (unalivin) |
+| `phishlens` | Rust | Personal profile (unalivin) |
+| `netconfig-auditor` | Rust | Personal profile (unalivin) |
+| `routescope` | C++ | Personal profile (unalivin) |
+<!-- destinations:end -->
+
+The destination decides three things, and all of them come from the registry:
+
+| | `sonix-devs` | `personal` |
+|---|---|---|
+| Repository after the split | `https://github.com/Sonix-Devs/<project>` | `https://github.com/unalivin/<project>` |
+| Module path and application identifier | `github.com/Sonix-Devs/<project>`, `io.github.sonix-devs.<project>` | `github.com/unalivin/<project>`, `io.github.unalivin.<project>` |
+| Copyright holder | Sonix Devs | Unalivin |
+
+`scripts/new-project.sh` fills these in when it creates the folder. While a project lives in this repository its links still point here, because this is where the code and the releases are. `scripts/split-project.sh` rewrites them.
+
+The copyright holder appears in the same places in every project, and the `holders` check compares each of them with the registry:
+
+| Place | What is checked |
+|---|---|
+| `LICENSE` | The line `Copyright (c) <year> <holder>`. The license text itself is never changed. |
+| `README.md` | The License section names the holder |
+| `THIRD_PARTY_NOTICES.md` | The header names the holder |
+| `scripts/lib.sh` | `APP_PUBLISHER="<holder>"`, which the packaging script writes into the package and installer metadata |
+| The `meta` source file | The publisher constant, shown on the About screen and compiled into the Windows resource as the company name |
+| Every other file | The name of the other holder does not appear |
+
+## Pull request templates
+
+Every project folder has `.github/PULL_REQUEST_TEMPLATE.md` with its commit scope, its test commands, its supported platforms and a checklist of its own rules. `scripts/new-project.sh` creates it from `templates/<language>/.github/PULL_REQUEST_TEMPLATE.md`; from then on the project owns the file and may add rules to it.
+
+GitHub reads pull request templates only from the root of a repository, so `scripts/gen-workflows.sh` keeps two generated things there:
+
+| File | Content |
+|---|---|
+| `.github/PULL_REQUEST_TEMPLATE/<project>.md` | Exact copy of the project's template. Add `?template=<project>.md` to the address of the page where the pull request is written to use it. |
+| `.github/PULL_REQUEST_TEMPLATE.md` | The default, rendered from `templates/pull-request/root.md`. It lists every project template and asks the author to pick one. |
+
+After a split the project's own file is at the root of the standalone repository and is the only template there.
 
 ## Scripts
 
@@ -31,14 +101,14 @@ Every script starts with `#!/usr/bin/env bash` and `set -euo pipefail`, supports
 
 | Script | Purpose |
 |---|---|
-| `scripts/list-projects.sh` | Print the registry as a table, Markdown, TSV or folder list |
+| `scripts/list-projects.sh` | Print the registry as a table, Markdown, TSV, folder list or destination table; `--language` and `--destination` filter it |
 | `scripts/check-all.sh [target...]` | Run `make check` in every template and project that exists, or in the given targets |
-| `scripts/gen-workflows.sh` | Render `templates/workflows/` into `.github/workflows/`; `--check` verifies, `--standalone` renders for a split repository |
-| `scripts/new-project.sh <name> <go\|rust\|cpp>` | Create a project folder from its language template with metadata from the registry |
-| `scripts/split-project.sh <project>` | Extract a project with history into a standalone repository |
+| `scripts/gen-workflows.sh` | Render `templates/workflows/` into `.github/workflows/` and keep the pull request templates in step; `--check` verifies, `--only` limits it to one of the two, `--standalone` renders the workflows for a split repository |
+| `scripts/new-project.sh <name> <go\|rust\|cpp>` | Create a project folder from its language template with metadata, owner and copyright holder from the registry |
+| `scripts/split-project.sh [--owner <owner>] <project>` | Extract a project with history into a standalone repository for the owner of its destination, and verify its copyright holder |
 | `scripts/init-main.sh` | Create the local branch `main` as one commit `chore: initial public release` with the files of the current commit |
 | `scripts/publish-github.sh` | Create and publish the public `workspace` repository with `gh` |
-| `scripts/sync-readme.sh` | Refresh the project table in `README.md` |
+| `scripts/sync-readme.sh` | Refresh the project table in `README.md` and the destination table in `README.md`, this page and `docs/ROADMAP.md` |
 | `scripts/verify-repo.sh [check...]` | Repository checks, described below |
 | `scripts/install-shell-tools.sh` | Install the pinned shellcheck, shfmt and bats |
 
@@ -55,12 +125,15 @@ Every script starts with `#!/usr/bin/env bash` and `set -euo pipefail`, supports
 
 | Check | What fails it |
 |---|---|
-| `registry` | Not exactly 25 rows, a wrong language count (14 Go, 8 Rust, 3 C++), an invalid status, a status that contradicts the folder, a topic count other than seven, a description far outside 200 to 280 characters |
+| `registry` | Not exactly 25 rows, a wrong language count (14 Go, 8 Rust, 3 C++), an invalid status, a status that contradicts the folder, a topic count other than seven, a description far outside 200 to 280 characters, an unknown destination, a destination count other than 17 company and 8 personal, a copyright holder that does not belong to the destination |
 | `files` | A missing root file, or a template or project folder without one of the required files, directories, Makefile targets or README sections |
 | `emails` | Any email address in a tracked or untracked, non-ignored file |
 | `comments` | A comment in a Go, Rust, C++, SQL or Bash source file outside `testdata/`, `third_party/` and `vendor/` |
 | `workflows` | `.github/workflows` differs from what `scripts/gen-workflows.sh` generates |
+| `pull-requests` | A project without `.github/PULL_REQUEST_TEMPLATE.md`, a root copy that differs from the project's file, a root copy without a project, or a root default that does not list the project templates |
 | `readme` | The project table in `README.md` differs from the registry |
+| `destinations` | The destination table in `README.md`, this page or `docs/ROADMAP.md` is missing or differs from the registry |
+| `holders` | A template or project whose license, README, notices, `scripts/lib.sh` or publisher constant does not name the copyright holder from the registry, or any file in it that names the other holder |
 
 The comment scanner understands string, character and raw-string literals of each language, Bash here-documents and quoting, and allows only the shebang line in Bash and `//go:` directives at the start of a line in Go.
 

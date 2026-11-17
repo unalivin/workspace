@@ -4,6 +4,16 @@ All notable changes to Template App are recorded here. The format follows [Keep 
 
 ## [Unreleased]
 
+### Added
+
+- Publisher on the About screen, in the About tab of the terminal UI and in `templateapp about`, in the first paragraph of the notices and in `README.txt` of the archives.
+- The Windows executable carries a version resource with the company name, the copyright line of `LICENSE` and the product name; the packaging script reads the values back and stops when they differ. The macOS bundle carries the copyright text.
+- `.github/PULL_REQUEST_TEMPLATE.md` with the commit scope, test commands, platforms and rules of this project.
+
+### Changed
+
+- Windows packaging uses `go build` with a version resource written by goversioninfo. The toolkit's packager is still used on Linux and macOS.
+
 ## [0.1.0-dev]
 
 ### Added

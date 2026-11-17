@@ -65,7 +65,29 @@ scripts/split-project.sh --dry-run certwatch
 scripts/split-project.sh certwatch
 ```
 
-The script uses `git subtree split` to extract the folder with its history into a new repository directory (by default `../certwatch-standalone`), generates that project's own `.github/workflows/ci.yml` and `release.yml` from `templates/workflows/`, and rewrites repository links to `<owner>/<project>`. The monorepo is left untouched. In a split repository the release tag is plain `v*`, for example `v0.1.0-dev`.
+The script uses `git subtree split` to extract the folder with its history into a new repository directory (by default `../certwatch-standalone`). The monorepo is left untouched. In the standalone repository it then:
+
+1. generates the project's own `.github/workflows/ci.yml` and `release.yml` from `templates/workflows/`, with plain `v*` release tags such as `v0.1.0-dev`
+2. rewrites the repository links, the module path and the application identifier to `<owner>/<project>`
+3. sets the copyright holder from the registry and verifies it in the license, the README, the notices, `scripts/lib.sh` and the publisher constant; it stops and removes the directory when one of them cannot be verified
+4. checks that the project's own `.github/PULL_REQUEST_TEMPLATE.md` is present, which is now the pull request template of the repository
+
+The owner comes from the destination in `scripts/projects.tsv`:
+
+| Destination | Owner | Copyright holder |
+|---|---|---|
+| `sonix-devs` | `Sonix-Devs`, the company organization | Sonix Devs |
+| `personal` | `unalivin` | Unalivin |
+
+`--owner <owner>` overrides the owner, for a fork or a test organization. It does not change the copyright holder.
+
+```bash
+scripts/split-project.sh --dry-run netauto
+scripts/split-project.sh netauto
+scripts/split-project.sh --owner my-test-org --output /tmp/netauto-test netauto
+```
+
+Each project then publishes itself with its own `scripts/publish-github.sh`, which reads the owner from the rewritten repository link.
 
 ## Publishing the workspace repository
 

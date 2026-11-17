@@ -24,6 +24,7 @@ copy_project_scripts() {
   local target="$1"
   mkdir -p "$target/scripts" "$target/docs"
   cp "$REAL_PROJECT"/scripts/*.sh "$target/scripts/"
+  cp "$REAL_PROJECT/LICENSE" "$target/LICENSE"
   printf 'notes\n' >"$target/docs/RELEASE_NOTES.md"
 }
 

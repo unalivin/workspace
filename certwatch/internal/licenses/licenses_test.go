@@ -79,15 +79,15 @@ func TestRenderListsEveryModuleOnceAndKeepsFencesIntact(t *testing.T) {
 		{Module: Module{Path: "b.test/two", Version: "v2.0.0"}, License: "MIT", Files: []File{{Name: "LICENSE", Text: "text with ``` inside\n"}}},
 		{Module: Module{Path: "a.test/one", Version: "v1.0.0"}, License: "ISC", Files: []File{{Name: "LICENSE", Text: "plain"}}},
 	}
-	rendered := Render("App", "MIT", notices, "## Extra\n\nnote\n\n")
+	rendered := Render("App", "MIT", "Example Holder", notices, "## Extra\n\nnote\n\n")
 	first, second := strings.Index(rendered, "| `a.test/one` | v1.0.0 | ISC |"), strings.Index(rendered, "| `b.test/two` | v2.0.0 | MIT |")
 	if first < 0 || second < first {
 		t.Fatalf("table order:\n%s", rendered)
 	}
-	if !strings.Contains(rendered, "````text\ntext with ``` inside\n````\n") || !strings.Contains(rendered, "## Extra") {
+	if !strings.Contains(rendered, "````text\ntext with ``` inside\n````\n") || !strings.Contains(rendered, "## Extra") || !strings.HasPrefix(rendered, "# Third-party notices\n\nApp is published by Example Holder under the MIT license (see `LICENSE`).") {
 		t.Fatalf("rendering:\n%s", rendered)
 	}
-	redacted := Render("App", "MIT", []Notice{{Module: Module{Path: "c.test/three", Version: "v3.0.0"}, License: "MIT", Files: []File{{Name: "LICENSE", Text: "Copyright (c) Some Person <" + "person" + "@" + "example.test" + "> and other" + "@" + "example.test"}}}}, "")
+	redacted := Render("App", "MIT", "Example Holder", []Notice{{Module: Module{Path: "c.test/three", Version: "v3.0.0"}, License: "MIT", Files: []File{{Name: "LICENSE", Text: "Copyright (c) Some Person <" + "person" + "@" + "example.test" + "> and other" + "@" + "example.test"}}}}, "")
 	if strings.Contains(redacted, "@"+"example") || strings.Count(redacted, AddressOmitted) != 3 || !strings.Contains(redacted, "Copyright (c) Some Person "+AddressOmitted+" and "+AddressOmitted) {
 		t.Fatalf("addresses were not replaced:\n%s", redacted)
 	}

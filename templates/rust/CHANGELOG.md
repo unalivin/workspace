@@ -4,6 +4,12 @@ All notable changes to Template App are recorded here. The format follows [Keep 
 
 ## [Unreleased]
 
+### Added
+
+- Publisher on the About screen, in the About tab of the terminal UI and in `templateapp about`, in the first paragraph of the notices, in `README.txt` of the archives and as `authors` in the Cargo metadata.
+- The Windows version resource carries the company name and the copyright line of `LICENSE`, and the macOS bundle carries the copyright text; the packaging script reads the values back and stops when they differ.
+- `.github/PULL_REQUEST_TEMPLATE.md` with the commit scope, test commands, platforms and rules of this project.
+
 ## [0.1.0-dev]
 
 ### Added

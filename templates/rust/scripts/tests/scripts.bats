@@ -51,6 +51,17 @@ teardown() {
   [ ! -e "$SANDBOX/project/dist" ]
 }
 
+@test "package refuses a license whose copyright line names somebody else" {
+  copy_project_scripts "$SANDBOX/project"
+  sed -i.bak 's/^Copyright (c) \([0-9]*\) .*/Copyright (c) \1 Somebody Else/' "$SANDBOX/project/LICENSE"
+  run "$SANDBOX/project/scripts/package.sh" --dry-run
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"does not name the publisher $(project_value APP_PUBLISHER)"* ]]
+  rm "$SANDBOX/project/LICENSE"
+  run "$SANDBOX/project/scripts/package.sh" --dry-run
+  [ "$status" -ne 0 ]
+}
+
 @test "demo --dry-run uses a scratch database and config directory" {
   copy_project_scripts "$SANDBOX/project"
   run "$SANDBOX/project/scripts/demo.sh" --dry-run --ui none
@@ -191,6 +202,15 @@ teardown() {
   [ "$(project_value RUST_VERSION)" = "$(sed -n 's/^channel = "\(.*\)"$/\1/p' "$REAL_PROJECT/rust-toolchain.toml")" ]
   grep -q "^name = \"$(project_value APP_NAME)\"$" "$REAL_PROJECT/crates/$(project_value APP_SLUG)-app/Cargo.toml"
   grep -q "^identifier = \"$(project_value APP_ID)\"$" "$REAL_PROJECT/crates/$(project_value APP_SLUG)-app/Cargo.toml"
+  publisher="$(project_value APP_PUBLISHER)"
+  [ -n "$publisher" ]
+  [ "$publisher" = "$(constant PUBLISHER)" ]
+  copyright="$(grep -m 1 '^Copyright (c) ' "$REAL_PROJECT/LICENSE")"
+  [[ "$copyright" =~ ^Copyright\ \(c\)\ [0-9]{4}(-[0-9]{4})?\ ${publisher}$ ]]
+  grep -qx "copyright = \"$copyright\"" "$REAL_PROJECT/crates/$(project_value APP_SLUG)-app/Cargo.toml"
+  grep -qx "authors = \[\"$publisher\"\]" "$REAL_PROJECT/Cargo.toml"
+  head -n 8 "$REAL_PROJECT/THIRD_PARTY_NOTICES.md" | grep -Fq "published by $publisher under"
+  sed -n '/^## License$/,$p' "$REAL_PROJECT/README.md" | grep -Fq "$publisher"
 }
 
 @test "the environment example lists only variables the documentation explains" {
@@ -217,6 +237,9 @@ teardown() {
     "usr/local/share/applications/$id.desktop" "usr/local/share/pixmaps/$id.png"; do
     [[ "$listing" == *"/$entry"* ]]
   done
+  readme="$(tar -xzOf "$archive" --wildcards '*/README.txt')"
+  [[ "$readme" == *"Publisher: $(project_value APP_PUBLISHER)"* ]]
+  [[ "$readme" == *"$(grep -m 1 '^Copyright (c) ' "$REAL_PROJECT/LICENSE")"* ]]
 }
 
 @test "the Linux archive installs into a user prefix and removes itself again" {

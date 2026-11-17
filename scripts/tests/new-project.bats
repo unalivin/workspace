@@ -39,12 +39,53 @@ teardown() {
 @test "new-project updates the registry, the README table and the workflows" {
   "$WORKSPACE_ROOT/scripts/new-project.sh" certwatch go
   run "$WORKSPACE_ROOT/scripts/list-projects.sh" --tsv
-  [ "${lines[0]}" = "1"$'\t'"certwatch"$'\t'"CertWatch"$'\t'"go"$'\t'"In progress" ]
+  [ "${lines[0]}" = "1"$'\t'"certwatch"$'\t'"CertWatch"$'\t'"go"$'\t'"In progress"$'\t'"personal"$'\t'"Unalivin" ]
   grep -q "| 1 | \[\`certwatch\`\](certwatch/) | CertWatch | Go | TLS Certificate Monitoring | In progress |" "$WORKSPACE_ROOT/README.md"
   [ -f "$WORKSPACE_ROOT/.github/workflows/certwatch-ci.yml" ]
   [ -f "$WORKSPACE_ROOT/.github/workflows/certwatch-release.yml" ]
-  run "$WORKSPACE_ROOT/scripts/verify-repo.sh" registry files workflows readme
+  run "$WORKSPACE_ROOT/scripts/verify-repo.sh"
   [ "$status" -eq 0 ]
+}
+
+@test "new-project gives a personal project the personal owner and holder" {
+  "$WORKSPACE_ROOT/scripts/new-project.sh" certwatch go
+  local project="$WORKSPACE_ROOT/certwatch"
+  grep -qx "Copyright (c) 2026 Unalivin" "$project/LICENSE"
+  grep -qx 'APP_PUBLISHER="Unalivin"' "$project/scripts/lib.sh"
+  grep -q 'Module    = "github.com/unalivin/certwatch"' "$project/internal/meta/meta.go"
+  grep -q 'AppID     = "io.github.unalivin.certwatch"' "$project/internal/meta/meta.go"
+  grep -q 'Publisher = "Unalivin"' "$project/internal/meta/meta.go"
+  grep -q "^Repository: https://github.com/unalivin/workspace$" "$project/README.md"
+  refute grep -rq "Sonix" "$project"
+}
+
+@test "new-project gives a company project the company owner and holder" {
+  run "$WORKSPACE_ROOT/scripts/new-project.sh" --dry-run netauto go
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"dry-run: destination: Sonix-Devs organization (company), repository owner Sonix-Devs"* ]]
+  [[ "$output" == *"dry-run: copyright holder: Sonix Devs"* ]]
+  "$WORKSPACE_ROOT/scripts/new-project.sh" netauto go
+  local project="$WORKSPACE_ROOT/netauto"
+  grep -qx "Copyright (c) 2026 Sonix Devs" "$project/LICENSE"
+  grep -qx "MIT, Copyright (c) 2026 Sonix Devs." "$project/README.md"
+  grep -q "Copyright (c) 2026 Sonix Devs" "$project/THIRD_PARTY_NOTICES.md"
+  grep -qx 'APP_PUBLISHER="Sonix Devs"' "$project/scripts/lib.sh"
+  grep -q 'Module    = "github.com/Sonix-Devs/netauto"' "$project/internal/meta/meta.go"
+  grep -q 'AppID     = "io.github.sonix-devs.netauto"' "$project/internal/meta/meta.go"
+  grep -q 'Publisher = "Sonix Devs"' "$project/internal/meta/meta.go"
+  grep -q "^Repository: https://github.com/unalivin/workspace$" "$project/README.md"
+  refute grep -rq "Unalivin" "$project"
+  run "$WORKSPACE_ROOT/scripts/verify-repo.sh" holders
+  [ "$status" -eq 0 ]
+}
+
+@test "new-project writes the pull request template of the project and its root copy" {
+  "$WORKSPACE_ROOT/scripts/new-project.sh" netauto go
+  local own="$WORKSPACE_ROOT/netauto/.github/PULL_REQUEST_TEMPLATE.md"
+  grep -q "The title uses the scope \`netauto\`" "$own"
+  grep -q "\`make check\` passes for NetAuto" "$own"
+  cmp "$own" "$WORKSPACE_ROOT/.github/PULL_REQUEST_TEMPLATE/netauto.md"
+  grep -q "^- \`netauto\` (NetAuto): \`?template=netauto.md\`$" "$WORKSPACE_ROOT/.github/PULL_REQUEST_TEMPLATE.md"
 }
 
 @test "new-project keeps the template unchanged" {
@@ -68,7 +109,7 @@ teardown() {
   [[ "$output" == *"dry-run: would copy templates/go to certwatch"* ]]
   [ ! -e "$WORKSPACE_ROOT/certwatch" ]
   run "$WORKSPACE_ROOT/scripts/list-projects.sh" --tsv
-  [[ "${lines[0]}" == *"Not started" ]]
+  [[ "${lines[0]}" == *"Not started"$'\t'"personal"$'\t'"Unalivin" ]]
 }
 
 @test "new-project rejects bad input" {

@@ -15,8 +15,9 @@ make -C certwatch check
 1. checks that the name is in the registry with the same primary language and that the folder does not exist
 2. copies every tracked and non-ignored file of `templates/<language>/` into the new folder
 3. replaces the template tokens in file contents and in file and directory names
-4. sets the registry status to `In progress`
-5. refreshes the README table and regenerates the workflows
+4. replaces the template's owner and copyright holder with the ones of the project's destination, see below
+5. sets the registry status to `In progress`
+6. refreshes the README table and regenerates the workflows and the pull request templates
 
 | Token in the template | Replaced with |
 |---|---|
@@ -28,12 +29,19 @@ make -C certwatch check
 | `TEMPLATE_TOPICS` | Seven topics, comma separated |
 | `TEMPLATE_ICON_CONCEPT` | Icon concept from the registry |
 | `templates/<language>` | Folder name |
+| `github.com/unalivin/templateapp` | Module path `github.com/<owner>/<folder>` |
+| `io.github.unalivin.templateapp` | Application identifier `io.github.<owner in lower case>.<folder>` |
+| `Unalivin` | Copyright holder from the registry |
+
+The owner is `Sonix-Devs` when the registry says `sonix-devs` and `unalivin` when it says `personal`. The copyright holder is `Sonix Devs` or `Unalivin` in the same way. The templates carry the personal values, so a personal project keeps them and a company project gets the company's module path, identifier, license line, publisher and notices header from the first commit. The link to the repository stays the workspace until the project is split.
+
+The new folder gets `.github/PULL_REQUEST_TEMPLATE.md` from the template with the project's name and scope filled in. Adjust it when the project has rules of its own, then run `scripts/gen-workflows.sh` so that the copy in the root follows.
 
 For a Rust project, run `make fmt docs notices` in the new folder before `make check`. The folder name replaces `templateapp` inside source lines, so `rustfmt` may wrap them differently, and the generated documents name the crates. No Rust project has been created from the template yet, so this step is expected but not exercised.
 
 ## A project that is not in the registry
 
-Add a row to `scripts/projects.tsv` first, with status `Not started`, seven topics and a description of about 200 to 280 characters. The registry check expects exactly 25 rows and the language split 14 Go, 8 Rust and 3 C++, so a new project also needs those expectations in `scripts/verify-repo.sh` updated in the same change.
+Add a row to `scripts/projects.tsv` first, with status `Not started`, seven topics, a description of about 200 to 280 characters, a destination and the copyright holder that belongs to it. The registry check expects exactly 25 rows, the language split 14 Go, 8 Rust and 3 C++ and the destination split 17 company and 8 personal, so a new project also needs those expectations in `scripts/verify-repo.sh` updated in the same change.
 
 ## Order of work inside a project
 

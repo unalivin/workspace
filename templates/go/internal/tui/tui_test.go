@@ -559,7 +559,7 @@ func TestAboutGuideAndLinks(t *testing.T) {
 	s := newScreen(t, nil)
 	s.start()
 	s.press("5")
-	s.shows("▌Overview", meta.AppName+" "+meta.Version, "License: "+meta.License, "Source Code", meta.RepositoryURL, "Found a bug? Please report it on GitHub.", "Nothing is sent by the application.")
+	s.shows("▌Overview", meta.AppName+" "+meta.Version, "Publisher: "+meta.Publisher, "License: "+meta.License, "Source Code", meta.RepositoryURL, "Found a bug? Please report it on GitHub.", "Nothing is sent by the application.")
 	s.press("enter")
 	if len(s.opened) != 1 || s.opened[0] != meta.RepositoryURL {
 		t.Fatalf("opened: %v", s.opened)

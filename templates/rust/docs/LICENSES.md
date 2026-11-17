@@ -2,7 +2,20 @@
 
 ## The application
 
-Template App is released under the MIT License, see [../LICENSE](../LICENSE).
+Template App is published by Unalivin under the MIT License, see [../LICENSE](../LICENSE). The copyright line of that file names the holder.
+
+The same name is the publisher in every place a build states one:
+
+| Place | Value |
+|---|---|
+| About screen, About tab of the terminal UI, `templateapp about` | Publisher |
+| `THIRD_PARTY_NOTICES.md` | First paragraph |
+| `README.txt` in the Linux and macOS archives | Publisher and copyright line |
+| Windows executable | Company name and copyright of the version resource, shown under Properties, Details. The build script reads both from `LICENSE`. |
+| macOS application | Copyright text of the bundle, shown under Get Info |
+| Cargo package metadata | `authors` |
+
+The scripts read it from `APP_PUBLISHER` in `scripts/lib.sh` and the application from `PUBLISHER` in `crates/templateapp-core/src/meta.rs`; tests fail when these, the bundle metadata or the copyright line of `LICENSE` disagree.
 
 ## Dependencies
 

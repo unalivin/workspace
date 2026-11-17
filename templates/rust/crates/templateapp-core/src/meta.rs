@@ -8,6 +8,7 @@ pub const DESCRIPTION: &str = "TEMPLATE_DESCRIPTION";
 pub const ICON_CONCEPT: &str = "TEMPLATE_ICON_CONCEPT";
 pub const REPOSITORY_URL: &str = "https://github.com/unalivin/workspace";
 pub const LICENSE: &str = "MIT";
+pub const PUBLISHER: &str = "Unalivin";
 pub const LICENSE_TEXT: &str = include_str!("../../../LICENSE");
 pub const NOTICES_TEXT: &str = include_str!("../../../THIRD_PARTY_NOTICES.md");
 pub const USAGE_TEXT: &str = include_str!("../../../docs/USAGE.md");
@@ -93,6 +94,10 @@ mod tests {
         assert!(APP_ID.ends_with(SLUG));
         assert!(SLUG.chars().all(|letter| letter.is_ascii_lowercase() || letter.is_ascii_digit() || letter == '-'));
         assert!(LICENSE_TEXT.contains("MIT License"));
+        let copyright = LICENSE_TEXT.lines().find(|line| line.starts_with("Copyright (c) ")).unwrap_or_default();
+        assert!(copyright.ends_with(&format!(" {PUBLISHER}")), "the license names another holder: {copyright}");
+        let opening = NOTICES_TEXT.lines().take(8).collect::<Vec<_>>().join("\n");
+        assert!(opening.contains(&format!("published by {PUBLISHER} under")), "{opening}");
         assert!(USAGE_TEXT.contains("Getting started"));
     }
 

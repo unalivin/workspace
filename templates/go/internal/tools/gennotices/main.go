@@ -79,7 +79,7 @@ func run(output, tags string, check bool) error {
 	if len(problems) > 0 {
 		return fmt.Errorf("license review failed:\n  %s", strings.Join(problems, "\n  "))
 	}
-	rendered := licenses.Render(meta.AppName, meta.License, notices, bundled)
+	rendered := licenses.Render(meta.AppName, meta.License, meta.Publisher, notices, bundled)
 	if check {
 		current, err := os.ReadFile(output)
 		if err != nil {

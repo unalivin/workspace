@@ -255,6 +255,7 @@ impl Dashboard<'_> {
             });
         });
         ui.add_space(self.tokens.spacing.m);
+        ui.label(format!("Publisher: {}", meta::PUBLISHER));
         ui.label(format!("License: {}", meta::LICENSE));
         ui.add_space(self.tokens.spacing.s);
         let source = service::source_link();

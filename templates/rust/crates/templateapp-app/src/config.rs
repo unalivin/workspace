@@ -399,6 +399,7 @@ pub(crate) fn run_about(env: &mut Env<'_>, call: &Call, app: &mut App) -> Result
         &[
             vec!["Application".to_string(), format!("{} {}", meta::APP_NAME, meta::VERSION)],
             vec!["About".to_string(), meta::TAGLINE.to_string()],
+            vec!["Publisher".to_string(), meta::PUBLISHER.to_string()],
             vec!["License".to_string(), meta::LICENSE.to_string()],
             vec!["Source Code".to_string(), service::source_link().url],
             vec!["Report a bug".to_string(), format!("{}/issues/new", meta::REPOSITORY_URL)],

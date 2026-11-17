@@ -722,7 +722,7 @@ func TestAbout(t *testing.T) {
 	}
 	s.start()
 	test.Tap(s.d.buttons[app.NavAbout])
-	s.shows(meta.AppName+" "+meta.Version, "License: "+meta.License, "Source Code", meta.RepositoryURL, "Found a bug? Please report it on GitHub.", "makes no network requests")
+	s.shows(meta.AppName+" "+meta.Version, "Publisher: "+meta.Publisher, "License: "+meta.License, "Source Code", meta.RepositoryURL, "Found a bug? Please report it on GitHub.", "makes no network requests")
 	s.capture("about")
 	s.tap("Source Code")
 	if len(s.opened) != 1 || s.opened[0] != meta.RepositoryURL {

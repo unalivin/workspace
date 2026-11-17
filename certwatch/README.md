@@ -100,4 +100,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Run `make check` before you push.
 
 ## License
 
-MIT, see [LICENSE](LICENSE). Third-party components are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+MIT, Copyright (c) 2026 Unalivin. See [LICENSE](LICENSE). Third-party components are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

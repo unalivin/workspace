@@ -8,6 +8,7 @@ version = "0.1.0-dev"
 edition = "2024"
 rust-version = "1.100"
 license = "MIT"
+authors = ["Unalivin"]
 repository = "https://github.com/unalivin/workspace"
 publish = false
 

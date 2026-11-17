@@ -18,6 +18,7 @@ const (
 	IconConcept   = "a certificate sheet with a ribbon seal whose ring doubles as a clock face"
 	RepositoryURL = "https://github.com/unalivin/workspace"
 	License       = "MIT"
+	Publisher     = "Unalivin"
 )
 
 type BuildInfo struct {

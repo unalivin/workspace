@@ -211,3 +211,108 @@ fixture_language() {
   [ "$status" -eq 0 ]
   grep -q "| Renamed |" "$WORKSPACE_ROOT/README.md"
 }
+
+set_registry_field() {
+  awk -F'\t' -v OFS='\t' -v folder="$1" -v column="$2" -v value="$3" '$2 == folder { $column = value } { print }' "$REGISTRY_FILE" >"$REGISTRY_FILE.tmp"
+  mv "$REGISTRY_FILE.tmp" "$REGISTRY_FILE"
+}
+
+@test "registry check requires a destination and the holder that belongs to it" {
+  verify registry
+  [ "$status" -eq 0 ]
+  set_registry_field netauto 10 personal
+  verify registry
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"netauto goes to personal, so its copyright holder must be Unalivin"* ]]
+  [[ "$output" == *"expected 17 projects for sonix-devs, found 16"* ]]
+  [[ "$output" == *"expected 8 projects for personal, found 9"* ]]
+  set_registry_field netauto 10 elsewhere
+  verify registry
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"netauto has unknown destination \"elsewhere\""* ]]
+  set_registry_field netauto 10 sonix-devs
+  set_registry_field certwatch 11 "Sonix Devs"
+  verify registry
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"certwatch goes to personal, so its copyright holder must be Unalivin, not \"Sonix Devs\""* ]]
+}
+
+@test "destinations check fails when a document disagrees with the registry" {
+  verify destinations
+  [ "$status" -eq 0 ]
+  grep -q "^| \`netauto\` | Go | Sonix-Devs organization (company) |$" "$WORKSPACE_ROOT/README.md"
+  grep -q "^| \`certwatch\` | Go | Personal profile (unalivin) |$" "$WORKSPACE_ROOT/docs/WORKSPACE.md"
+  grep -q "^17 projects will be published in the GitHub organization" "$WORKSPACE_ROOT/docs/ROADMAP.md"
+  sed -i.bak "s/^| \`netauto\` | Go | Sonix-Devs organization (company) |$/| \`netauto\` | Go | Personal profile (unalivin) |/" "$WORKSPACE_ROOT/README.md"
+  rm "$WORKSPACE_ROOT/README.md.bak"
+  verify destinations
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"README.md: the destinations table does not match the registry"* ]]
+  [[ "$output" == *"the destination table disagrees with the registry"* ]]
+  "$WORKSPACE_ROOT/scripts/sync-readme.sh" destinations >/dev/null
+  verify destinations
+  [ "$status" -eq 0 ]
+  set_registry_field certwatch 10 sonix-devs
+  verify destinations
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"docs/WORKSPACE.md: the destinations table does not match the registry"* ]]
+  [[ "$output" == *"docs/ROADMAP.md: the destinations table does not match the registry"* ]]
+  printf '# document\n' >"$WORKSPACE_ROOT/docs/ROADMAP.md"
+  verify destinations
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"docs/ROADMAP.md has no destinations:start marker"* ]]
+}
+
+@test "pull-requests check fails for a missing template and for a differing copy" {
+  make_fake_template go
+  "$WORKSPACE_ROOT/scripts/new-project.sh" certwatch go >/dev/null
+  verify pull-requests
+  [ "$status" -eq 0 ]
+  printf 'changed\n' >>"$WORKSPACE_ROOT/.github/PULL_REQUEST_TEMPLATE/certwatch.md"
+  verify pull-requests
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"out of date: .github/PULL_REQUEST_TEMPLATE/certwatch.md"* ]]
+  [[ "$output" == *"pull request templates are missing or differ"* ]]
+  "$WORKSPACE_ROOT/scripts/gen-workflows.sh" >/dev/null
+  rm "$WORKSPACE_ROOT/certwatch/.github/PULL_REQUEST_TEMPLATE.md"
+  verify pull-requests
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"missing: certwatch/.github/PULL_REQUEST_TEMPLATE.md"* ]]
+  verify files
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"certwatch: missing file .github/PULL_REQUEST_TEMPLATE.md"* ]]
+}
+
+@test "holders check names every file that disagrees with the registry" {
+  make_fake_template go
+  "$WORKSPACE_ROOT/scripts/new-project.sh" certwatch go >/dev/null
+  "$WORKSPACE_ROOT/scripts/new-project.sh" netauto go >/dev/null
+  verify holders
+  [ "$status" -eq 0 ]
+  local project="$WORKSPACE_ROOT/netauto"
+  sed -i.bak 's/Sonix Devs/Unalivin/' "$project/LICENSE" "$project/README.md" "$project/THIRD_PARTY_NOTICES.md" "$project/scripts/lib.sh" "$project/internal/meta/meta.go"
+  find "$project" -name '*.bak' -delete
+  verify holders
+  [ "$status" -eq 1 ]
+  [[ "$output" == *'netauto: LICENSE has no line "Copyright (c) <year> Sonix Devs"'* ]]
+  [[ "$output" == *"netauto: the License section of README.md does not name Sonix Devs"* ]]
+  [[ "$output" == *"netauto: the header of THIRD_PARTY_NOTICES.md does not name Sonix Devs"* ]]
+  [[ "$output" == *'netauto: scripts/lib.sh does not set APP_PUBLISHER="Sonix Devs"'* ]]
+  [[ "$output" == *'netauto: no meta source file sets the publisher to "Sonix Devs"'* ]]
+  [[ "$output" == *"netauto: LICENSE names Unalivin, but the registry says Sonix Devs"* ]]
+  [[ "$output" != *"certwatch:"* ]]
+  printf 'Published by Sonix Devs\n' >"$WORKSPACE_ROOT/certwatch/docs/EXTRA.md"
+  verify holders
+  [[ "$output" == *"certwatch: docs/EXTRA.md names Sonix Devs, but the registry says Unalivin"* ]]
+}
+
+@test "holders check covers the templates" {
+  make_fake_template go
+  verify holders
+  [ "$status" -eq 0 ]
+  sed -i.bak 's/Unalivin/Somebody Else/' "$WORKSPACE_ROOT/templates/go/LICENSE"
+  rm "$WORKSPACE_ROOT/templates/go/LICENSE.bak"
+  verify holders
+  [ "$status" -eq 1 ]
+  [[ "$output" == *'templates/go: LICENSE has no line "Copyright (c) <year> Unalivin"'* ]]
+}

@@ -8,8 +8,9 @@ usage() {
 Usage: scripts/new-project.sh [--dry-run] <name> <go|rust|cpp>
 
 Creates the project folder <name> from templates/<language> and fills in its
-metadata (app name, description, topics, icon concept) from the registry in
-scripts/projects.tsv. The name must be listed in the registry with the same
+metadata (app name, description, topics, icon concept, repository owner and
+copyright holder of its destination) from the registry in scripts/projects.tsv.
+The folder gets its own .github/PULL_REQUEST_TEMPLATE.md from the template. The name must be listed in the registry with the same
 primary language. Afterwards the registry status becomes "In progress", the
 README table is refreshed and the workflows are regenerated.
 
@@ -46,24 +47,23 @@ target="$WORKSPACE_ROOT/$name"
 [ ! -e "$target" ] || die "$name already exists"
 
 app="$(project_app "$name")"
-tagline="$(project_tagline "$name")"
 topics="$(project_topics "$name")"
-icon="$(project_icon_concept "$name")"
-description="$(project_description "$name")"
 prefix="$(env_prefix "$name")"
+destination="$(project_destination "$name")"
+valid_destination "$destination" || die "$name has no valid destination in the registry"
+owner="$(project_owner "$name")"
+holder="$(project_copyright_holder "$name")"
 
 if [ "$DRY_RUN" = "1" ]; then
   note "dry-run: would copy templates/$language to $name"
   note "dry-run: app name: $app"
   note "dry-run: environment prefix: $prefix"
   note "dry-run: topics: $topics"
+  note "dry-run: destination: $(destination_label "$destination"), repository owner $owner"
+  note "dry-run: copyright holder: $holder"
   note "dry-run: would mark $name as In progress, refresh README.md and regenerate workflows"
   exit 0
 fi
-
-escape_replacement() {
-  printf '%s' "$1" | sed -e 's/[\\&|]/\\&/g'
-}
 
 mkdir "$target"
 (cd "$template" && git ls-files -co --exclude-standard -z | while IFS= read -r -d '' file; do
@@ -73,19 +73,12 @@ mkdir "$target"
   fi
 done)
 
+tokens="$(mktemp)"
+trap 'rm -f "$tokens"' EXIT
+project_token_script "$name" >"$tokens"
 while IFS= read -r -d '' file; do
-  if LC_ALL=C grep -Iq . "$file"; then
-    sed -i.bak \
-      -e "s|TEMPLATE_DESCRIPTION|$(escape_replacement "$description")|g" \
-      -e "s|TEMPLATE_TAGLINE|$(escape_replacement "$tagline")|g" \
-      -e "s|TEMPLATE_TOPICS|$(escape_replacement "$topics")|g" \
-      -e "s|TEMPLATE_ICON_CONCEPT|$(escape_replacement "$icon")|g" \
-      -e "s|templates/$language|$(escape_replacement "$name")|g" \
-      -e "s|Template App|$(escape_replacement "$app")|g" \
-      -e "s|TEMPLATEAPP|$(escape_replacement "$prefix")|g" \
-      -e "s|templateapp|$(escape_replacement "$name")|g" \
-      "$file"
-    rm -f "$file.bak"
+  if is_text_file "$file"; then
+    apply_token_script "$tokens" "$file"
   fi
 done < <(find "$target" -type f -print0)
 

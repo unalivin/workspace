@@ -12,7 +12,10 @@ to dist/:
 
   Linux    $APP_SLUG-linux-<arch>.tar.gz    binary, desktop entry, icon, install Makefile, licenses, usage guide
   macOS    $APP_SLUG-macos-<arch>.tar.gz    $APP_NAME.app made by cargo bundle $CARGO_BUNDLE_VERSION, licenses, usage guide
-  Windows  $APP_SLUG-windows-<arch>.exe     one executable with the icon embedded by the build script
+  Windows  $APP_SLUG-windows-<arch>.exe     one executable with the icon and the publisher embedded by the build script
+
+The publisher "$APP_PUBLISHER" and the copyright line of LICENSE are written
+into README.txt, the macOS bundle and the Windows version resource.
 
 The archives contain LICENSE, THIRD_PARTY_NOTICES.md, README.txt and USAGE.md.
 The Windows executable carries the same texts inside: "$APP_SLUG licenses"
@@ -68,6 +71,12 @@ esac
 work="$output/package-work"
 name="$APP_SLUG-$os-$arch"
 package="$APP_SLUG-app"
+copyright="$(grep -m 1 '^Copyright (c) ' LICENSE || true)"
+[ -n "$copyright" ] || die "LICENSE has no copyright line"
+case "$copyright" in
+  *" $APP_PUBLISHER") ;;
+  *) die "the copyright line of LICENSE does not name the publisher $APP_PUBLISHER: $copyright" ;;
+esac
 
 write_install_makefile() {
   local target="$1"
@@ -131,6 +140,8 @@ Run "$APP_SLUG --help" for the commands, or read USAGE.md.
 The same guide is inside the application: About, Usage guide.
 
 This is an early development build. It is not signed.
+Publisher: $APP_PUBLISHER
+$copyright
 License: MIT, see LICENSE. Third-party components: THIRD_PARTY_NOTICES.md.
 Source and bug reports: $APP_REPOSITORY_URL
 README
@@ -144,6 +155,37 @@ add_documents() {
 
 build_release() {
   run cargo build --locked --release -p "$package"
+}
+
+check_bundle_copyright() {
+  local plist="$1"
+  if [ "$DRY_RUN" = "1" ]; then
+    note "dry-run: check the copyright text in $plist"
+    return 0
+  fi
+  [ -f "$plist" ] || die "the application bundle has no Info.plist"
+  [ "$(/usr/libexec/PlistBuddy -c "Print :NSHumanReadableCopyright" "$plist" 2>/dev/null)" = "$copyright" ] ||
+    die "the application bundle does not carry the copyright text: $copyright"
+}
+
+windows_resource_field() {
+  local file="$1" field="$2" path
+  path="$(cygpath -w "$file")"
+  powershell.exe -NoProfile -NonInteractive -Command "(Get-Item -LiteralPath '$path').VersionInfo.$field" | tr -d '\r'
+}
+
+check_windows_resource() {
+  local target="$1"
+  if [ "$DRY_RUN" = "1" ]; then
+    note "dry-run: check that the version resource names the company $APP_PUBLISHER"
+    return 0
+  fi
+  [ "$(windows_resource_field "$target" CompanyName)" = "$APP_PUBLISHER" ] ||
+    die "the version resource of $(basename "$target") does not name the company $APP_PUBLISHER"
+  [ "$(windows_resource_field "$target" LegalCopyright)" = "$copyright" ] ||
+    die "the version resource of $(basename "$target") does not carry the copyright line"
+  [ "$(windows_resource_field "$target" ProductName)" = "$APP_NAME" ] ||
+    die "the version resource of $(basename "$target") does not name the product $APP_NAME"
 }
 
 run rm -rf "$work"
@@ -174,6 +216,7 @@ Install for everyone: sudo make install"
     fi
     run cargo bundle --release --format osx --package "$package"
     run cp -R "target/release/bundle/osx/$APP_NAME.app" "$work/$name/"
+    check_bundle_copyright "$work/$name/$APP_NAME.app/Contents/Info.plist"
     add_documents "$work/$name"
     write_readme "$work/$name/README.txt" "Start: open \"$APP_NAME.app\" (the first time: right-click, Open).
 Command line: \"$APP_NAME.app/Contents/MacOS/$APP_SLUG\" --help"
@@ -183,6 +226,7 @@ Command line: \"$APP_NAME.app/Contents/MacOS/$APP_SLUG\" --help"
   windows)
     build_release
     run cp "target/release/$APP_SLUG.exe" "$output/$name.exe"
+    check_windows_resource "$output/$name.exe"
     result="$output/$name.exe"
     ;;
 esac

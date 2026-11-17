@@ -95,3 +95,71 @@ teardown() {
   [ "$status" -ne 0 ]
   [[ "$output" == *"uncommitted changes"* ]]
 }
+
+@test "split-project keeps the personal owner, holder and pull request template of a personal project" {
+  run "$WORKSPACE_ROOT/scripts/split-project.sh" --output "$TEST_ROOT/standalone" certwatch
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"repository: https://github.com/unalivin/certwatch, copyright holder: Unalivin"* ]]
+  grep -q 'Module    = "github.com/unalivin/certwatch"' "$TEST_ROOT/standalone/internal/meta/meta.go"
+  grep -qx "Copyright (c) 2026 Unalivin" "$TEST_ROOT/standalone/LICENSE"
+  cmp "$WORKSPACE_ROOT/certwatch/.github/PULL_REQUEST_TEMPLATE.md" "$TEST_ROOT/standalone/.github/PULL_REQUEST_TEMPLATE.md"
+  [ ! -e "$TEST_ROOT/standalone/.github/PULL_REQUEST_TEMPLATE" ]
+}
+
+@test "split-project sends a company project to Sonix-Devs with its holder" {
+  "$WORKSPACE_ROOT/scripts/new-project.sh" netauto go >/dev/null
+  commit_all "feat(netauto): create project from template"
+  run "$WORKSPACE_ROOT/scripts/split-project.sh" --dry-run --output "$TEST_ROOT/company" netauto
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"dry-run: destination: Sonix-Devs organization (company)"* ]]
+  [[ "$output" == *"https://github.com/Sonix-Devs/netauto"* ]]
+  [[ "$output" == *"dry-run: would set and verify the copyright holder Sonix Devs"* ]]
+  run "$WORKSPACE_ROOT/scripts/split-project.sh" --output "$TEST_ROOT/company" netauto
+  [ "$status" -eq 0 ]
+  local out="$TEST_ROOT/company"
+  grep -q "^Repository: https://github.com/Sonix-Devs/netauto$" "$out/README.md"
+  grep -q 'Module    = "github.com/Sonix-Devs/netauto"' "$out/internal/meta/meta.go"
+  grep -q 'AppID     = "io.github.sonix-devs.netauto"' "$out/internal/meta/meta.go"
+  grep -q 'Publisher = "Sonix Devs"' "$out/internal/meta/meta.go"
+  grep -qx "Copyright (c) 2026 Sonix Devs" "$out/LICENSE"
+  grep -qx 'APP_PUBLISHER="Sonix Devs"' "$out/scripts/lib.sh"
+  grep -q "The title uses the scope \`netauto\`" "$out/.github/PULL_REQUEST_TEMPLATE.md"
+  refute grep -rq "unalivin\|Unalivin" "$out" --exclude-dir=.git
+}
+
+@test "split-project --owner overrides the owner and rewrites module path and identifier" {
+  run "$WORKSPACE_ROOT/scripts/split-project.sh" --owner Some-Org --output "$TEST_ROOT/standalone" certwatch
+  [ "$status" -eq 0 ]
+  grep -q "^Repository: https://github.com/Some-Org/certwatch$" "$TEST_ROOT/standalone/README.md"
+  grep -q 'Module    = "github.com/Some-Org/certwatch"' "$TEST_ROOT/standalone/internal/meta/meta.go"
+  grep -q 'AppID     = "io.github.some-org.certwatch"' "$TEST_ROOT/standalone/internal/meta/meta.go"
+  grep -q 'Publisher = "Unalivin"' "$TEST_ROOT/standalone/internal/meta/meta.go"
+  run "$WORKSPACE_ROOT/scripts/split-project.sh" --owner "bad owner" --output "$TEST_ROOT/other" certwatch
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"invalid owner"* ]]
+}
+
+@test "split-project sets a stale holder from the registry and refuses what it cannot verify" {
+  sed -i.bak 's/Copyright (c) 2026 Unalivin/Copyright (c) 2026 Sonix Devs/' "$WORKSPACE_ROOT/certwatch/LICENSE"
+  rm "$WORKSPACE_ROOT/certwatch/LICENSE.bak"
+  commit_all "docs(certwatch): wrong holder"
+  run "$WORKSPACE_ROOT/scripts/split-project.sh" --output "$TEST_ROOT/standalone" certwatch
+  [ "$status" -eq 0 ]
+  grep -qx "Copyright (c) 2026 Unalivin" "$TEST_ROOT/standalone/LICENSE"
+  sed -i.bak 's/^APP_PUBLISHER=.*/APP_PUBLISHER="Nobody"/' "$WORKSPACE_ROOT/certwatch/scripts/lib.sh"
+  rm "$WORKSPACE_ROOT/certwatch/scripts/lib.sh.bak"
+  commit_all "build(certwatch): wrong publisher"
+  run "$WORKSPACE_ROOT/scripts/split-project.sh" --output "$TEST_ROOT/refused" certwatch
+  [ "$status" -ne 0 ]
+  [[ "$output" == *'certwatch: scripts/lib.sh does not set APP_PUBLISHER="Unalivin"'* ]]
+  [[ "$output" == *"does not name the copyright holder Unalivin everywhere"* ]]
+  [ ! -e "$TEST_ROOT/refused" ]
+}
+
+@test "split-project refuses a project without its pull request template" {
+  git -C "$WORKSPACE_ROOT" rm --quiet certwatch/.github/PULL_REQUEST_TEMPLATE.md
+  commit_all "chore(certwatch): drop the template"
+  run "$WORKSPACE_ROOT/scripts/split-project.sh" --output "$TEST_ROOT/standalone" certwatch
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"certwatch has no .github/PULL_REQUEST_TEMPLATE.md"* ]]
+}

@@ -419,9 +419,14 @@ fn about_opens_links_only_on_request_and_shows_the_guide_and_diagnostics() {
     model.resize(120, 40);
     press(&mut model, &[Key::Esc, Key::Char('5')]);
     let screen = model.screen();
-    for wanted in
-        ["License: MIT", "Source Code", "Report a vulnerability privately", "Nothing is sent by the application."]
-    {
+    let publisher = format!("Publisher: {}", meta::PUBLISHER);
+    for wanted in [
+        publisher.as_str(),
+        "License: MIT",
+        "Source Code",
+        "Report a vulnerability privately",
+        "Nothing is sent by the application.",
+    ] {
         assert!(screen.contains(wanted), "missing {wanted:?} in\n{screen}");
     }
     model.handle(Key::Enter);

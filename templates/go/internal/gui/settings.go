@@ -436,7 +436,7 @@ func newAboutPage(d *dashboard) *aboutPage {
 	advisory := link("Report a vulnerability privately", app.AdvisoryLink)
 	bug := widget.NewButtonWithIcon("Found a bug? Please report it on GitHub.", glyph("message"), p.reportBug)
 	overview := container.NewVBox(
-		container.NewBorder(nil, nil, p.icon, nil, container.NewVBox(heading(meta.AppName+" "+meta.Version), wrapped(meta.Tagline))), widget.NewLabel("License: "+meta.License),
+		container.NewBorder(nil, nil, p.icon, nil, container.NewVBox(heading(meta.AppName+" "+meta.Version), wrapped(meta.Tagline))), widget.NewLabel("Publisher: "+meta.Publisher), widget.NewLabel("License: "+meta.License),
 		container.NewHBox(source), muted(app.SourceLink().URL),
 		container.NewHBox(bug), muted("The exact text of the report is shown before your browser opens."),
 		container.NewHBox(advisory), muted(app.AdvisoryLink().URL),

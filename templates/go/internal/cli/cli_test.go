@@ -430,7 +430,7 @@ func TestDiagnosticsGuideAboutAndLicenses(t *testing.T) {
 	expect(t, h.ok("guide", first), first)
 	h.fails(ExitFailure, "no section of the usage guide mentions", "guide", "zzzzqqqq")
 	about := h.ok("about")
-	expect(t, about, meta.AppName, meta.Version, meta.RepositoryURL, "/security/advisories/new", "Nothing is opened or sent")
+	expect(t, about, meta.AppName, meta.Version, "Publisher", meta.Publisher, meta.RepositoryURL, "/security/advisories/new", "Nothing is opened or sent")
 	issue := h.ok("about", "--issue")
 	expect(t, issue, "Found a bug? Please report it on GitHub.", "exactly this text", "Operating system:", meta.RepositoryURL+"/issues/new?")
 	if strings.Contains(issue, h.home) {

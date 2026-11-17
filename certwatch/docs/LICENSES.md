@@ -2,7 +2,19 @@
 
 ## The application
 
-CertWatch is released under the MIT License, see [../LICENSE](../LICENSE).
+CertWatch is published by Unalivin under the MIT License, see [../LICENSE](../LICENSE). The copyright line of that file names the holder.
+
+The same name is the publisher in every place a build states one:
+
+| Place | Value |
+|---|---|
+| About screen, About tab of the terminal UI, `certwatch about` | Publisher |
+| `THIRD_PARTY_NOTICES.md` | First paragraph |
+| `README.txt` in the Linux and macOS archives | Publisher and copyright line |
+| Windows executable | Company name and copyright of the version resource, shown under Properties, Details |
+| macOS application | Copyright text of the bundle, shown under Get Info |
+
+The build reads it from `APP_PUBLISHER` in `scripts/lib.sh` and from `Publisher` in `internal/meta/meta.go`; a test fails when the two, or the copyright line of `LICENSE`, disagree.
 
 ## Dependencies
 
