@@ -79,6 +79,7 @@ fn main() {
             open_tui: Some(&open_tui),
             ..hooks
         },
+        exit_code: 0,
     });
     drop(input);
     std::process::exit(code);

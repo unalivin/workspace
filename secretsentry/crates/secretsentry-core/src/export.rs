@@ -485,7 +485,9 @@ mod tests {
     use crate::git::HistoryOptions;
     use crate::scans::Scans;
     use crate::store::Store;
-    use crate::testkit::{GitFixture, TempDir, fixed_time, sample_cloud_key, sample_hosting_token, sample_package_token};
+    use crate::testkit::{
+        GitFixture, TempDir, fixed_time, sample_cloud_key, sample_hosting_token, sample_package_token,
+    };
     use crate::tree;
 
     struct Fixture {
@@ -516,7 +518,11 @@ mod tests {
         let first = git.commit(&tree_one, &[], 1_700_000_000, "add the environment");
         let second = git.commit(&tree_two, &[&first], 1_700_000_100, "remove it");
         git.set_reference("refs/heads/main", &second);
-        fs::write(root.join("a b#c.py"), format!("KEY = \"{}\"\nKEY2 = \"{}\"\n", sample_cloud_key(), sample_cloud_key())).unwrap();
+        fs::write(
+            root.join("a b#c.py"),
+            format!("KEY = \"{}\"\nKEY2 = \"{}\"\n", sample_cloud_key(), sample_cloud_key()),
+        )
+        .unwrap();
         fs::write(root.join("deploy.sh"), format!("export TOKEN={}\n", sample_hosting_token())).unwrap();
         fs::write(root.join("tests").join("data.txt"), format!("token {}\n", sample_hosting_token())).unwrap();
         let clock = Clock::fixed(fixed_time());
@@ -551,14 +557,20 @@ mod tests {
         assert_eq!(default_file_name(Format::Sarif, fixed_time()), "secretsentry-findings-20260302-0930.sarif");
         assert!(default_file_name(Format::Json, fixed_time()).ends_with(".json"));
         assert_eq!(uri_path("a b#c/é.py"), "a%20b%23c/%C3%A9.py");
-        assert_eq!([Severity::Critical, Severity::Medium, Severity::Info].map(sarif_level), ["error", "warning", "note"]);
+        assert_eq!(
+            [Severity::Critical, Severity::Medium, Severity::Info].map(sarif_level),
+            ["error", "warning", "note"]
+        );
     }
 
     #[test]
     fn json_lists_every_finding_with_redacted_values() {
         let fixture = fixture("export-json");
         let items = fixture.items();
-        assert_eq!(items.iter().map(|item| item.finding.path.as_str()).collect::<Vec<_>>(), vec!["a b#c.py", "deploy.sh", "old.env", "tests/data.txt"]);
+        assert_eq!(
+            items.iter().map(|item| item.finding.path.as_str()).collect::<Vec<_>>(),
+            vec!["a b#c.py", "deploy.sh", "old.env", "tests/data.txt"]
+        );
         let text = render(Format::Json, &items, fixed_time()).unwrap();
         assert_redacted(&text);
         assert!(text.ends_with("}\n"));
@@ -597,7 +609,9 @@ mod tests {
         let fixture = fixture("export-sarif");
         let findings = fixture.findings();
         let listed = fixture.items();
-        findings.decide(listed[1].finding.id, listed[1].finding.revision, Status::AcceptedRisk, "rotated on Monday").unwrap();
+        findings
+            .decide(listed[1].finding.id, listed[1].finding.revision, Status::AcceptedRisk, "rotated on Monday")
+            .unwrap();
         findings.accept_baseline("").unwrap();
         let items = fixture.items();
         let text = render(Format::Sarif, &items, fixed_time()).unwrap();
@@ -611,7 +625,10 @@ mod tests {
         assert_eq!(driver["name"], "SecretSentry");
         assert_eq!(driver["informationUri"], meta::source_url());
         let rules = driver["rules"].as_array().unwrap();
-        assert_eq!(rules.iter().map(|rule| rule["id"].as_str().unwrap()).collect::<Vec<_>>(), vec!["aws-access-key-id", "github-token", "npm-token"]);
+        assert_eq!(
+            rules.iter().map(|rule| rule["id"].as_str().unwrap()).collect::<Vec<_>>(),
+            vec!["aws-access-key-id", "github-token", "npm-token"]
+        );
         assert_eq!(rules[1]["shortDescription"]["text"], "GitHub token");
         assert_eq!(rules[1]["defaultConfiguration"]["level"], "error");
         assert_eq!(rules[1]["properties"]["security-severity"], "9.5");

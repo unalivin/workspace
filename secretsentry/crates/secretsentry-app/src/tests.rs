@@ -9,11 +9,11 @@ use app_core::meta;
 use app_core::notifier::Autostart;
 use app_core::platform::{self, Os};
 use app_core::service::{self, App, Options};
-use app_core::testkit::{TempDir, fixed_time};
+use app_core::testkit::{GitFixture, TempDir, fixed_time, sample_cloud_key, sample_hosting_token, sample_package_token};
 use app_core::{AppError, Result};
 
 use crate::cli::{self, Env, Hooks, Kind, number, parse_flags, switch, tabulate, text};
-use crate::{EXIT_FAILURE, EXIT_OK, EXIT_USAGE};
+use crate::{EXIT_FAILURE, EXIT_FINDINGS, EXIT_OK, EXIT_USAGE};
 
 struct Harness {
     home: TempDir,
@@ -141,6 +141,7 @@ impl Harness {
                 autostart: Some(&autostart),
                 wait: Some(&wait),
             },
+            exit_code: 0,
         });
         (String::from_utf8(output).unwrap(), String::from_utf8(errors).unwrap(), code)
     }
@@ -186,7 +187,7 @@ fn help_version_and_unknown_commands() {
     harness.fails(&["recrods"], EXIT_USAGE, "unknown command \"recrods\"");
     harness.fails(&["rec"], EXIT_USAGE, "Did you mean \"records\"?");
     harness.fails(&["records", "lst"], EXIT_USAGE, "unknown command \"records lst\"");
-    harness.fails(&["zzz"], EXIT_USAGE, "Available: overview, records");
+    harness.fails(&["zzz"], EXIT_USAGE, "Available: overview, scan, scans, findings");
     harness.fails(&["--frobnicate"], EXIT_USAGE, "unknown flag --frobnicate");
     harness.fails(&["--set", "nokey", "overview"], EXIT_USAGE, "key=value");
     harness.fails(&["--set", "no.such=1", "overview"], EXIT_USAGE, "unknown setting \"no.such\"");
@@ -307,44 +308,375 @@ fn records_are_imported_and_exported() {
     harness.fails(&["records", "import", &broken], EXIT_FAILURE, "no row could be imported");
 }
 
+fn project(harness: &Harness) -> String {
+    let root = harness.home.path().join("project");
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    std::fs::create_dir_all(root.join("deploy")).unwrap();
+    std::fs::write(root.join("src").join("config.py"), format!("AWS_KEY = \"{}\"\nother = 1\n", sample_cloud_key()))
+        .unwrap();
+    std::fs::write(root.join("deploy").join("ci.yaml"), format!("token: {}\n", sample_hosting_token())).unwrap();
+    std::fs::write(root.join("README.md"), "No secrets here.\n").unwrap();
+    root.to_string_lossy().into_owned()
+}
+
+fn parsed(text: &str) -> serde_json::Value {
+    serde_json::from_str(text).unwrap_or_else(|error| panic!("{error}\n{text}"))
+}
+
+fn has_no_secret(text: &str) {
+    for secret in [sample_cloud_key(), sample_hosting_token(), sample_package_token()] {
+        assert!(!text.contains(&secret), "the output shows a secret value\n{text}");
+    }
+}
+
 #[test]
 fn demo_data_feeds_the_overview_and_the_notifications() {
     let harness = Harness::new("cli-demo");
-    assert!(harness.ok(&["overview"]).contains("No records yet"));
+    assert!(harness.ok(&["overview"]).contains("No scan yet"));
     let added = harness.ok(&["demo", "load"]);
-    assert!(added.starts_with("Added ") && added.contains("Demo:"), "{added}");
+    assert!(added.starts_with("Added 8 demo findings") && added.contains("Demo: sample-shop"), "{added}");
     assert_eq!(harness.ok(&["demo", "load"]), "Demo data is already loaded.\n");
     let overview = harness.ok(&["overview"]);
-    for expected in ["MEASURE", "Open records", "Unread notifications", "SEVERITY", "Critical", "Demo data is loaded"] {
+    for expected in [
+        "MEASURE",
+        "Findings that need attention",
+        "Unread notifications",
+        "Last scan:",
+        "RULE",
+        "GitHub token",
+        "config/settings.py",
+        "Demo data is loaded",
+    ] {
         assert!(overview.contains(expected), "{expected}\n{overview}");
     }
-    let json: serde_json::Value = serde_json::from_str(&harness.ok(&["overview", "--format", "json"])).unwrap();
-    let demo = json["demo_records"].as_i64().unwrap();
-    assert!(demo > 0 && json["breakdown"].as_array().is_some_and(|rows| !rows.is_empty()), "{json}");
+    let json = parsed(&harness.ok(&["overview", "--format", "json"]));
+    assert_eq!(json["demo_findings"].as_i64(), Some(8), "{json}");
+    assert_eq!(json["allowlisted_findings"].as_i64(), Some(1), "{json}");
+    assert!(json["by_rule"].as_array().is_some_and(|rows| !rows.is_empty()), "{json}");
+    assert!(json["last_scan"]["demo"].as_bool().unwrap(), "{json}");
     harness.fails(&["overview", "--format", "csv"], EXIT_USAGE, "use table or json");
     let unread = json["unread_notifications"].as_i64().unwrap();
     assert!(unread > 0, "{json}");
     let listed = harness.ok(&["notifications", "list"]);
-    assert!(listed.starts_with("ID  WHEN") && listed.contains("unread") && listed.contains("record "), "{listed}");
-    let rows: serde_json::Value =
-        serde_json::from_str(&harness.ok(&["notifications", "list", "--unread", "--format", "json"])).unwrap();
+    assert!(listed.starts_with("ID  WHEN") && listed.contains("unread"), "{listed}");
+    let rows = parsed(&harness.ok(&["notifications", "list", "--unread", "--format", "json"]));
     assert_eq!(rows.as_array().unwrap().len() as i64, unread);
     let first = rows[0]["id"].as_i64().unwrap().to_string();
     assert_eq!(harness.ok(&["notifications", "read", &first]), format!("Marked notification {first} as read\n"));
-    assert_eq!(harness.ok(&["notifications", "read", "all"]), format!("Marked {} notifications as read\n", unread - 1));
+    assert!(harness.ok(&["notifications", "read", "all"]).starts_with("Marked "));
     assert!(harness.ok(&["notifications", "list", "--unread"]).contains("No notifications"));
-    assert!(
-        harness.ok(&["notifications", "list", "--severity", "critical", "--event", "record.urgent"]).contains("read")
-    );
+    assert!(harness.ok(&["notifications", "list", "--event", "scan.finding"]).contains("read"));
     harness.fails(&["notifications", "read"], EXIT_USAGE, "the word all");
     harness.fails(&["notifications", "read", "x"], EXIT_USAGE, "is not a notification identifier");
     harness.fails(&["notifications", "read", "9999"], EXIT_FAILURE, "was not found");
     harness.fails(&["notifications", "list", "--severity", "loud"], EXIT_USAGE, "severity");
     harness.fails(&["notifications", "list", "--event", "nope"], EXIT_USAGE, "unknown event type");
+    let history = harness.ok(&["history", "list"]);
+    assert!(history.starts_with("COMMIT") && history.contains("findings list --commit"), "{history}");
+    let listed = harness.ok(&["findings", "list", "--scope", "allowlisted"]);
+    assert!(listed.contains("demo-fixtures/payment_test.py") && listed.contains("Allowlisted"), "{listed}");
+    assert!(harness.ok(&["allowlist", "list"]).contains("demo-fixtures/**"));
     harness.fails(&["demo", "remove"], EXIT_USAGE, "--yes");
-    assert!(harness.ok(&["demo", "remove", "--dry-run"]).contains(&format!("This removes {demo} demo records")));
-    assert_eq!(harness.ok(&["demo", "remove", "--yes"]), format!("Removed {demo} demo records\n"));
+    assert!(harness.ok(&["demo", "remove", "--dry-run"]).contains("This removes 8 demo findings"));
+    assert_eq!(harness.ok(&["demo", "remove", "--yes"]), "Removed 8 demo findings\n");
     assert_eq!(harness.ok(&["demo", "remove", "--yes"]), "There is no demo data to remove.\n");
+    assert!(harness.ok(&["allowlist", "list"]).contains("No allowlist entries yet"));
+    assert!(harness.ok(&["findings", "list"]).contains("No findings yet"));
+}
+
+#[test]
+fn a_scan_lists_redacted_findings_and_new_ones_give_exit_code_three() {
+    let harness = Harness::new("cli-scan");
+    let directory = project(&harness);
+    let (output, errors, code) = harness.run(&["scan", &directory]);
+    assert_eq!(code, EXIT_FINDINGS, "{output}\n{errors}");
+    for expected in [
+        "Files: completed, 3 files",
+        "2 findings in",
+        "2 need attention, 2 of them new",
+        "GitHub token",
+        "src/config.py",
+        "deploy/ci.yaml",
+        "CONFIDENCE",
+        "New",
+    ] {
+        assert!(output.contains(expected), "{expected}\n{output}");
+    }
+    has_no_secret(&output);
+    assert!(errors.contains("2 new findings with low confidence or higher: exit code 3"), "{errors}");
+    let quiet = harness.ok(&["scan", &directory, "--fail-on", "never"]);
+    assert!(quiet.contains("2 need attention"), "{quiet}");
+    let (report, _, code) = harness.run(&["scan", &directory, "--format", "json"]);
+    assert_eq!(code, EXIT_FINDINGS);
+    has_no_secret(&report);
+    let json = parsed(&report);
+    assert_eq!(json["format"].as_str(), Some("secretsentry-findings"));
+    assert_eq!((json["total"].as_i64(), json["findings"].as_array().map(Vec::len)), (Some(2), Some(2)), "{json}");
+    let target = harness.path("report.sarif");
+    let (report, errors, code) = harness.run(&["scan", &directory, "--format", "sarif", "--output", &target]);
+    assert_eq!((code, report.as_str()), (EXIT_FINDINGS, ""), "{errors}");
+    assert!(errors.contains("Wrote 2 findings to"), "{errors}");
+    let written = std::fs::read_to_string(&target).unwrap();
+    has_no_secret(&written);
+    assert_eq!(parsed(&written)["version"].as_str(), Some("2.1.0"));
+    harness.fails(&["scan", &directory, "--format", "sarif", "--output", &target], EXIT_USAGE, "already exists");
+    let (_, errors, code) = harness.run(&["scan", &directory, "--format", "sarif", "--output", &target, "--force"]);
+    assert_eq!(code, EXIT_FINDINGS, "{errors}");
+    let scans = harness.ok(&["scans", "list"]);
+    assert!(scans.starts_with("ID  STARTED") && scans.contains("Completed") && scans.contains("3 files"), "{scans}");
+    let rows = parsed(&harness.ok(&["scans", "list", "--format", "json", "--kind", "tree"]));
+    assert_eq!(rows.as_array().unwrap().len(), 5, "{rows}");
+    let shown = harness.ok(&["scans", "show", "1"]);
+    assert!(shown.contains("Scanned directory") && shown.contains("New findings"), "{shown}");
+    assert_eq!(parsed(&harness.ok(&["scans", "show", "1", "--format", "json"]))["findings_new"].as_i64(), Some(2));
+    assert_eq!(parsed(&harness.ok(&["scans", "show", "2", "--format", "json"]))["findings_new"].as_i64(), Some(0));
+    harness.fails(&["scan"], EXIT_USAGE, "exactly one directory");
+    harness.fails(&["scan", &directory, "--source", "nowhere"], EXIT_USAGE, "use files, history or all");
+    harness.fails(&["scan", &directory, "--format", "csv"], EXIT_USAGE, "use table, json or sarif");
+    harness.fails(&["scan", &directory, "--fail-on", "loud"], EXIT_USAGE, "use low, medium, high or never");
+    harness.fails(&["scan", &directory, "--output", &harness.path("x.json")], EXIT_USAGE, "--output needs");
+    harness.fails(&["scan", &directory, "--max-file-kib", "0"], EXIT_USAGE, "above zero");
+    harness.fails(&["scan", &harness.path("missing")], EXIT_USAGE, "cannot be opened");
+    harness.fails(&["scan", &directory, "--source", "history"], EXIT_USAGE, "is not a Git repository");
+    harness.fails(&["scans", "list", "--kind", "deep"], EXIT_USAGE, "use tree or history");
+    harness.fails(&["scans", "show", "999"], EXIT_FAILURE, "error:");
+}
+
+#[test]
+fn a_baseline_file_makes_known_findings_pass_and_new_ones_fail() {
+    let harness = Harness::new("cli-baseline");
+    let directory = project(&harness);
+    let baseline = harness.path("baseline.json");
+    let (output, errors, code) = harness.run(&["scan", &directory, "--write-baseline", &baseline]);
+    assert_eq!(code, EXIT_OK, "{output}\n{errors}");
+    assert!(errors.contains("Wrote a baseline with 2 findings to"), "{errors}");
+    assert!(output.contains("2 need attention, 0 of them new") && output.contains("Baseline"), "{output}");
+    let saved = std::fs::read_to_string(&baseline).unwrap();
+    has_no_secret(&saved);
+    assert_eq!(parsed(&saved)["entries"].as_array().map(Vec::len), Some(2), "{saved}");
+    harness.fails(&["scan", &directory, "--write-baseline", &baseline], EXIT_USAGE, "already exists");
+
+    let other = Harness::new("cli-baseline-other");
+    let known = other.ok(&["scan", &directory, "--baseline", &baseline]);
+    assert!(known.contains("2 need attention, 0 of them new"), "{known}");
+    let status = other.ok(&["baseline", "status"]);
+    assert!(status.contains("Baseline findings that need attention  2"), "{status}");
+    std::fs::write(
+        std::path::Path::new(&directory).join(".npmrc"),
+        format!("//registry.npmjs.org/:_authToken={}\n", sample_package_token()),
+    )
+    .unwrap();
+    let (output, errors, code) = other.run(&["scan", &directory, "--baseline", &baseline]);
+    assert_eq!(code, EXIT_FINDINGS, "{output}\n{errors}");
+    assert!(output.contains("3 need attention, 1 of them new"), "{output}");
+    assert!(errors.contains("1 new finding with low confidence or higher"), "{errors}");
+    let (_, errors, code) =
+        other.run(&["scan", &directory, "--baseline", &baseline, "--write-baseline", &baseline]);
+    assert_eq!(code, EXIT_OK, "{errors}");
+    assert_eq!(parsed(&std::fs::read_to_string(&baseline).unwrap())["entries"].as_array().map(Vec::len), Some(3));
+    other.fails(&["scan", &directory, "--baseline", &other.path("none.json")], EXIT_FAILURE, "error:");
+    std::fs::write(other.path("broken.json"), "{").unwrap();
+    let (_, errors, code) = other.run(&["scan", &directory, "--baseline", &other.path("broken.json")]);
+    assert_ne!(code, EXIT_OK, "{errors}");
+
+    assert_eq!(other.ok(&["baseline", "accept"]), "Every finding is already in the baseline.\n");
+    other.fails(&["baseline", "reset"], EXIT_USAGE, "--yes");
+    assert!(other.ok(&["baseline", "reset", "--dry-run"]).starts_with("Dry run: This empties the baseline"));
+    assert_eq!(other.ok(&["baseline", "reset", "--yes"]), "Removed 3 findings from the baseline\n");
+    let (_, _, code) = other.run(&["scan", &directory]);
+    assert_eq!(code, EXIT_FINDINGS);
+    assert!(other.ok(&["baseline", "accept"]).starts_with("Added 3 findings to the baseline"));
+    other.ok(&["scan", &directory]);
+}
+
+#[test]
+fn findings_are_filtered_shown_decided_and_exported() {
+    let harness = Harness::new("cli-findings");
+    let directory = project(&harness);
+    harness.run(&["scan", &directory]);
+    let listed = harness.ok(&["findings", "list", "--sort", "path"]);
+    assert!(listed.starts_with("ID  CONFIDENCE"), "{listed}");
+    has_no_secret(&listed);
+    let json = parsed(&harness.ok(&["findings", "list", "--sort", "path", "--format", "json"]));
+    let rows = json["findings"].as_array().unwrap();
+    assert_eq!(
+        rows.iter().map(|row| row["path"].as_str().unwrap()).collect::<Vec<_>>(),
+        ["deploy/ci.yaml", "src/config.py"]
+    );
+    let token = rows[0]["id"].as_i64().unwrap().to_string();
+    let only = harness.ok(&["findings", "list", "--rule", "aws-access-key-id"]);
+    assert!(only.contains("src/config.py") && !only.contains("deploy/ci.yaml"), "{only}");
+    let only = harness.ok(&["findings", "list", "--search", "ci.yaml"]);
+    assert!(!only.contains("src/config.py") && only.contains("deploy/ci.yaml"), "{only}");
+    assert!(harness.ok(&["findings", "list", "--path", "nowhere.txt"]).contains("No findings match"));
+    let first = harness.ok(&["findings", "list", "--limit", "1"]);
+    assert!(first.contains("Showing 1 of 2 findings"), "{first}");
+
+    let shown = harness.ok(&["findings", "show", &token]);
+    for expected in ["GitHub token (github-token)", "never stored", "Why this confidence", "Where it was seen", "files"] {
+        assert!(shown.contains(expected), "{expected}\n{shown}");
+    }
+    has_no_secret(&shown);
+    let sarif = parsed(&harness.ok(&["findings", "show", &token, "--format", "sarif"]));
+    assert_eq!(sarif["runs"][0]["results"].as_array().map(Vec::len), Some(1), "{sarif}");
+
+    let decided = harness.ok(&["findings", "decide", &token, "--status", "false_positive", "--note", "sample data"]);
+    assert!(decided.starts_with(&format!("Finding {token} is false positive")), "{decided}");
+    let open = harness.ok(&["findings", "list", "--scope", "attention"]);
+    assert!(open.contains("src/config.py") && !open.contains("deploy/ci.yaml"), "{open}");
+    let closed = harness.ok(&["findings", "list", "--status", "false_positive"]);
+    assert!(closed.contains("deploy/ci.yaml") && closed.contains("Decided"), "{closed}");
+    harness.ok(&["findings", "decide", &token, "--note", "still sample data"]);
+    let shown = harness.ok(&["findings", "show", &token]);
+    assert!(shown.contains("still sample data") && shown.contains("False positive"), "{shown}");
+    let (_, errors, code) = harness.run(&["scan", &directory]);
+    assert_eq!(code, EXIT_FINDINGS, "{errors}");
+    assert!(errors.contains("1 new finding with"), "{errors}");
+
+    let target = harness.path("findings.json");
+    let exported = harness.ok(&["export", &target, "--scope", "attention"]);
+    assert!(exported.starts_with("Exported 1 finding as JSON to"), "{exported}");
+    assert_eq!(parsed(&std::fs::read_to_string(&target).unwrap())["total"].as_i64(), Some(1));
+    harness.fails(&["export", &target], EXIT_USAGE, "already exists");
+    assert!(harness.ok(&["export", &target, "--force"]).starts_with("Exported 2 findings"));
+    let sarif = harness.ok(&["export", "-", "--format", "sarif"]);
+    has_no_secret(&sarif);
+    assert_eq!(parsed(&sarif)["runs"][0]["results"].as_array().map(Vec::len), Some(2));
+    assert_eq!(parsed(&harness.ok(&["export", "-"]))["total"].as_i64(), Some(2));
+    assert!(harness.ok(&["export", &harness.path("out.sarif")]).contains("as SARIF 2.1.0 to"));
+    harness.fails(&["export"], EXIT_USAGE, "one file to write");
+    harness.fails(&["export", &harness.path("out.txt")], EXIT_USAGE, "is not clear from its name");
+
+    harness.fails(&["findings", "decide", &token], EXIT_USAGE, "nothing to change");
+    harness.fails(&["findings", "decide", &token, "--status", "maybe"], EXIT_USAGE, "unknown status");
+    harness.fails(&["findings", "show", "9999"], EXIT_FAILURE, "error:");
+    harness.fails(&["findings", "list", "--scope", "everything"], EXIT_USAGE, "unknown scope");
+    harness.fails(&["findings", "list", "--confidence", "sure"], EXIT_USAGE, "use low, medium or high");
+    harness.fails(&["findings", "list", "--status", "maybe"], EXIT_USAGE, "unknown status");
+    harness.fails(&["findings", "list", "--order", "up"], EXIT_USAGE, "use asc or desc");
+    harness.fails(&["findings", "list", "--format", "csv"], EXIT_USAGE, "use table, json or sarif");
+}
+
+#[test]
+fn a_history_scan_groups_findings_by_the_commit_that_added_them() {
+    let harness = Harness::new("cli-history");
+    let root = harness.home.path().join("repository");
+    std::fs::create_dir_all(&root).unwrap();
+    let git = GitFixture::create(&root);
+    let secret = git.blob(&format!("TOKEN={}\n", sample_hosting_token()));
+    let cleaned = git.blob("TOKEN=\n");
+    let tree_one = git.tree(&[("100644", "config.env", &secret)]);
+    let tree_two = git.tree(&[("100644", "config.env", &cleaned)]);
+    let first = git.commit(&tree_one, &[], 1_700_000_000, "add configuration");
+    let second = git.commit(&tree_two, &[&first], 1_700_000_100, "remove the token");
+    git.set_reference("refs/heads/main", &second);
+    std::fs::write(root.join("config.env"), "TOKEN=\n").unwrap();
+    let directory = root.to_string_lossy().into_owned();
+
+    assert!(harness.ok(&["history", "list"]).contains("No findings in Git history yet"));
+    assert!(harness.ok(&["scan", &directory]).contains("No likely secrets found"));
+    let (output, errors, code) = harness.run(&["scan", &directory, "--source", "all"]);
+    assert_eq!(code, EXIT_FINDINGS, "{output}\n{errors}");
+    for expected in ["Files: completed, 1 file", "Git history: completed, 2 commits", "1 finding in", "config.env"] {
+        assert!(output.contains(expected), "{expected}\n{output}");
+    }
+    has_no_secret(&output);
+    let listed = harness.ok(&["history", "list"]);
+    assert!(listed.starts_with("COMMIT") && listed.contains(&first[..10]) && listed.contains("add configuration"));
+    assert!(!listed.contains("remove the token"), "{listed}");
+    let json = parsed(&harness.ok(&["history", "list", "--format", "json"]));
+    assert_eq!(json[0]["commit"].as_str(), Some(first.as_str()), "{json}");
+    assert_eq!((json[0]["findings"].as_i64(), json[0]["needs_attention"].as_i64()), (Some(1), Some(1)));
+    let by_commit = harness.ok(&["findings", "list", "--commit", &first]);
+    assert!(by_commit.contains("config.env") && by_commit.contains(&first[..10]), "{by_commit}");
+    assert!(harness.ok(&["findings", "list", "--commit", &second]).contains("No findings match"));
+    assert!(harness.ok(&["findings", "list", "--scope", "history"]).contains("config.env"));
+    let shown = harness.ok(&["findings", "show", "1"]);
+    assert!(shown.contains("Git history") && shown.contains("add configuration"), "{shown}");
+    let scans = harness.ok(&["scans", "list", "--kind", "history"]);
+    assert!(scans.contains("Git history") && scans.contains("2 commits"), "{scans}");
+    harness.fails(&["history", "list", "--format", "csv"], EXIT_USAGE, "use table or json");
+}
+
+#[test]
+fn rules_are_listed_added_tried_changed_and_removed() {
+    let harness = Harness::new("cli-rules");
+    let listed = harness.ok(&["rules", "list"]);
+    assert!(listed.starts_with("ID  ") && listed.contains("aws-access-key-id") && listed.contains("built-in"));
+    let rows = parsed(&harness.ok(&["rules", "list", "--format", "json"]));
+    assert_eq!(rows.as_array().unwrap().len(), app_core::rules::builtin().len());
+    let added = harness.ok(&[
+        "rules", "add", "acme-key", "--pattern", "ACME-[0-9]{8}", "--name", "Acme key", "--severity", "high",
+        "--keywords", "acme",
+    ]);
+    assert_eq!(added, "Added rule acme-key: Acme key\n");
+    let shown = harness.ok(&["rules", "show", "acme-key"]);
+    assert!(shown.contains("ACME-[0-9]{8}") && shown.contains("custom") && shown.contains("High"), "{shown}");
+    assert_eq!(parsed(&harness.ok(&["rules", "show", "acme-key", "--format", "json"]))["builtin"].as_bool(), Some(false));
+    let tried = harness.ok(&["rules", "try", "acme-key", "--text", "id = ACME-12345678"]);
+    assert!(tried.starts_with("LINE  COLUMN") && !tried.contains("ACME-12345678"), "{tried}");
+    let nothing = harness.ok(&["rules", "try", "--pattern", "ZZZ[0-9]{4}", "--text", "nothing here"]);
+    assert_eq!(nothing, "The rule reports nothing in the sample.\n");
+    let sample = harness.path("sample.txt");
+    std::fs::write(&sample, "one\nkey ACME-00001111\n").unwrap();
+    assert!(harness.ok(&["rules", "try", "acme-key", "--file", &sample]).starts_with("LINE  COLUMN"));
+    assert!(harness.ok(&["rules", "edit", "acme-key", "--confidence", "80"]).starts_with("Updated rule acme-key"));
+    assert_eq!(parsed(&harness.ok(&["rules", "show", "acme-key", "--format", "json"]))["confidence"].as_i64(), Some(80));
+    assert_eq!(harness.ok(&["rules", "disable", "aws-access-key-id"]), "Rule aws-access-key-id is disabled\n");
+    assert!(harness.ok(&["rules", "list"]).contains("built-in, changed"));
+    let directory = project(&harness);
+    let (output, _, _) = harness.run(&["scan", &directory]);
+    assert!(output.contains("1 finding in") && !output.contains("src/config.py"), "{output}");
+    assert!(harness.ok(&["rules", "restore", "aws-access-key-id"]).contains("built-in state (enabled)"));
+    assert_eq!(harness.ok(&["rules", "enable", "acme-key"]), "Rule acme-key is enabled\n");
+    harness.fails(&["rules", "remove", "acme-key"], EXIT_USAGE, "--yes");
+    assert!(harness.ok(&["rules", "remove", "acme-key", "--dry-run"]).starts_with("Dry run: This removes the rule"));
+    assert_eq!(harness.ok(&["rules", "remove", "acme-key", "--yes"]), "Removed rule acme-key\n");
+    harness.fails(&["rules", "show", "acme-key"], EXIT_FAILURE, "error:");
+    harness.fails(&["rules", "add", "broken", "--pattern", "("], EXIT_USAGE, "error:");
+    harness.fails(&["rules", "add", "no-pattern"], EXIT_USAGE, "a pattern is required");
+    harness.fails(&["rules", "add", "aws-access-key-id", "--pattern", "x{4}"], EXIT_USAGE, "built-in rule");
+    harness.fails(&["rules", "edit", "aws-access-key-id", "--name", "Mine"], EXIT_FAILURE, "built-in rule");
+    harness.fails(&["rules", "remove", "aws-access-key-id", "--yes"], EXIT_FAILURE, "built-in rule");
+    harness.fails(&["rules", "restore", "nothing"], EXIT_FAILURE, "not a built-in rule");
+    harness.fails(&["rules", "show"], EXIT_USAGE, "exactly one rule identifier");
+    harness.fails(&["rules", "try", "acme-key"], EXIT_FAILURE, "error:");
+    harness.fails(&["rules", "try", "--text", "x"], EXIT_USAGE, "describe a new rule with --pattern");
+    harness.fails(&["rules", "try", "--pattern", "x{4}"], EXIT_USAGE, "exactly one of --text");
+    harness.fails(&["rules", "add", "odd", "--pattern", "x{4}", "--entropy", "high"], EXIT_USAGE, "entropy threshold");
+    harness.fails(&["rules", "add", "odd", "--pattern", "x{4}", "--severity", "huge"], EXIT_USAGE, "unknown severity");
+}
+
+#[test]
+fn allowlist_entries_are_managed_and_apply_to_the_next_scan() {
+    let harness = Harness::new("cli-allowlist");
+    let directory = project(&harness);
+    assert!(harness.ok(&["allowlist", "list"]).contains("No allowlist entries yet"));
+    let added = harness.ok(&["allowlist", "add", "--kind", "path", "--pattern", "deploy/**", "--note", "pipeline samples"]);
+    assert!(added.starts_with("Added allowlist entry 1: path pattern deploy/**"), "{added}");
+    let listed = harness.ok(&["allowlist", "list"]);
+    assert!(listed.starts_with("ID  KIND") && listed.contains("every rule") && listed.contains("pipeline samples"));
+    let (output, errors, code) = harness.run(&["scan", &directory]);
+    assert_eq!(code, EXIT_FINDINGS, "{errors}");
+    assert!(output.contains("1 need attention, 1 of them new") && output.contains("Allowlisted"), "{output}");
+    let shown = harness.ok(&["findings", "list", "--scope", "allowlisted", "--format", "json"]);
+    let id = parsed(&shown)["findings"][0]["id"].as_i64().unwrap().to_string();
+    assert!(harness.ok(&["findings", "show", &id]).contains("yes, by entry 1 (path pattern deploy/**)"));
+    assert_eq!(harness.ok(&["allowlist", "disable", "1"]), "Allowlist entry 1 is disabled\n");
+    let (output, _, _) = harness.run(&["scan", &directory]);
+    assert!(output.contains("2 need attention"), "{output}");
+    assert_eq!(harness.ok(&["allowlist", "enable", "1"]), "Allowlist entry 1 is enabled\n");
+    assert!(harness.ok(&["allowlist", "edit", "1", "--rule", "github-token"]).starts_with("Updated allowlist entry 1"));
+    assert_eq!(parsed(&harness.ok(&["allowlist", "list", "--format", "json"]))[0]["rule_id"].as_str(), Some("github-token"));
+    harness.fails(&["allowlist", "remove", "1"], EXIT_USAGE, "--yes");
+    assert!(harness.ok(&["allowlist", "remove", "1", "--dry-run"]).starts_with("Dry run: This removes allowlist entry 1"));
+    assert_eq!(harness.ok(&["allowlist", "remove", "1", "--yes"]), "Removed allowlist entry 1\n");
+    harness.fails(&["allowlist", "remove", "1", "--yes"], EXIT_FAILURE, "error:");
+    harness.fails(&["allowlist", "add", "--kind", "path"], EXIT_USAGE, "a kind and a pattern are required");
+    harness.fails(&["allowlist", "add", "--kind", "word", "--pattern", "x"], EXIT_USAGE, "unknown kind");
+    harness.fails(&["allowlist", "add", "--kind", "value", "--pattern", "("], EXIT_USAGE, "error:");
+    harness.fails(&["allowlist", "edit", "1"], EXIT_FAILURE, "error:");
+    harness.fails(&["allowlist", "enable", "x"], EXIT_USAGE, "error:");
 }
 
 #[test]

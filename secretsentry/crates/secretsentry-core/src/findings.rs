@@ -77,6 +77,7 @@ const SQL_GONE_FROM_TREE: &str = "UPDATE findings SET in_tree = 0, updated_at = 
 const SQL_GONE_FROM_HISTORY: &str = "UPDATE findings SET in_history = 0, updated_at = ?3 WHERE root = ?1 AND in_history = 1 AND (last_scan_id IS NULL OR last_scan_id <> ?2)";
 const SQL_DECIDE: &str = "UPDATE findings SET status = ?1, note = ?2, revision = revision + 1, updated_at = ?3 WHERE id = ?4 AND revision = ?5";
 const SQL_ACCEPT_BASELINE: &str = "UPDATE findings SET baseline = 1, revision = revision + 1, updated_at = ?1 WHERE baseline = 0 AND (?2 = '' OR root = ?2)";
+const SQL_ACCEPT_SCAN: &str = "UPDATE findings SET baseline = 1, revision = revision + 1, updated_at = ?1 WHERE baseline = 0 AND last_scan_id = ?2";
 const SQL_RESET_BASELINE: &str = "UPDATE findings SET baseline = 0, revision = revision + 1, updated_at = ?1 WHERE baseline = 1 AND (?2 = '' OR root = ?2)";
 const SQL_OVERVIEW: &str = "SELECT attention_total, new_total, baseline_total, allowlisted_total, decided_total, gone_total, demo_total, scan_total, failed_scan_total, unread_notifications FROM overview_scanning";
 const SQL_BY_RULE: &str =
@@ -816,6 +817,10 @@ impl<'a> Findings<'a> {
 
     pub fn accept_baseline(&self, root: &str) -> Result<usize> {
         Ok(self.conn.execute(SQL_ACCEPT_BASELINE, (self.clock.now().to_rfc3339(), root))?)
+    }
+
+    pub fn accept_scan(&self, scan_id: i64) -> Result<usize> {
+        Ok(self.conn.execute(SQL_ACCEPT_SCAN, (self.clock.now().to_rfc3339(), scan_id))?)
     }
 
     pub fn reset_baseline(&self, root: &str) -> Result<usize> {

@@ -28,7 +28,11 @@ pub struct Baseline {
 }
 
 fn refused(problem: impl Into<String>) -> AppError {
-    AppError::invalid("baseline", problem, "Write the baseline file again with: secretsentry scan <directory> --write-baseline <file>")
+    AppError::invalid(
+        "baseline",
+        problem,
+        "Write the baseline file again with: secretsentry scan <directory> --write-baseline <file>",
+    )
 }
 
 impl Baseline {
@@ -63,7 +67,10 @@ impl Baseline {
     pub fn replace_entries(&mut self, entries: impl IntoIterator<Item = String>) -> Result<()> {
         let entries: BTreeSet<String> = entries.into_iter().collect();
         if entries.len() > MAX_ENTRIES {
-            return Err(refused(format!("{} findings are more than a baseline file can hold ({MAX_ENTRIES})", entries.len())));
+            return Err(refused(format!(
+                "{} findings are more than a baseline file can hold ({MAX_ENTRIES})",
+                entries.len()
+            )));
         }
         if let Some(wrong) = entries.iter().find(|entry| !fingerprint::is_fingerprint(entry)) {
             return Err(refused(format!("\"{}\" is not a fingerprint", wrong.chars().take(80).collect::<String>())));
@@ -73,8 +80,8 @@ impl Baseline {
     }
 
     pub fn parse(text: &str) -> Result<Baseline> {
-        let document: Document =
-            serde_json::from_str(text).map_err(|error| refused(format!("the file is not a baseline file ({error})")))?;
+        let document: Document = serde_json::from_str(text)
+            .map_err(|error| refused(format!("the file is not a baseline file ({error})")))?;
         if document.format != FORMAT {
             return Err(refused("the file is not a baseline file (its format name is different)"));
         }
@@ -85,7 +92,8 @@ impl Baseline {
                 "Write the baseline file again with this version of the program",
             ));
         }
-        let key = fingerprint::key_from_hex(&document.key).ok_or_else(|| refused("the key of the file is not usable"))?;
+        let key =
+            fingerprint::key_from_hex(&document.key).ok_or_else(|| refused("the key of the file is not usable"))?;
         let mut baseline = Baseline { key, entries: BTreeSet::new() };
         baseline.replace_entries(document.entries)?;
         Ok(baseline)
@@ -134,7 +142,10 @@ mod tests {
         assert!(baseline.contains(&print("a")) && !baseline.contains(&print("c")));
         baseline.save(&path, false).unwrap();
         let text = std::fs::read_to_string(&path).unwrap();
-        assert!(text.starts_with("{\n  \"format\": \"secretsentry-baseline\",\n  \"version\": 1,\n  \"key\": \"0707"), "{text}");
+        assert!(
+            text.starts_with("{\n  \"format\": \"secretsentry-baseline\",\n  \"version\": 1,\n  \"key\": \"0707"),
+            "{text}"
+        );
         assert!(text.ends_with("]\n}\n"));
         assert_eq!(Baseline::load(&path).unwrap(), baseline);
         assert_eq!(Baseline::load(&path).unwrap().key(), &[7u8; 32]);
@@ -163,11 +174,28 @@ mod tests {
         let cases = [
             ("", "the file is not a baseline file ("),
             ("[]", "the file is not a baseline file ("),
-            ("{\"format\":\"secretsentry-baseline\",\"version\":1,\"key\":\"\",\"entries\":[],\"more\":1}", "the file is not a baseline file ("),
-            (&format!("{{\"format\":\"other\",\"version\":1,\"key\":\"{key}\",\"entries\":[]}}"), "its format name is different"),
-            (&format!("{{\"format\":\"secretsentry-baseline\",\"version\":2,\"key\":\"{key}\",\"entries\":[]}}"), "the file has format version 2, and this version reads version 1"),
-            ("{\"format\":\"secretsentry-baseline\",\"version\":1,\"key\":\"abc\",\"entries\":[]}", "the key of the file is not usable"),
-            (&format!("{{\"format\":\"secretsentry-baseline\",\"version\":1,\"key\":\"{key}\",\"entries\":[\"zz\"]}}"), "\"zz\" is not a fingerprint"),
+            (
+                "{\"format\":\"secretsentry-baseline\",\"version\":1,\"key\":\"\",\"entries\":[],\"more\":1}",
+                "the file is not a baseline file (",
+            ),
+            (
+                &format!("{{\"format\":\"other\",\"version\":1,\"key\":\"{key}\",\"entries\":[]}}"),
+                "its format name is different",
+            ),
+            (
+                &format!("{{\"format\":\"secretsentry-baseline\",\"version\":2,\"key\":\"{key}\",\"entries\":[]}}"),
+                "the file has format version 2, and this version reads version 1",
+            ),
+            (
+                "{\"format\":\"secretsentry-baseline\",\"version\":1,\"key\":\"abc\",\"entries\":[]}",
+                "the key of the file is not usable",
+            ),
+            (
+                &format!(
+                    "{{\"format\":\"secretsentry-baseline\",\"version\":1,\"key\":\"{key}\",\"entries\":[\"zz\"]}}"
+                ),
+                "\"zz\" is not a fingerprint",
+            ),
         ];
         for (text, expected) in cases {
             let problem = Baseline::parse(text).unwrap_err().to_string();
@@ -177,7 +205,9 @@ mod tests {
         let path = directory.path().join("baseline.json");
         std::fs::write(&path, [0xffu8, 0xfe, 0x00]).unwrap();
         assert!(Baseline::load(&path).unwrap_err().to_string().contains("the file is not text"));
-        assert!(Baseline::load(&directory.path().join("absent.json")).unwrap_err().to_string().starts_with("cannot read "));
+        assert!(
+            Baseline::load(&directory.path().join("absent.json")).unwrap_err().to_string().starts_with("cannot read ")
+        );
     }
 
     proptest! {

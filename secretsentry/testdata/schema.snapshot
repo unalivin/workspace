@@ -216,6 +216,13 @@ SELECT id, root, rule_id, rule_name, severity, path, score, confidence, status, 
 FROM findings
 WHERE allow_kind = '' AND status IN ('open', 'confirmed') AND (in_tree = 1 OR in_history = 1)
 
+[view finding_origins]
+CREATE VIEW finding_origins AS
+SELECT finding_id, commit_id, min(id) AS occurrence_id
+FROM occurrences
+WHERE commit_id <> ''
+GROUP BY finding_id
+
 [view overview_attention]
 CREATE VIEW overview_attention AS
 SELECT

@@ -26,6 +26,8 @@ The background notifier keeps its position in `notifier-state.json` in the same 
 | `window.height` | `760` | `480` to `10000` | Dashboard window height, saved when the window closes |
 | `data.refresh_seconds` | `2` | `1` to `60` | Seconds between checks for changes made by another window or command, in the dashboard and the terminal UI |
 | `safety.confirm_destructive` | `true` | `true`, `false` | Ask before deleting or overwriting data |
+| `scan.max_file_kib` | `1024` | `1` to `65536` | Files larger than this many KiB are counted as skipped and not read |
+| `scan.max_commits` | `200000` | `1` to `1000000` | A Git history scan stops after this many commits and says so |
 | `notifier.interval_seconds` | `60` | `15` to `3600` | Seconds between checks of the background notifier |
 | `notifier.show_titles` | `false` | `true`, `false` | Add the notification title to system notifications |
 | `table.records.columns` | `id,name,status,severity,updated,state` | a comma-separated subset of `id`, `name`, `status`, `severity`, `updated`, `state`; `name` is always included | Columns of the record table |

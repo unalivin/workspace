@@ -65,6 +65,8 @@ pub const KEY_WINDOW_WIDTH: &str = "window.width";
 pub const KEY_WINDOW_HEIGHT: &str = "window.height";
 pub const KEY_REFRESH_SECONDS: &str = "data.refresh_seconds";
 pub const KEY_CONFIRM: &str = "safety.confirm_destructive";
+pub const KEY_SCAN_MAX_FILE_KIB: &str = "scan.max_file_kib";
+pub const KEY_SCAN_MAX_COMMITS: &str = "scan.max_commits";
 pub const KEY_NOTIFIER_INTERVAL: &str = "notifier.interval_seconds";
 pub const KEY_NOTIFIER_TITLES: &str = "notifier.show_titles";
 pub const KEY_RECORD_COLUMNS: &str = "table.records.columns";
@@ -230,6 +232,30 @@ pub const DEFINITIONS: &[Definition] = &[
         "Ask before deleting or overwriting data.",
         Kind::Bool,
         "true",
+    ),
+    range(
+        definition(
+            KEY_SCAN_MAX_FILE_KIB,
+            "Safe defaults",
+            "Largest file to scan",
+            "Files larger than this many KiB are counted as skipped and not read.",
+            Kind::Int,
+            "1024",
+        ),
+        1,
+        65536,
+    ),
+    range(
+        definition(
+            KEY_SCAN_MAX_COMMITS,
+            "Safe defaults",
+            "Largest number of commits",
+            "A Git history scan stops after this many commits and says so.",
+            Kind::Int,
+            "200000",
+        ),
+        1,
+        1000000,
     ),
     range(
         definition(

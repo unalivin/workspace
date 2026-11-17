@@ -68,7 +68,10 @@ pub fn tree() -> Vec<DemoFile> {
         file(".npmrc", format!("//registry.npmjs.org/:_authToken={}{}\n", ["np", "m_"].concat(), letters(20, 36))),
         file(
             "docs/setup.md",
-            format!("# Setup\n\nConnect with postgres://shop:{}@db.internal:5432/shop to load the sample orders.\n", lower(7, 14)),
+            format!(
+                "# Setup\n\nConnect with postgres://shop:{}@db.internal:5432/shop to load the sample orders.\n",
+                lower(7, 14)
+            ),
         ),
         file(
             "src/notify.py",
@@ -125,7 +128,11 @@ mod tests {
         assert_eq!(first, second);
         let commits = history();
         assert_eq!(commits.len(), 3);
-        assert!(commits.iter().all(|commit| commit.id.len() == 40 && commit.id.bytes().all(|byte| byte.is_ascii_hexdigit())));
+        assert!(
+            commits
+                .iter()
+                .all(|commit| commit.id.len() == 40 && commit.id.bytes().all(|byte| byte.is_ascii_hexdigit()))
+        );
         assert!(commits.windows(2).all(|pair| pair[0].days_ago > pair[1].days_ago && pair[0].id != pair[1].id));
         assert_eq!(commits[0].files[0].content, tree()[0].content);
     }

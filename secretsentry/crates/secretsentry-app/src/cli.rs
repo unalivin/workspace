@@ -8,11 +8,12 @@ use app_core::service::{self, App, Options};
 use app_core::settings;
 use app_core::{AppError, Result};
 
-use crate::{config, notifications, records};
+use crate::{config, notifications, records, scanning, triage};
 
 pub const EXIT_OK: i32 = 0;
 pub const EXIT_FAILURE: i32 = 1;
 pub const EXIT_USAGE: i32 = 2;
+pub const EXIT_FINDINGS: i32 = 3;
 
 pub type FrontEnd<'a> = dyn Fn(&mut App) -> Result<String> + 'a;
 pub type Chooser<'a> = dyn Fn(&str) -> Result<PromptResult> + 'a;
@@ -38,6 +39,7 @@ pub struct Env<'a> {
     pub session: Session,
     pub executable: String,
     pub hooks: Hooks<'a>,
+    pub exit_code: i32,
 }
 
 pub(crate) fn usage(message: impl Into<String>) -> AppError {
@@ -438,9 +440,17 @@ fn root() -> Command {
         meta::SLUG,
         "",
         vec![
-            records::overview_command(),
+            scanning::overview_command(),
+            scanning::scan_command(),
+            scanning::scans_command(),
+            triage::findings_command(),
+            scanning::history_command(),
+            scanning::baseline_command(),
+            triage::rules_command(),
+            triage::allowlist_command(),
+            scanning::export_command(),
             records::records_command(),
-            records::demo_command(),
+            scanning::demo_command(),
             notifications::notifications_command(),
             notifications::notifier_command(),
             config::config_command(),
@@ -583,7 +593,7 @@ fn suggestion(parent: &Command, path: &str, word: &str) -> String {
 
 fn report(env: &mut Env<'_>, outcome: Result<()>) -> i32 {
     match outcome {
-        Ok(()) => EXIT_OK,
+        Ok(()) => env.exit_code,
         Err(error) => {
             env.note(format!("error: {error}"));
             if error.is_usage() { EXIT_USAGE } else { EXIT_FAILURE }

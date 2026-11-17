@@ -1398,7 +1398,10 @@ mod tests {
         let repo = repo("scans-commits");
         repo.scan();
         let groups = repo.fixture.findings().commits(50).unwrap();
-        assert_eq!(groups.iter().map(|group| group.subject.as_str()).collect::<Vec<_>>(), vec!["add the deploy script", "add configuration"]);
+        assert_eq!(
+            groups.iter().map(|group| group.subject.as_str()).collect::<Vec<_>>(),
+            vec!["add the deploy script", "add configuration"]
+        );
         assert_eq!(groups[1].commit_id, repo.first);
         assert_eq!(groups[1].short_id(), &repo.first[..10]);
         assert_eq!((groups[1].findings, groups[1].attention, groups[1].author.as_str()), (1, 1, "Sample Author"));
@@ -1460,7 +1463,11 @@ mod tests {
         third.scan();
         assert!(third.all().iter().all(|finding| !finding.baseline));
         third.hands.advance(60);
-        third.scans().with_baseline(&loaded).scan_tree(&third.root(), &tree::Options::default(), &AtomicBool::new(false)).unwrap();
+        third
+            .scans()
+            .with_baseline(&loaded)
+            .scan_tree(&third.root(), &tree::Options::default(), &AtomicBool::new(false))
+            .unwrap();
         assert!(third.all().iter().all(|finding| finding.baseline));
         let plain = third.scan();
         assert!(plain.portable.is_empty());
@@ -1502,11 +1509,17 @@ mod tests {
         assert!(by_path("docs/setup.md").score < by_path(".npmrc").score);
         assert_eq!(by_path(".npmrc").level(), Level::High);
         let listed = scans.list(None, 10).unwrap();
-        assert_eq!(listed.iter().filter(|scan| scan.demo).map(|scan| scan.kind).collect::<Vec<_>>(), vec![Kind::History, Kind::Tree]);
+        assert_eq!(
+            listed.iter().filter(|scan| scan.demo).map(|scan| scan.kind).collect::<Vec<_>>(),
+            vec![Kind::History, Kind::Tree]
+        );
         assert_eq!(listed[0].scope_label(), "3 commits, 4 file versions");
         assert_eq!((listed[1].files_scanned, listed[1].findings_seen, listed[1].findings_new), (7, 7, 6));
         let groups = fixture.findings().commits(10).unwrap();
-        assert_eq!(groups.iter().map(|group| (group.subject.as_str(), group.findings)).collect::<Vec<_>>(), vec![("Add the release script", 1), ("Add the deployment settings", 3)]);
+        assert_eq!(
+            groups.iter().map(|group| (group.subject.as_str(), group.findings)).collect::<Vec<_>>(),
+            vec![("Add the release script", 1), ("Add the deployment settings", 3)]
+        );
         assert!(groups.iter().all(|group| group.author == "Demo Author" && group.root == demo::ROOT));
         assert_eq!(fixture.notifications().len(), 1);
         let entries = Allowlists::new(fixture.store.conn(), fixture.clock.clone()).list().unwrap();
