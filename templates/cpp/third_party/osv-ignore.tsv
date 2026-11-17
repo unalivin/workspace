@@ -1,0 +1,2 @@
+id	reason
+CVE-2026-119586	The flaw is in the .recover command of the sqlite3 command-line shell. The application compiles only the SQLite library (third_party/sqlite/sqlite3.c); the shell and the recover extension are not part of it.

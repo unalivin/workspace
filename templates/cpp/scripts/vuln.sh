@@ -49,6 +49,7 @@ cd "$PROJECT_ROOT"
 table="third_party/components.tsv"
 manifest="vcpkg.json"
 ignored="third_party/osv-ignore.tsv"
+overlays="third_party/vcpkg-ports"
 [ -f "$table" ] || die "$table is missing"
 [ -f "$manifest" ] || die "$manifest is missing"
 problems=0
@@ -101,6 +102,11 @@ while IFS='|' read -r name version license source part_of use license_file port 
   if [ -n "$port" ]; then
     pinned="$(pinned_version "$port")"
     [ "$pinned" = "$version" ] || problem "$name: $table lists $version, $manifest pins ${pinned:-nothing} for the port $port"
+    overlay="$overlays/$port/vcpkg.json"
+    if [ -f "$overlay" ]; then
+      built="$(sed -n 's/.*"version": *"\([^"#]*\).*/\1/p' "$overlay" | head -n 1)"
+      [ "$built" = "$version" ] || problem "$name: $table lists $version, $overlay builds ${built:-nothing}"
+    fi
   fi
   if [ -z "$part_of" ] && [ -z "$commit" ]; then
     problem "$name: no upstream commit to look up"

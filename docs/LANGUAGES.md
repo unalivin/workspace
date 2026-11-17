@@ -82,6 +82,6 @@ System packages:
 
 - Debian or Ubuntu: `build-essential pkg-config curl zip unzip tar git`, and for the dashboard `libxinerama-dev libxcursor-dev xorg-dev libglu1-mesa-dev`; `clang` for `make fuzz`
 - macOS: the Xcode command line tools
-- Windows: Build Tools for Visual Studio 2022 with the Windows SDK, and Git Bash for the scripts
+- Windows: Build Tools for Visual Studio 2022 or newer with the Windows SDK, and Git Bash for the scripts
 
 `templates/cpp/scripts/dev-setup.sh` reports what is missing and `--install` installs it, including vcpkg at the pinned commit in `.tools/vcpkg`. The versions above are defined in `templates/cpp/vcpkg.json`, `templates/cpp/third_party/components.tsv` and `templates/cpp/scripts/lib.sh`; change them there.

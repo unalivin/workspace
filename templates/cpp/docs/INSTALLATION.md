@@ -87,7 +87,7 @@ Requirements:
 - CMake 3.25 or newer and Ninja.
 - Git, `curl`, `zip`, `unzip` and `tar`, which vcpkg uses to fetch and build the libraries.
 - For the dashboard on Linux, the X11 and OpenGL headers: `libxinerama-dev libxcursor-dev xorg-dev libglu1-mesa-dev pkg-config` on Debian or Ubuntu.
-- On macOS the Xcode command line tools, on Windows the Build Tools for Visual Studio 2022 with the Windows SDK. Run the scripts from Git Bash on Windows.
+- On macOS the Xcode command line tools, on Windows the Build Tools for Visual Studio 2022 or newer with the Windows SDK. Run the scripts from Git Bash on Windows.
 
 SQLite is part of this repository (`third_party/sqlite`) and is compiled in. The other libraries (FTXUI, JSON for Modern C++, and for the dashboard Dear ImGui and GLFW) are listed with exact versions in `vcpkg.json`.
 

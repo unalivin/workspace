@@ -38,7 +38,7 @@ jobs:
         with:
           path: |
             __WORKDIR__/.tools/vcpkg-cache
-          key: __NAME__-vcpkg-${{ runner.os }}-${{ hashFiles('__WORKDIR__/vcpkg.json', '__WORKDIR__/scripts/lib.sh') }}
+          key: __NAME__-vcpkg-${{ runner.os }}-${{ hashFiles('__WORKDIR__/vcpkg.json', '__WORKDIR__/vcpkg-configuration.json', '__WORKDIR__/third_party/vcpkg-ports/**', '__WORKDIR__/scripts/lib.sh') }}
       - name: Install prerequisites
         run: scripts/ci-step.sh --command "install prerequisites" scripts/dev-setup.sh --install
       - name: Test

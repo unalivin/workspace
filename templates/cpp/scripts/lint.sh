@@ -82,7 +82,14 @@ run_tidy() {
     return 0
   fi
   [ -f "$directory/compile_commands.json" ] || die "$directory/compile_commands.json is missing: use the Ninja or Makefile generator"
-  tidy_files | xargs -P "$(job_count)" -n 4 clang-tidy -p "$directory" --quiet
+  local arguments=(-p "$directory" --quiet) sdk=""
+  if [ "$(host_os)" = "macos" ] && have xcrun; then
+    sdk="$(xcrun --show-sdk-path 2>/dev/null || true)"
+    if [ -n "$sdk" ]; then
+      arguments+=("--extra-arg=-isysroot" "--extra-arg=$sdk")
+    fi
+  fi
+  tidy_files | xargs -P "$(job_count)" -n 4 clang-tidy "${arguments[@]}"
 }
 
 if [ "$gui" = "1" ]; then

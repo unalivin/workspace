@@ -39,7 +39,15 @@ The license files in `third_party/licenses` are copies of the upstream files wit
 
 ## Known vulnerabilities
 
-`make vuln` asks the OSV database (`https://api.osv.dev/v1/query`) for each component that has an upstream commit in the list, and fails when a vulnerability is recorded for that commit. It sends the commit hash and nothing else. A finding that does not apply to the way the application uses the component can be accepted with a line in `third_party/osv-ignore.tsv` that gives the identifier and the reason; the file does not exist while nothing is accepted. `scripts/vuln.sh --offline` runs the other checks without the network.
+`make vuln` asks the OSV database (`https://api.osv.dev/v1/query`) for each component that has an upstream commit in the list, and fails when a vulnerability is recorded for that commit. It sends the commit hash and nothing else. A finding that does not apply to the way the application uses the component can be accepted with a line in `third_party/osv-ignore.tsv` that gives the identifier and the reason; each accepted finding is listed below. `scripts/vuln.sh --offline` runs the other checks without the network.
+
+Accepted findings:
+
+| Identifier | Component | Why it does not apply |
+|---|---|---|
+| `CVE-2026-119586` | SQLite 3.54.1 | The flaw is in the `.recover` command of the `sqlite3` command-line shell. The application compiles only the SQLite library; the shell and the recover extension are not part of it. No SQLite release without the flaw existed when the finding was accepted. |
+
+GLFW is built from the port in `third_party/vcpkg-ports/glfw3` instead of the one in the vcpkg registry. It builds the same pinned source; the difference is that it does not build the X11 libraries from source, because GLFW needs only their headers at build time and loads the libraries of the system when the window opens. `make vuln` fails when that port and the component list name different versions.
 
 The same script checks that the versions in the list equal the overrides in `vcpkg.json`, that the vcpkg baseline is the commit that `scripts/dev-setup.sh` installs, and that the vendored SQLite reports the listed version.
 

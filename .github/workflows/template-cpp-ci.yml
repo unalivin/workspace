@@ -46,7 +46,7 @@ jobs:
         with:
           path: |
             templates/cpp/.tools/vcpkg-cache
-          key: template-cpp-vcpkg-${{ runner.os }}-${{ hashFiles('templates/cpp/vcpkg.json', 'templates/cpp/scripts/lib.sh') }}
+          key: template-cpp-vcpkg-${{ runner.os }}-${{ hashFiles('templates/cpp/vcpkg.json', 'templates/cpp/vcpkg-configuration.json', 'templates/cpp/third_party/vcpkg-ports/**', 'templates/cpp/scripts/lib.sh') }}
       - name: Install prerequisites
         run: scripts/ci-step.sh --command "install prerequisites" scripts/dev-setup.sh --install
       - name: Format

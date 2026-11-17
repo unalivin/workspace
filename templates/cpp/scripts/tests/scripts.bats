@@ -216,6 +216,28 @@ copy_build_files() {
   [[ "$output" == *"SQLite: third_party/components.tsv lists 3.0.0"* ]]
 }
 
+@test "vuln refuses an overlay port that builds another version than the pinned one" {
+  copy_build_files "$SANDBOX/project"
+  mkdir -p "$SANDBOX/project/third_party/licenses" "$SANDBOX/project/third_party/sqlite" "$SANDBOX/project/third_party/vcpkg-ports/glfw3"
+  cp "$REAL_PROJECT"/third_party/licenses/*.txt "$SANDBOX/project/third_party/licenses/"
+  grep -m 1 '^#define SQLITE_VERSION ' "$REAL_PROJECT/third_party/sqlite/sqlite3.h" >"$SANDBOX/project/third_party/sqlite/sqlite3.h"
+  cp "$REAL_PROJECT/third_party/vcpkg-ports/glfw3/vcpkg.json" "$SANDBOX/project/third_party/vcpkg-ports/glfw3/"
+  run "$SANDBOX/project/scripts/vuln.sh" --offline
+  [ "$status" -eq 0 ]
+  sed 's/"version": "[^"]*"/"version": "3.0.0"/' "$REAL_PROJECT/third_party/vcpkg-ports/glfw3/vcpkg.json" >"$SANDBOX/project/third_party/vcpkg-ports/glfw3/vcpkg.json"
+  run "$SANDBOX/project/scripts/vuln.sh" --offline
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"GLFW: third_party/components.tsv lists 3.5.1, third_party/vcpkg-ports/glfw3/vcpkg.json builds 3.0.0"* ]]
+}
+
+@test "every accepted finding has a reason and the overlay ports are named in the vcpkg configuration" {
+  [ "$(head -n 1 "$REAL_PROJECT/third_party/osv-ignore.tsv")" = "id"$'\t'"reason" ]
+  run awk -F '\t' 'NR > 1 && (NF != 2 || $1 == "" || length($2) < 40) { print NR }' "$REAL_PROJECT/third_party/osv-ignore.tsv"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  grep -q '"third_party/vcpkg-ports"' "$REAL_PROJECT/vcpkg-configuration.json"
+}
+
 @test "the accepted licenses are the same in the script and in the generator" {
   from_script="$(sed -n '/^accepted_licenses=(/,/)$/p' "$REAL_PROJECT/scripts/vuln.sh" | grep -o '"[^"]*"' | LC_ALL=C sort)"
   from_generator="$(sed -n '/allowed_licenses() {/,/^}/p' "$REAL_PROJECT/tools/notices.cpp" | grep -o '"[^"]*"' | LC_ALL=C sort)"
