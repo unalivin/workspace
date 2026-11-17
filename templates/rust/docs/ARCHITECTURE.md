@@ -84,6 +84,22 @@ The `launcher` module decides from the arguments, the environment, the remembere
 
 A theme is a value of `theme::Tokens`: palette, semantic and severity colors, spacing, type scale, radius. `skin.rs` in the dashboard crate maps the tokens onto the toolkit style so that colors, sizes and corner radii come from the theme, and the `theme` module maps the same tokens to ANSI colors for the terminal UI. Icons are one set of original drawings defined as outlines in `icons.rs`.
 
+The interface follows one direction, and a change to it should fit these five lines:
+
+- Product: a desktop tool for records that carry a status and a severity, used by one operator.
+- Character: plain, exact, calm.
+- World: an operations logbook. Surfaces are cool grey paper, text is near-black ink, and one cobalt accent marks the current place and the main action.
+- Where color goes: the breakdown of enabled records on the Overview and the count of open records. Navigation, top bar and settings stay grey.
+- Signature: severity as an icon and a word in its own color, next to the count as a figure.
+
+The rules that follow from it:
+
+- Spacing sits on a four pixel grid: 4, 8, 12, 16, 24. Rows are 32 high, 24 in compact density. Text sizes are 12, 14, 16 and 24, multiplied by the text size setting.
+- The seven themes share one grey ramp. A named theme moves the hue of the greys slightly and sets the accent; severity colors never change with the theme.
+- Severity and status are always an icon and a word. Color is an addition, never the only carrier.
+- The Overview draws only stored data.
+- Text and icons meet WCAG AA contrast on every surface of every theme; the `theme` module tests this for all themes, both modes and custom accents.
+
 ## Builds
 
 | Build | Cargo features | Content |

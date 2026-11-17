@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/test"
 	fynetheme "fyne.io/fyne/v2/theme"
@@ -125,6 +126,8 @@ func (s *desk) texts(visibleOnly bool) string {
 			return
 		}
 		switch typed := object.(type) {
+		case *canvas.Text:
+			builder.WriteString(typed.Text + "\n")
 		case *widget.Label:
 			builder.WriteString(typed.Text + "\n")
 		case *widget.Button:
@@ -159,6 +162,8 @@ func (s *desk) pageText() string {
 			return
 		}
 		switch typed := object.(type) {
+		case *canvas.Text:
+			builder.WriteString(typed.Text + "\n")
 		case *widget.Label:
 			builder.WriteString(typed.Text + "\n")
 		case *widget.Button:
@@ -252,12 +257,12 @@ func TestFirstStartAndOverview(t *testing.T) {
 	s.shows("Welcome to "+meta.AppName, "A new database was created at", "Load demo data")
 	s.capture("first-start")
 	s.d.confirm.accept()
-	s.shows("What needs attention", "Open records", "Urgent records", "Unread notifications", "Disabled records", "Added 6 demo records", "Demo data is loaded: 6 sample records", "Critical", "In progress")
+	s.shows("Enabled records by severity and status", "The same as a table", "One square is one enabled record.", "Open records", "Urgent records", "Unread notifications", "Disabled records", "Added 6 demo records", "Demo data is loaded: 6 sample records", "Critical", "In progress")
 	if s.d.overP.numbers["open"].Text != "4" || s.d.overP.numbers["urgent"].Text != "2" || s.d.overP.numbers["unread"].Text != "2" || s.d.overP.numbers["disabled"].Text != "1" {
 		t.Fatalf("numbers: %s %s %s %s", s.d.overP.numbers["open"].Text, s.d.overP.numbers["urgent"].Text, s.d.overP.numbers["unread"].Text, s.d.overP.numbers["disabled"].Text)
 	}
-	if s.d.buttons[app.NavNotifications].Text != "Notifications (2)" {
-		t.Fatalf("badge: %q", s.d.buttons[app.NavNotifications].Text)
+	if s.d.buttons[app.NavNotifications].count != "2" {
+		t.Fatalf("badge: %q", s.d.buttons[app.NavNotifications].count)
 	}
 	s.capture("overview")
 	empty := newDesk(t, nil)
@@ -276,7 +281,7 @@ func TestNavigationMenuAndShortcuts(t *testing.T) {
 	s.start()
 	for _, item := range app.Navigation() {
 		test.Tap(s.d.buttons[item.ID])
-		if s.d.current != item.ID || s.d.title.Text != item.Label || !s.d.pages[item.ID].object().Visible() || s.d.buttons[item.ID].Importance != widget.HighImportance {
+		if s.d.current != item.ID || s.d.title.Text != item.Label || !s.d.pages[item.ID].object().Visible() || !s.d.buttons[item.ID].selected {
 			t.Fatalf("category %s did not open", item.ID)
 		}
 		for _, other := range app.Navigation() {
@@ -471,8 +476,8 @@ func TestExternalChangesKeepSelectionAndInput(t *testing.T) {
 	test.Tap(s.d.buttons[app.NavRecords])
 	s.d.poll()
 	s.shows("3 records shown", "Updated by another window")
-	if s.d.buttons[app.NavNotifications].Text != "Notifications (3)" {
-		t.Fatalf("badge: %q", s.d.buttons[app.NavNotifications].Text)
+	if s.d.buttons[app.NavNotifications].count != "3" {
+		t.Fatalf("badge: %q", s.d.buttons[app.NavNotifications].count)
 	}
 	s.d.recordsP.sort.SetSelected("Sort by name")
 	s.d.recordsP.reverse.SetChecked(false)
@@ -874,7 +879,7 @@ func TestSkinUsesTheTokens(t *testing.T) {
 			if look.Color(fynetheme.ColorNamePrimary, fynetheme.VariantLight) != rgb(tokens.Palette.Accent) || look.Color(fynetheme.ColorNameBackground, fynetheme.VariantDark) != rgb(tokens.Palette.Background) || look.Color(fynetheme.ColorNameForeground, fynetheme.VariantLight) != rgb(tokens.Palette.Text) {
 				t.Fatalf("%s %s: the toolkit colors do not come from the tokens", name, mode)
 			}
-			if look.Size(fynetheme.SizeNameText) != tokens.Type.Body || look.Size(fynetheme.SizeNameInputRadius) != tokens.Radius {
+			if look.Size(fynetheme.SizeNameText) != tokens.Type.Body || look.Size(fynetheme.SizeNameInputRadius) != tokens.Radius.Control {
 				t.Fatalf("%s %s: the toolkit sizes do not come from the tokens", name, mode)
 			}
 			if look.Font(fyne.TextStyle{}) == nil || look.Icon(fynetheme.IconNameCancel) == nil {
@@ -884,8 +889,11 @@ func TestSkinUsesTheTokens(t *testing.T) {
 	}
 	compact := skin{tokens: theme.Resolve(theme.Options{Name: "slate", Mode: theme.ModeLight, Density: "compact", TextScale: 100})}
 	regular := skin{tokens: theme.Resolve(theme.Options{Name: "slate", Mode: theme.ModeLight, Density: "comfortable", TextScale: 100})}
-	if compact.Size(fynetheme.SizeNamePadding) >= regular.Size(fynetheme.SizeNamePadding) {
-		t.Fatal("compact density does not reduce padding")
+	if compact.Size(fynetheme.SizeNameInnerPadding) >= regular.Size(fynetheme.SizeNameInnerPadding) || compact.tokens.Spacing.RowHeight >= regular.tokens.Spacing.RowHeight {
+		t.Fatal("compact density does not reduce padding and row height")
+	}
+	if regular.Font(fyne.TextStyle{Bold: true}).Name() != "NotoSans-Medium.ttf" || regular.Font(fyne.TextStyle{}).Name() == "NotoSans-Medium.ttf" {
+		t.Fatal("emphasis must use the medium weight of the one text family")
 	}
 	for name := range iconPaths {
 		if resource := icon(name, theme.Hex("#102030")); !strings.Contains(string(resource.Content()), `fill="#102030"`) {
@@ -1119,11 +1127,22 @@ func TestRecordTableColumnsSortAndCopyAreKept(t *testing.T) {
 	}
 }
 
+func TestTallySquaresScaleToTheRoom(t *testing.T) {
+	for _, c := range []struct{ largest, capacity, want int }{{0, 10, 1}, {10, 10, 1}, {11, 10, 2}, {480, 10, 50}, {7, 0, 10}, {250000, 10, 25000}} {
+		if got := ledgerUnit(c.largest, c.capacity); got != c.want {
+			t.Errorf("%d items in room for %d squares: one square is %d, want %d", c.largest, c.capacity, got, c.want)
+		}
+	}
+}
+
 func TestColumnLayoutSkipsHiddenColumns(t *testing.T) {
 	layout := &columns{weights: []float32{0, 1, 0}, fixed: []float32{50, 100, 70}}
 	full := layout.widths(400)
 	if full[0] != 50 || full[2] != 70 || full[1] <= 100 {
 		t.Fatalf("widths: %v", full)
+	}
+	if tight := layout.widths(110 + 2*fynetheme.Padding()); tight[0] != 25 || tight[1] != 50 || tight[2] != 35 {
+		t.Fatalf("columns must shrink together when the row is too narrow: %v", tight)
 	}
 	layout.hidden = []bool{true, false, false}
 	reduced := layout.widths(400)
@@ -1140,7 +1159,7 @@ func TestColumnLayoutSkipsHiddenColumns(t *testing.T) {
 	if !cells[0].Visible() || cells[1].Position().X <= 50 {
 		t.Fatal("a column that is shown again stays hidden")
 	}
-	if layout.MinSize(cells).Width < 220 {
+	if minimum := layout.MinSize(cells).Width; minimum < 220*narrowest || minimum >= 220 {
 		t.Fatalf("minimum width: %v", layout.MinSize(cells))
 	}
 }

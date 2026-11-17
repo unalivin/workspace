@@ -12,6 +12,8 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+const narrowest = 0.6
+
 type columns struct {
 	weights []float32
 	fixed   []float32
@@ -43,15 +45,19 @@ func (c *columns) widths(total float32) []float32 {
 		}
 	}
 	spare := available - fixed
+	squeeze := float32(1)
 	if spare < 0 {
 		spare = 0
+		if fixed > 0 {
+			squeeze = max(0, available) / fixed
+		}
 	}
 	widths := make([]float32, len(c.weights))
 	for index := range c.weights {
 		if !c.shows(index) {
 			continue
 		}
-		widths[index] = c.fixed[index]
+		widths[index] = c.fixed[index] * squeeze
 		if weight > 0 {
 			widths[index] += spare * c.weights[index] / weight
 		}
@@ -93,7 +99,7 @@ func (c *columns) MinSize(objects []fyne.CanvasObject) fyne.Size {
 			height = minimum
 		}
 	}
-	return fyne.NewSize(width+fynetheme.Padding()*float32(max(0, c.visible()-1)), height)
+	return fyne.NewSize(width*narrowest+fynetheme.Padding()*float32(max(0, c.visible()-1)), height)
 }
 
 func cell(text string) *widget.Label {
@@ -117,6 +123,14 @@ func iconLabel(resource fyne.Resource, text string) (*fyne.Container, *widget.Ic
 	image := widget.NewIcon(resource)
 	label := cell(text)
 	return container.NewBorder(nil, nil, image, nil, label), image, label
+}
+
+func caption(text string) *widget.Label {
+	label := widget.NewLabel(text)
+	label.Importance = widget.LowImportance
+	label.SizeName = fynetheme.SizeNameCaptionText
+	label.Truncation = fyne.TextTruncateEllipsis
+	return label
 }
 
 func heading(text string) *widget.Label {
@@ -153,10 +167,10 @@ func (r *surfaceRenderer) paint() {
 	r.background.FillColor = fynetheme.Color(fynetheme.ColorNameInputBackground)
 	r.background.StrokeColor = fynetheme.Color(fynetheme.ColorNameSeparator)
 	r.background.StrokeWidth = 1
-	r.background.CornerRadius = fynetheme.Size(fynetheme.SizeNameInputRadius)
+	r.background.CornerRadius = 1.5 * fynetheme.Size(fynetheme.SizeNameInputRadius)
 }
 
-func (r *surfaceRenderer) inset() float32 { return fynetheme.InnerPadding() }
+func (r *surfaceRenderer) inset() float32 { return 2 * fynetheme.InnerPadding() }
 
 func (r *surfaceRenderer) Layout(size fyne.Size) {
 	r.background.Resize(size)

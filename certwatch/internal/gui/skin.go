@@ -1,6 +1,7 @@
 package gui
 
 import (
+	_ "embed"
 	"fmt"
 	"image/color"
 	"sync"
@@ -10,6 +11,11 @@ import (
 
 	"github.com/unalivin/certwatch/internal/theme"
 )
+
+//go:embed font/NotoSans-Medium.ttf
+var mediumFont []byte
+
+var mediumResource = fyne.NewStaticResource("NotoSans-Medium.ttf", mediumFont)
 
 type skin struct {
 	tokens theme.Tokens
@@ -87,6 +93,9 @@ func (s skin) Color(name fyne.ThemeColorName, _ fyne.ThemeVariant) color.Color {
 }
 
 func (s skin) Font(style fyne.TextStyle) fyne.Resource {
+	if style.Bold && !style.Italic && !style.Monospace && !style.Symbol {
+		return mediumResource
+	}
 	return fynetheme.DefaultTheme().Font(style)
 }
 
@@ -98,7 +107,7 @@ func (s skin) Size(name fyne.ThemeSizeName) float32 {
 	t := s.tokens
 	switch name {
 	case fynetheme.SizeNamePadding:
-		return t.Spacing.XS + 1
+		return t.Spacing.XS
 	case fynetheme.SizeNameInnerPadding:
 		return t.Spacing.S
 	case fynetheme.SizeNameText:
@@ -110,13 +119,19 @@ func (s skin) Size(name fyne.ThemeSizeName) float32 {
 	case fynetheme.SizeNameCaptionText:
 		return t.Type.Caption
 	case fynetheme.SizeNameInlineIcon:
-		return t.Type.Body * 1.4
-	case fynetheme.SizeNameInputRadius, fynetheme.SizeNameSelectionRadius, fynetheme.SizeNameScrollBarRadius:
-		return t.Radius
+		return iconSize(t)
+	case fynetheme.SizeNameInputRadius, fynetheme.SizeNameSelectionRadius:
+		return t.Radius.Control
+	case fynetheme.SizeNameScrollBarRadius:
+		return t.Radius.Chip
 	case fynetheme.SizeNameInputBorder, fynetheme.SizeNameSeparatorThickness:
 		return 1
 	}
 	return fynetheme.DefaultTheme().Size(name)
+}
+
+func iconSize(t theme.Tokens) float32 {
+	return t.Spacing.L * t.Type.Body / 14
 }
 
 var iconPaths = map[string]string{

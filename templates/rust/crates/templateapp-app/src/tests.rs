@@ -554,9 +554,14 @@ fn diagnostics_the_guide_about_and_licenses_are_available() {
     assert!(contents.starts_with(&format!("{} usage guide\n\nContents:\n", meta::APP_NAME)), "{contents}");
     harness.fails(&["guide", "zzzunlikelywordzzz"], EXIT_FAILURE, "no section of the usage guide mentions");
     let about = harness.ok(&["about"]);
-    for expected in
-        ["Application", "Publisher", meta::PUBLISHER, meta::REPOSITORY_URL, "Report a vulnerability", "Nothing is opened or sent"]
-    {
+    for expected in [
+        "Application",
+        "Publisher",
+        meta::PUBLISHER,
+        meta::REPOSITORY_URL,
+        "Report a vulnerability",
+        "Nothing is opened or sent",
+    ] {
         assert!(about.contains(expected), "{expected}\n{about}");
     }
     let issue = harness.ok(&["about", "--issue"]);

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/test"
 	fynetheme "fyne.io/fyne/v2/theme"
@@ -182,6 +183,8 @@ func (s *desk) texts(visibleOnly bool) string {
 			return
 		}
 		switch typed := object.(type) {
+		case *canvas.Text:
+			builder.WriteString(typed.Text + "\n")
 		case *widget.Label:
 			builder.WriteString(typed.Text + "\n")
 		case *widget.Button:
@@ -216,6 +219,8 @@ func (s *desk) pageText() string {
 			return
 		}
 		switch typed := object.(type) {
+		case *canvas.Text:
+			builder.WriteString(typed.Text + "\n")
 		case *widget.Label:
 			builder.WriteString(typed.Text + "\n")
 		case *widget.Button:
@@ -312,7 +317,7 @@ func TestFirstStartAndOverview(t *testing.T) {
 	s.shows("Welcome to "+meta.AppName, "A new database was created at", "connects only to hosts you add and confirm that you are authorized to test", "Load demo data")
 	s.capture("first-start")
 	s.d.confirm.accept()
-	s.shows("What needs attention", "Expired", "Expiring in 7 days", "Expiring in 30 days", "Expiring in 90 days", "Chain failures", "Name mismatches", "Failed checks", "Not checked yet",
+	s.shows("Tracked certificates by time left", "Endpoint checks", "One square is one tracked certificate. A longer period includes the shorter ones", "Expired", "Expiring in 7 days", "Expiring in 30 days", "Expiring in 90 days", "Chain failures", "Name mismatches", "Failed checks", "Not checked yet",
 		"Added 11 demo endpoints", "They are never contacted", "Demo data is loaded", "Soonest to expire", "legacy.demo.invalid (demo)", "expired 3 days ago", "Recent alerts",
 		"9 tracked certificates · 11 endpoints, 1 disabled · 9 unread alerts")
 	for id, want := range map[string]string{"expired": "1", "within7": "1", "within30": "2", "within90": "5", "chain": "3", "hostname": "1", "failed": "1", "never": "0"} {
@@ -320,8 +325,8 @@ func TestFirstStartAndOverview(t *testing.T) {
 			t.Fatalf("tile %s shows %s, want %s", id, got, want)
 		}
 	}
-	if s.d.buttons[app.NavNotifications].Text != "Alerts (9)" {
-		t.Fatalf("badge: %q", s.d.buttons[app.NavNotifications].Text)
+	if s.d.buttons[app.NavNotifications].count != "9" {
+		t.Fatalf("badge: %q", s.d.buttons[app.NavNotifications].count)
 	}
 	s.capture("overview")
 	test.Tap(s.d.overP.tiles["within30"].open)
@@ -358,7 +363,7 @@ func TestNavigationMenuAndShortcuts(t *testing.T) {
 	s.start()
 	for _, item := range app.Navigation() {
 		test.Tap(s.d.buttons[item.ID])
-		if s.d.current != item.ID || s.d.title.Text != item.Label || !s.d.pages[item.ID].object().Visible() || s.d.buttons[item.ID].Importance != widget.HighImportance {
+		if s.d.current != item.ID || s.d.title.Text != item.Label || !s.d.pages[item.ID].object().Visible() || !s.d.buttons[item.ID].selected {
 			t.Fatalf("category %s did not open", item.ID)
 		}
 		for _, other := range app.Navigation() {
@@ -485,8 +490,8 @@ func TestEndpointWorkflowWithALiveCheck(t *testing.T) {
 	if dialed := s.server.Dialed(); len(dialed) != 1 || dialed[0] != "app.fixture.test:443" {
 		t.Fatalf("connections: %v", dialed)
 	}
-	if s.d.buttons[app.NavNotifications].Text != "Alerts (1)" {
-		t.Fatalf("badge: %q", s.d.buttons[app.NavNotifications].Text)
+	if s.d.buttons[app.NavNotifications].count != "1" {
+		t.Fatalf("badge: %q", s.d.buttons[app.NavNotifications].count)
 	}
 	s.capture("endpoints")
 	s.tap("Edit")
@@ -1196,7 +1201,7 @@ func TestSkinUsesTheTokens(t *testing.T) {
 			if look.Color(fynetheme.ColorNamePrimary, fynetheme.VariantLight) != rgb(tokens.Palette.Accent) || look.Color(fynetheme.ColorNameBackground, fynetheme.VariantDark) != rgb(tokens.Palette.Background) || look.Color(fynetheme.ColorNameForeground, fynetheme.VariantLight) != rgb(tokens.Palette.Text) {
 				t.Fatalf("%s %s: the toolkit colors do not come from the tokens", name, mode)
 			}
-			if look.Size(fynetheme.SizeNameText) != tokens.Type.Body || look.Size(fynetheme.SizeNameInputRadius) != tokens.Radius {
+			if look.Size(fynetheme.SizeNameText) != tokens.Type.Body || look.Size(fynetheme.SizeNameInputRadius) != tokens.Radius.Control {
 				t.Fatalf("%s %s: the toolkit sizes do not come from the tokens", name, mode)
 			}
 			if look.Font(fyne.TextStyle{}) == nil || look.Icon(fynetheme.IconNameCancel) == nil {
@@ -1206,8 +1211,11 @@ func TestSkinUsesTheTokens(t *testing.T) {
 	}
 	compact := skin{tokens: theme.Resolve(theme.Options{Name: "slate", Mode: theme.ModeLight, Density: "compact", TextScale: 100})}
 	regular := skin{tokens: theme.Resolve(theme.Options{Name: "slate", Mode: theme.ModeLight, Density: "comfortable", TextScale: 100})}
-	if compact.Size(fynetheme.SizeNamePadding) >= regular.Size(fynetheme.SizeNamePadding) {
-		t.Fatal("compact density does not reduce padding")
+	if compact.Size(fynetheme.SizeNameInnerPadding) >= regular.Size(fynetheme.SizeNameInnerPadding) || compact.tokens.Spacing.RowHeight >= regular.tokens.Spacing.RowHeight {
+		t.Fatal("compact density does not reduce padding and row height")
+	}
+	if regular.Font(fyne.TextStyle{Bold: true}).Name() != "NotoSans-Medium.ttf" || regular.Font(fyne.TextStyle{}).Name() == "NotoSans-Medium.ttf" {
+		t.Fatal("emphasis must use the medium weight of the one text family")
 	}
 	for name := range iconPaths {
 		if resource := icon(name, theme.Hex("#102030")); !strings.Contains(string(resource.Content()), `fill="#102030"`) {
@@ -1427,11 +1435,22 @@ func TestEndpointColumnsFollowTheSettingAndBarsAreDrawn(t *testing.T) {
 	}
 }
 
+func TestTallySquaresScaleToTheRoom(t *testing.T) {
+	for _, c := range []struct{ largest, capacity, want int }{{0, 10, 1}, {10, 10, 1}, {11, 10, 2}, {480, 10, 50}, {7, 0, 10}, {250000, 10, 25000}} {
+		if got := ledgerUnit(c.largest, c.capacity); got != c.want {
+			t.Errorf("%d items in room for %d squares: one square is %d, want %d", c.largest, c.capacity, got, c.want)
+		}
+	}
+}
+
 func TestColumnLayoutSkipsHiddenColumns(t *testing.T) {
 	layout := &columns{weights: []float32{0, 1, 0}, fixed: []float32{50, 100, 70}}
 	full := layout.widths(400)
 	if full[0] != 50 || full[2] != 70 || full[1] <= 100 {
 		t.Fatalf("widths: %v", full)
+	}
+	if tight := layout.widths(110 + 2*fynetheme.Padding()); tight[0] != 25 || tight[1] != 50 || tight[2] != 35 {
+		t.Fatalf("columns must shrink together when the row is too narrow: %v", tight)
 	}
 	layout.hidden = []bool{true, false, false}
 	reduced := layout.widths(400)
@@ -1448,7 +1467,7 @@ func TestColumnLayoutSkipsHiddenColumns(t *testing.T) {
 	if !cells[0].Visible() || cells[1].Position().X <= 50 {
 		t.Fatal("a column that is shown again stays hidden")
 	}
-	if layout.MinSize(cells).Width < 220 {
+	if minimum := layout.MinSize(cells).Width; minimum < 220*narrowest || minimum >= 220 {
 		t.Fatalf("minimum width: %v", layout.MinSize(cells))
 	}
 }

@@ -61,8 +61,7 @@ type dashboard struct {
 	nav        []app.NavItem
 	current    string
 	pages      map[string]page
-	buttons    map[string]*widget.Button
-	hinted     map[string]*hintButton
+	buttons    map[string]*navRow
 	stack      *fyne.Container
 	sidebar    *fyne.Container
 	title      *widget.Label
@@ -100,7 +99,7 @@ func newDashboard(ctx context.Context, fyneApp fyne.App, window fyne.Window, opt
 	if options.Getenv == nil {
 		options.Getenv = func(string) string { return "" }
 	}
-	d := &dashboard{ctx: ctx, options: options, app: options.App, fyneApp: fyneApp, window: window, nav: app.Navigation(), pages: map[string]page{}, views: map[string]*viewPage{}, buttons: map[string]*widget.Button{}, hinted: map[string]*hintButton{}, stop: make(chan struct{}), finished: finished}
+	d := &dashboard{ctx: ctx, options: options, app: options.App, fyneApp: fyneApp, window: window, nav: app.Navigation(), pages: map[string]page{}, views: map[string]*viewPage{}, buttons: map[string]*navRow{}, stop: make(chan struct{}), finished: finished}
 	d.spawn = func(work func()) { go work() }
 	d.onMain = func(work func()) { fyne.Do(work) }
 	d.restyle()
@@ -283,32 +282,28 @@ func (d *dashboard) build() {
 	for _, item := range d.nav {
 		id := item.ID
 		label := item.Label
-		button := newHintButton(d, label, icon(item.Icon, d.tokens.Palette.Text), func() string { return d.navigationHint(id, label) }, func() { d.show(id) })
-		button.Alignment = widget.ButtonAlignLeading
-		button.Importance = widget.LowImportance
-		d.buttons[id] = &button.Button
-		d.hinted[id] = button
+		row := newNavRow(d, label, item.Icon, func() string { return d.navigationHint(id, label) }, func() { d.show(id) })
+		d.buttons[id] = row
 		if item.Bottom {
-			bottom.Add(button)
+			bottom.Add(row)
 		} else {
-			top.Add(button)
+			top.Add(row)
 		}
 	}
-	toggle := newHintButton(d, "", icon("sidebar", d.tokens.Palette.TextMuted), func() string {
+	toggle := newNavRow(d, "", "sidebar", func() string {
 		if d.collapse {
 			return "Expand the sidebar"
 		}
 		return "Collapse the sidebar to icons"
 	}, d.toggleSidebar)
-	toggle.Importance = widget.LowImportance
-	toggle.Alignment = widget.ButtonAlignLeading
-	d.buttons["sidebar"] = &toggle.Button
-	d.hinted["sidebar"] = toggle
-	bottom.Add(toggle)
-	d.sidebar = container.NewBorder(top, bottom, nil, nil)
-	d.header = container.NewBorder(nil, widget.NewSeparator(), nil, nil, container.NewPadded(d.buildTopBar()))
-	d.body = container.NewBorder(d.header, container.NewVBox(d.busyBox, d.noticeBg), nil, nil, container.NewPadded(d.stack))
-	d.root = container.NewBorder(nil, nil, container.NewBorder(nil, nil, nil, widget.NewSeparator(), container.NewPadded(d.sidebar)), nil, d.body)
+	toggle.quiet = true
+	d.buttons["sidebar"] = toggle
+	bottom.Add(container.NewHBox(toggle))
+	d.sidebar = container.New(&railLayout{board: d}, container.NewBorder(top, bottom, nil, nil))
+	side := func() float32 { return d.tokens.Spacing.XL }
+	d.header = container.NewBorder(nil, widget.NewSeparator(), nil, nil, container.New(&marginLayout{side: side, edge: func() float32 { return d.tokens.Spacing.M }}, d.buildTopBar()))
+	d.body = container.NewBorder(d.header, container.NewVBox(d.busyBox, d.noticeBg), nil, nil, container.New(&marginLayout{side: side, edge: func() float32 { return d.tokens.Spacing.L }}, d.stack))
+	d.root = container.NewBorder(nil, nil, container.NewBorder(nil, nil, nil, widget.NewSeparator(), d.sidebar), nil, d.body)
 	d.window.SetContent(container.NewStack(d.root, d.buildHints()))
 	d.window.SetMainMenu(d.menu())
 	d.shortcuts()
@@ -316,33 +311,22 @@ func (d *dashboard) build() {
 }
 
 func (d *dashboard) tintNavigation() {
-	for _, item := range d.nav {
-		if button, found := d.buttons[item.ID]; found {
-			tint := d.tokens.Palette.Text
-			if item.ID == d.current {
-				tint = d.tokens.OnAccent
-			}
-			button.SetIcon(icon(item.Icon, tint))
-		}
-	}
-	if toggle, found := d.buttons["sidebar"]; found {
-		toggle.SetIcon(icon("sidebar", d.tokens.Palette.TextMuted))
+	for _, row := range d.buttons {
+		row.Refresh()
 	}
 }
 
 func (d *dashboard) labelNavigation() {
 	changed := false
 	for _, item := range d.nav {
-		button := d.buttons[item.ID]
-		label := item.Label
+		label, count := item.Label, ""
 		if item.ID == app.NavNotifications && d.overview.Counts.UnreadAlerts > 0 {
-			label += " (" + strconv.Itoa(d.overview.Counts.UnreadAlerts) + ")"
+			count = strconv.Itoa(d.overview.Counts.UnreadAlerts)
 		}
 		if d.collapse {
-			label = ""
+			label, count = "", ""
 		}
-		if button.Text != label {
-			button.SetText(label)
+		if d.buttons[item.ID].setText(label, count) {
 			changed = true
 		}
 	}
@@ -352,7 +336,7 @@ func (d *dashboard) labelNavigation() {
 	d.refreshTopBar()
 }
 
-func (d *dashboard) sidebarButton(id string) *hintButton { return d.hinted[id] }
+func (d *dashboard) sidebarButton(id string) *navRow { return d.buttons[id] }
 
 func (d *dashboard) navigationHint(id, label string) string {
 	if !d.collapse {
@@ -378,16 +362,13 @@ func (d *dashboard) toggleSidebar() {
 func (d *dashboard) show(id string) {
 	for _, item := range d.nav {
 		object := d.pages[item.ID].object()
-		button := d.buttons[item.ID]
 		if item.ID == id {
 			object.Show()
-			button.Importance = widget.HighImportance
 			d.title.SetText(item.Label)
 		} else {
 			object.Hide()
-			button.Importance = widget.LowImportance
 		}
-		button.Refresh()
+		d.buttons[item.ID].setSelected(item.ID == id)
 	}
 	d.current = id
 	d.tintNavigation()

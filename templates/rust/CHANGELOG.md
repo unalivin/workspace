@@ -10,6 +10,10 @@ All notable changes to Template App are recorded here. The format follows [Keep 
 - The Windows version resource carries the company name and the copyright line of `LICENSE`, and the macOS bundle carries the copyright text; the packaging script reads the values back and stops when they differ.
 - `.github/PULL_REQUEST_TEMPLATE.md` with the commit scope, test commands, platforms and rules of this project.
 
+### Changed
+
+- The dashboard uses the grey ramp shared by all themes, a four pixel spacing grid, larger text sizes and a marker for the current page in the navigation. Severity colors in light mode are darker so that they pass AA contrast on every surface.
+
 ## [0.1.0-dev]
 
 ### Added

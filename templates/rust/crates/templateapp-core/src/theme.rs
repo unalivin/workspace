@@ -228,38 +228,38 @@ const THEMES: [Definition; 7] = [
     Definition {
         name: "slate",
         label: "Neutral slate",
-        light: palette([0xF4F5F7, 0xFFFFFF, 0xE9ECF0, 0x6B7480, 0xD5DAE1, 0x1B1F24, 0x4F5965, 0x3D4C5E]),
-        dark: palette([0x14171B, 0x1C2026, 0x262B33, 0x8894A3, 0x343B45, 0xE8EBEF, 0xA9B3C0, 0x9FB4CC]),
+        light: palette([0xF6F7F8, 0xFFFFFF, 0xECEEF1, 0x6E7681, 0xDDE0E4, 0x16191D, 0x535B66, 0x2459C9]),
+        dark: palette([0x121416, 0x191C1F, 0x23272B, 0x7F8894, 0x2D3237, 0xECEEF0, 0xA3ABB5, 0x84ADFF]),
     },
     Definition {
         name: "blue",
         label: "Blue",
-        light: palette([0xF2F6FC, 0xFFFFFF, 0xE3ECF9, 0x64758F, 0xCFDCEF, 0x14202E, 0x475569, 0x1257C4]),
-        dark: palette([0x0F1620, 0x16202E, 0x1E2C40, 0x7F93B0, 0x2A3B55, 0xE6EDF7, 0xA5B4C8, 0x6FA8FF]),
+        light: palette([0xF5F7F9, 0xFFFFFF, 0xEBEEF2, 0x6D7682, 0xDCE0E5, 0x16191D, 0x535B66, 0x1257C4]),
+        dark: palette([0x121416, 0x191C1F, 0x23262B, 0x7F8894, 0x2D3137, 0xECEEF0, 0xA5ABB3, 0x6FA8FF]),
     },
     Definition {
         name: "green",
         label: "Green",
-        light: palette([0xF2F8F4, 0xFFFFFF, 0xE1F0E6, 0x5F7A69, 0xCBE2D3, 0x14241A, 0x46584C, 0x136B38]),
-        dark: palette([0x0F1913, 0x15231A, 0x1D3125, 0x7FA08B, 0x294535, 0xE6F2EA, 0xA3BBAC, 0x5FD08A]),
+        light: palette([0xF5F9F7, 0xFFFFFF, 0xEBF2EE, 0x6D8276, 0xDCE5E0, 0x161D19, 0x53665B, 0x136B38]),
+        dark: palette([0x121614, 0x191F1C, 0x232B26, 0x7F9488, 0x2D3731, 0xECF0EE, 0xA5B3AB, 0x5FD08A]),
     },
     Definition {
         name: "crimson",
         label: "Crimson",
-        light: palette([0xFBF4F5, 0xFFFFFF, 0xF5E3E6, 0x86656A, 0xEBCFD4, 0x2A1418, 0x5E464A, 0xA8112F]),
-        dark: palette([0x1C1113, 0x27171A, 0x352024, 0xB08A90, 0x4A2D33, 0xF7E8EA, 0xC9AAB0, 0xFF7A90]),
+        light: palette([0xF9F5F6, 0xFFFFFF, 0xF2EBEC, 0x826D70, 0xE5DCDD, 0x1D1617, 0x665356, 0xA8112F]),
+        dark: palette([0x161213, 0x1F191A, 0x2B2324, 0x947F82, 0x372D2F, 0xF0ECED, 0xB3A5A8, 0xFF7A90]),
     },
     Definition {
         name: "amber",
         label: "Amber",
-        light: palette([0xFBF7EF, 0xFFFFFF, 0xF4EAD3, 0x7D6C48, 0xE8DAB8, 0x261D0B, 0x5A4D33, 0x8A5200]),
-        dark: palette([0x1A150B, 0x241D10, 0x322916, 0xA8956A, 0x47391F, 0xF6EEDD, 0xC4B595, 0xF2B544]),
+        light: palette([0xF9F7F5, 0xFFFFFF, 0xF2EFEB, 0x827A6D, 0xE5E2DC, 0x1D1A16, 0x665F53, 0x8A5200]),
+        dark: palette([0x161512, 0x1F1D19, 0x2B2823, 0x948C7F, 0x37332D, 0xF0EEEC, 0xB3AEA5, 0xF2B544]),
     },
     Definition {
         name: "purple",
         label: "Purple",
-        light: palette([0xF7F4FC, 0xFFFFFF, 0xEBE3F8, 0x73658F, 0xDCD0F0, 0x1E1630, 0x504668, 0x6230C2]),
-        dark: palette([0x15111E, 0x1D182A, 0x29223B, 0x9A8CB8, 0x3A3053, 0xEEE9F8, 0xB5A9CF, 0xB79BFF]),
+        light: palette([0xF7F5F9, 0xFFFFFF, 0xEEEBF2, 0x756D82, 0xE0DCE5, 0x19161D, 0x5B5366, 0x6230C2]),
+        dark: palette([0x141216, 0x1B191F, 0x26232B, 0x877F94, 0x312D37, 0xEEECF0, 0xABA5B3, 0xB79BFF]),
     },
     Definition {
         name: "contrast",
@@ -270,14 +270,14 @@ const THEMES: [Definition; 7] = [
 ];
 
 const LIGHT_SEMANTIC: Semantic = Semantic {
-    critical: rgb(0xB0003A),
-    high: rgb(0x7A3000),
-    medium: rgb(0x636300),
-    low: rgb(0x1456B8),
-    info: rgb(0x525B66),
-    success: rgb(0x166534),
-    warning: rgb(0x7A4A00),
-    error: rgb(0xB0003A),
+    critical: rgb(0xC01439),
+    high: rgb(0x8E2E0B),
+    medium: rgb(0x7F600A),
+    low: rgb(0x1E5FC4),
+    info: rgb(0x59626E),
+    success: rgb(0x16713D),
+    warning: rgb(0x7F600A),
+    error: rgb(0xC01439),
 };
 
 const DARK_SEMANTIC: Semantic = Semantic {
@@ -363,7 +363,7 @@ pub fn resolve(options: &Options) -> Tokens {
     }
     let scale = if (80..=200).contains(&options.text_scale) { options.text_scale as f32 / 100.0 } else { 1.0 };
     let spacing = if options.density == "compact" {
-        Spacing { xs: 2.0, s: 4.0, m: 6.0, l: 10.0, xl: 16.0, row_height: 24.0 * scale }
+        Spacing { xs: 4.0, s: 4.0, m: 8.0, l: 12.0, xl: 16.0, row_height: 24.0 * scale }
     } else {
         Spacing { xs: 4.0, s: 8.0, m: 12.0, l: 16.0, xl: 24.0, row_height: 32.0 * scale }
     };
@@ -378,12 +378,12 @@ pub fn resolve(options: &Options) -> Tokens {
         semantic,
         spacing,
         type_scale: TypeScale {
-            caption: 11.0 * scale,
-            body: 13.0 * scale,
-            subheading: 15.0 * scale,
-            heading: 20.0 * scale,
+            caption: 12.0 * scale,
+            body: 14.0 * scale,
+            subheading: 16.0 * scale,
+            heading: 24.0 * scale,
         },
-        radius: if selected.name == "contrast" { 0.0 } else { 4.0 },
+        radius: if selected.name == "contrast" { 0.0 } else { 8.0 },
         motion: !options.reduced_motion,
         warnings,
     }
@@ -650,8 +650,8 @@ mod tests {
         let comfortable =
             resolve(&Options { density: "comfortable".to_string(), text_scale: 100, ..Options::default() });
         assert!(compact.spacing.m < comfortable.spacing.m);
-        assert!((compact.type_scale.body - 19.5).abs() < 0.001);
-        assert!((resolve(&Options { text_scale: 999, ..Options::default() }).type_scale.body - 13.0).abs() < 0.001);
+        assert!((compact.type_scale.body - 21.0).abs() < 0.001);
+        assert!((resolve(&Options { text_scale: 999, ..Options::default() }).type_scale.body - 14.0).abs() < 0.001);
         let unknown = resolve(&Options { name: "neon".to_string(), ..Options::default() });
         assert_eq!(unknown.name, "slate");
         assert_eq!(unknown.warnings.len(), 1);

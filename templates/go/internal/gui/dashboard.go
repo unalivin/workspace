@@ -53,8 +53,7 @@ type dashboard struct {
 	nav        []app.NavItem
 	current    string
 	pages      map[string]page
-	buttons    map[string]*widget.Button
-	hinted     map[string]*hintButton
+	buttons    map[string]*navRow
 	stack      *fyne.Container
 	sidebar    *fyne.Container
 	title      *widget.Label
@@ -93,7 +92,7 @@ func newDashboard(ctx context.Context, fyneApp fyne.App, window fyne.Window, opt
 	if options.Getenv == nil {
 		options.Getenv = func(string) string { return "" }
 	}
-	d := &dashboard{ctx: ctx, options: options, app: options.App, fyneApp: fyneApp, window: window, nav: app.Navigation(), pages: map[string]page{}, buttons: map[string]*widget.Button{}, hinted: map[string]*hintButton{}, stop: make(chan struct{}), finished: finished}
+	d := &dashboard{ctx: ctx, options: options, app: options.App, fyneApp: fyneApp, window: window, nav: app.Navigation(), pages: map[string]page{}, buttons: map[string]*navRow{}, stop: make(chan struct{}), finished: finished}
 	d.restyle()
 	d.collapse = d.values[settings.KeySidebarCollapsed].Bool()
 	d.build()
@@ -247,32 +246,28 @@ func (d *dashboard) build() {
 	for _, item := range d.nav {
 		id := item.ID
 		label := item.Label
-		button := newHintButton(d, label, icon(item.Icon, d.tokens.Palette.Text), func() string { return d.navigationHint(id, label) }, func() { d.show(id) })
-		button.Alignment = widget.ButtonAlignLeading
-		button.Importance = widget.LowImportance
-		d.buttons[id] = &button.Button
-		d.hinted[id] = button
+		row := newNavRow(d, label, item.Icon, func() string { return d.navigationHint(id, label) }, func() { d.show(id) })
+		d.buttons[id] = row
 		if item.Bottom {
-			bottom.Add(button)
+			bottom.Add(row)
 		} else {
-			top.Add(button)
+			top.Add(row)
 		}
 	}
-	toggle := newHintButton(d, "", icon("sidebar", d.tokens.Palette.TextMuted), func() string {
+	toggle := newNavRow(d, "", "sidebar", func() string {
 		if d.collapse {
 			return "Expand the sidebar"
 		}
 		return "Collapse the sidebar to icons"
 	}, d.toggleSidebar)
-	toggle.Importance = widget.LowImportance
-	toggle.Alignment = widget.ButtonAlignLeading
-	d.buttons["sidebar"] = &toggle.Button
-	d.hinted["sidebar"] = toggle
-	bottom.Add(toggle)
-	d.sidebar = container.NewBorder(top, bottom, nil, nil)
-	d.header = container.NewBorder(nil, widget.NewSeparator(), nil, nil, container.NewPadded(d.buildTopBar()))
-	d.body = container.NewBorder(d.header, d.noticeBg, nil, nil, container.NewPadded(d.stack))
-	d.root = container.NewBorder(nil, nil, container.NewBorder(nil, nil, nil, widget.NewSeparator(), container.NewPadded(d.sidebar)), nil, d.body)
+	toggle.quiet = true
+	d.buttons["sidebar"] = toggle
+	bottom.Add(container.NewHBox(toggle))
+	d.sidebar = container.New(&railLayout{board: d}, container.NewBorder(top, bottom, nil, nil))
+	side := func() float32 { return d.tokens.Spacing.XL }
+	d.header = container.NewBorder(nil, widget.NewSeparator(), nil, nil, container.New(&marginLayout{side: side, edge: func() float32 { return d.tokens.Spacing.M }}, d.buildTopBar()))
+	d.body = container.NewBorder(d.header, d.noticeBg, nil, nil, container.New(&marginLayout{side: side, edge: func() float32 { return d.tokens.Spacing.L }}, d.stack))
+	d.root = container.NewBorder(nil, nil, container.NewBorder(nil, nil, nil, widget.NewSeparator(), d.sidebar), nil, d.body)
 	d.window.SetContent(container.NewStack(d.root, d.buildHints()))
 	d.window.SetMainMenu(d.menu())
 	d.shortcuts()
@@ -280,33 +275,22 @@ func (d *dashboard) build() {
 }
 
 func (d *dashboard) tintNavigation() {
-	for _, item := range d.nav {
-		if button, found := d.buttons[item.ID]; found {
-			tint := d.tokens.Palette.Text
-			if item.ID == d.current {
-				tint = d.tokens.OnAccent
-			}
-			button.SetIcon(icon(item.Icon, tint))
-		}
-	}
-	if toggle, found := d.buttons["sidebar"]; found {
-		toggle.SetIcon(icon("sidebar", d.tokens.Palette.TextMuted))
+	for _, row := range d.buttons {
+		row.Refresh()
 	}
 }
 
 func (d *dashboard) labelNavigation() {
 	changed := false
 	for _, item := range d.nav {
-		button := d.buttons[item.ID]
-		label := item.Label
+		label, count := item.Label, ""
 		if item.ID == app.NavNotifications && d.overview.UnreadNotifications > 0 {
-			label += " (" + strconv.Itoa(d.overview.UnreadNotifications) + ")"
+			count = strconv.Itoa(d.overview.UnreadNotifications)
 		}
 		if d.collapse {
-			label = ""
+			label, count = "", ""
 		}
-		if button.Text != label {
-			button.SetText(label)
+		if d.buttons[item.ID].setText(label, count) {
 			changed = true
 		}
 	}
@@ -316,7 +300,7 @@ func (d *dashboard) labelNavigation() {
 	d.refreshTopBar()
 }
 
-func (d *dashboard) sidebarButton(id string) *hintButton { return d.hinted[id] }
+func (d *dashboard) sidebarButton(id string) *navRow { return d.buttons[id] }
 
 func (d *dashboard) navigationHint(id, label string) string {
 	if !d.collapse {
@@ -342,16 +326,13 @@ func (d *dashboard) toggleSidebar() {
 func (d *dashboard) show(id string) {
 	for _, item := range d.nav {
 		object := d.pages[item.ID].object()
-		button := d.buttons[item.ID]
 		if item.ID == id {
 			object.Show()
-			button.Importance = widget.HighImportance
 			d.title.SetText(item.Label)
 		} else {
 			object.Hide()
-			button.Importance = widget.LowImportance
 		}
-		button.Refresh()
+		d.buttons[item.ID].setSelected(item.ID == id)
 	}
 	d.current = id
 	d.tintNavigation()
@@ -511,8 +492,11 @@ func (d *dashboard) loadDemo() {
 type overviewPage struct {
 	d       *dashboard
 	root    fyne.CanvasObject
-	numbers map[string]*widget.Label
+	numbers map[string]*inked
 	content *fyne.Container
+	charts  *fyne.Container
+	ledger  *ledger
+	scale   *widget.Label
 	table   *fyne.Container
 	empty   *widget.Label
 	demo    *widget.Label
@@ -520,21 +504,31 @@ type overviewPage struct {
 }
 
 func newOverviewPage(d *dashboard) *overviewPage {
-	p := &overviewPage{d: d, numbers: map[string]*widget.Label{}}
-	cards := container.NewGridWithColumns(4)
-	for _, item := range [][3]string{{"open", "Open records", "not done and enabled"}, {"urgent", "Urgent records", "open with high or critical severity"}, {"unread", "Unread notifications", "see Notifications"}, {"disabled", "Disabled records", "kept but not counted"}} {
-		number := widget.NewLabel("0")
-		number.TextStyle = fyne.TextStyle{Bold: true}
-		number.SizeName = fynetheme.SizeNameHeadingText
+	p := &overviewPage{d: d, numbers: map[string]*inked{}}
+	gap := func() float32 { return d.tokens.Spacing.XL }
+	figures := container.New(&shareLayout{shares: []float32{3, 2, 2, 2}, gap: gap})
+	for index, item := range [][3]string{{"open", "Open records", "not done and enabled"}, {"urgent", "Urgent records", "open with high or critical severity"}, {"unread", "Unread notifications", "see Notifications"}, {"disabled", "Disabled records", "kept but not counted"}} {
+		tint := toneText
+		if index == 0 {
+			tint = toneAccent
+		}
+		number := newInked(d, "0", stepFigure, tint, fyne.TextStyle{Bold: true, Monospace: false})
 		p.numbers[item[0]] = number
-		cards.Add(panel(container.NewVBox(widget.NewLabel(item[1]), number, muted(item[2]))))
+		figures.Add(container.NewVBox(caption(item[1]), container.New(&marginLayout{side: func() float32 { return d.tokens.Spacing.XS }, edge: func() float32 { return 0 }}, number), caption(item[2])))
 	}
+	p.ledger = newLedger(d)
+	p.scale = caption(ledgerCaption(p.ledger.unit))
+	p.ledger.changed = func() { p.scale.SetText(ledgerCaption(p.ledger.unit)) }
 	p.table = container.NewVBox()
+	p.charts = container.New(&shareLayout{shares: []float32{5, 3}, gap: func() float32 { return d.tokens.Spacing.L }},
+		panel(container.NewBorder(heading("Enabled records by severity and status"), p.scale, nil, nil, container.NewPadded(p.ledger))),
+		panel(container.NewBorder(heading("The same as a table"), nil, nil, nil, p.table)))
 	p.empty = wrapped("No records yet. Open Records and choose Add record, or load labeled demo data to look around.")
 	p.demo = muted("")
+	p.demo.Wrapping = fyne.TextWrapWord
 	p.load = widget.NewButtonWithIcon("Load demo data", glyph("download"), d.loadDemo)
-	p.content = container.NewVBox(heading("What needs attention"), cards, heading("Enabled records by status and severity"), p.empty, p.table, p.demo, container.NewHBox(p.load))
-	p.root = container.NewVScroll(p.content)
+	p.content = container.New(&pileLayout{gap: func() float32 { return d.tokens.Spacing.L }}, panel(figures), p.empty, p.charts, p.demo, container.NewHBox(p.load))
+	p.root = scrolled(p.content)
 	return p
 }
 
@@ -546,12 +540,18 @@ func (p *overviewPage) refresh() {
 	p.numbers["urgent"].SetText(strconv.Itoa(o.Urgent))
 	p.numbers["unread"].SetText(strconv.Itoa(o.UnreadNotifications))
 	p.numbers["disabled"].SetText(strconv.Itoa(o.Disabled))
-	layout := &columns{weights: []float32{1, 1, 1}, fixed: []float32{120, 120, 60}}
+	for _, number := range p.numbers {
+		number.Refresh()
+	}
+	layout := &columns{weights: []float32{1, 1, 0}, fixed: []float32{112, 96, 72}}
 	p.table.RemoveAll()
 	if o.Total() == 0 {
 		p.empty.Show()
+		p.charts.Hide()
 	} else {
 		p.empty.Hide()
+		p.charts.Show()
+		p.ledger.setRows(o.Breakdown)
 		p.table.Add(headerRow(layout, "Status", "Severity", "Records"))
 		for _, row := range o.Breakdown {
 			status, _, _ := iconLabel(icon(statusIcon(row.Status), p.d.tokens.Palette.TextMuted), records.StatusLabel(row.Status))

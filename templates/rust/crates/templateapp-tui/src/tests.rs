@@ -4,6 +4,7 @@ use std::fs;
 use std::rc::Rc;
 
 use app_core::clock::{Clock, Zone};
+use app_core::meta;
 use app_core::notifier::Autostart;
 use app_core::platform::{Env, Os};
 use app_core::records::{DEMO_RECORDS, Input, Status};

@@ -163,8 +163,30 @@ func TestDensityTextScaleAndMotionTokens(t *testing.T) {
 		t.Fatal("reduced motion not reflected")
 	}
 	contrast := Resolve(Options{Name: "contrast"})
-	if contrast.Radius != 0 || contrast.Elevation != 0 {
+	if contrast.Radius != (Radii{}) || contrast.Elevation != 0 {
 		t.Fatal("high contrast theme must use flat, square components")
+	}
+}
+
+func TestSpacingStaysOnTheFourPixelGridWithOneRowHeight(t *testing.T) {
+	for _, density := range []string{"comfortable", "compact"} {
+		tokens := Resolve(Options{Density: density, TextScale: 100})
+		s := tokens.Spacing
+		for name, value := range map[string]float32{"XS": s.XS, "S": s.S, "M": s.M, "L": s.L, "XL": s.XL, "XXL": s.XXL, "RowHeight": s.RowHeight, "RowGap": s.RowGap} {
+			if value <= 0 || float32(int(value)) != value || int(value)%4 != 0 {
+				t.Errorf("%s %s = %v is not a positive multiple of 4", density, name, value)
+			}
+		}
+		if s.XS > s.S || s.S > s.M || s.M > s.L || s.L > s.XL || s.XL > s.XXL {
+			t.Errorf("%s spacing scale is not ascending: %+v", density, s)
+		}
+		scale := tokens.Type
+		if scale.Caption >= scale.Body || scale.Body >= scale.Subheading || scale.Subheading >= scale.Heading || scale.Heading >= scale.Figure {
+			t.Errorf("%s type scale is not ascending: %+v", density, scale)
+		}
+		if tokens.Radius.Chip >= tokens.Radius.Control || tokens.Radius.Control >= tokens.Radius.Card {
+			t.Errorf("%s radii are not ascending: %+v", density, tokens.Radius)
+		}
 	}
 }
 

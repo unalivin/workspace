@@ -12,7 +12,8 @@ fn main() {
     let Some(copyright) = license.lines().find(|line| line.starts_with("Copyright (c) ")) else {
         panic!("the license file has no copyright line");
     };
-    let holder = copyright.trim_start_matches("Copyright (c) ").split_once(' ').map(|(_, holder)| holder).unwrap_or_default();
+    let holder =
+        copyright.trim_start_matches("Copyright (c) ").split_once(' ').map(|(_, holder)| holder).unwrap_or_default();
     if holder.is_empty() {
         panic!("the copyright line of the license file names no holder");
     }

@@ -151,7 +151,7 @@ func newSettingsPage(d *dashboard) *settingsPage {
 		content.Add(heading(name))
 		content.Add(panel(groups[name]))
 	}
-	p.root = container.NewVScroll(content)
+	p.root = scrolled(content)
 	return p
 }
 

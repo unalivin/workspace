@@ -8,10 +8,14 @@ All notable changes to CertWatch are recorded here. The format follows [Keep a C
 
 - Publisher on the About screen, in the About tab of the terminal UI and in `certwatch about`, in the first paragraph of the notices and in `README.txt` of the archives.
 - The Windows executable carries a version resource with the company name, the copyright line of `LICENSE` and the product name; the packaging script reads the values back and stops when they differ. The macOS bundle carries the copyright text.
+- The medium weight of Noto Sans is embedded for emphasized text; its license is in the notices.
 - `.github/PULL_REQUEST_TEMPLATE.md` with the commit scope, test commands, platforms and rules of this project.
 
 ### Changed
 
+- The dashboard has a new look: a grey ramp shared by all themes, a four pixel spacing grid, two weights of one text family, navigation rows with a marker for the current page and counts as quiet figures.
+- The Overview shows the tracked certificates as a tally by time left, with the endpoint checks beside it, instead of eight equal cards.
+- Table columns shrink together in a narrow window instead of being cut off.
 - Windows packaging uses `go build` with a version resource written by goversioninfo. The toolkit's packager is still used on Linux and macOS.
 
 ### Fixed

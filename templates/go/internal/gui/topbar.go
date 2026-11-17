@@ -94,7 +94,7 @@ func (d *dashboard) hideHint() {
 
 func (d *dashboard) buildTopBar() fyne.CanvasObject {
 	d.search = widget.NewEntry()
-	d.search.SetPlaceHolder("Search records and the usage guide, then press Enter")
+	d.search.SetPlaceHolder("Search records and the usage guide")
 	d.search.OnSubmitted = d.searchEverywhere
 	d.chip = widget.NewButtonWithIcon("Demo data", icon("info", d.tokens.Semantic.Info), func() {
 		d.show(app.NavSettings)

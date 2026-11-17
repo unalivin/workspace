@@ -189,7 +189,7 @@ func newRecordsPage(d *dashboard) *recordsPage {
 	copyButton := widget.NewButtonWithIcon("Copy", glyph("copy"), p.copy)
 	closeButton := widget.NewButtonWithIcon("", glyph("x"), p.unselect)
 	closeButton.Importance = widget.LowImportance
-	p.detail = container.NewBorder(container.NewBorder(nil, nil, nil, closeButton, p.name), container.NewHBox(edit, p.toggle, copyButton, removeButton), nil, nil, container.NewVScroll(container.NewVBox(p.facts, widget.NewSeparator(), p.note)))
+	p.detail = container.NewBorder(container.NewBorder(nil, nil, nil, closeButton, p.name), container.NewGridWithColumns(2, edit, copyButton, p.toggle, removeButton), nil, nil, container.NewVScroll(container.NewVBox(p.facts, widget.NewSeparator(), p.note)))
 	p.detail.Hide()
 	var titles []string
 	for _, column := range settings.RecordColumns {
@@ -379,7 +379,7 @@ func (p *recordsPage) showDetail() {
 	if !p.detail.Visible() {
 		p.detail.Show()
 		split := container.NewHSplit(p.table, p.side)
-		split.SetOffset(0.64)
+		split.SetOffset(0.62)
 		p.body.Objects = []fyne.CanvasObject{split}
 		p.body.Refresh()
 	}

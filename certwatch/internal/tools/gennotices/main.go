@@ -13,6 +13,8 @@ import (
 	"github.com/unalivin/certwatch/internal/meta"
 )
 
+const fontLicense = "internal/gui/font/OFL.txt"
+
 const bundled = `## Components bundled inside dependencies
 
 Some dependencies carry further components that end up in the binary:
@@ -21,6 +23,7 @@ Some dependencies carry further components that end up in the binary:
 - Widget glyphs shipped by Fyne (check boxes, drop-down arrows, scroll bars). The Fyne module ships them without a separate license file, so they are listed here under the license of the Fyne module itself; the module does not state where they came from.
 - The GLFW C library (zlib license), compiled in through ` + "`github.com/go-gl/glfw`" + `. Its license file is reproduced below.
 - The SQLite library (public domain), compiled in through ` + "`github.com/mattn/go-sqlite3`" + `.
+- The medium weight of Noto Sans 2.015 (SIL Open Font License 1.1), which the application itself embeds from ` + "`internal/gui/font`" + ` for emphasized text. Its license file is reproduced at the end of this section.
 
 The application's own icons (navigation, status, severity and action icons, and the application icon) are original drawings released under the application's license.
 
@@ -79,7 +82,11 @@ func run(output, tags string, check bool) error {
 	if len(problems) > 0 {
 		return fmt.Errorf("license review failed:\n  %s", strings.Join(problems, "\n  "))
 	}
-	rendered := licenses.Render(meta.AppName, meta.License, meta.Publisher, notices, bundled)
+	font, err := os.ReadFile(fontLicense)
+	if err != nil {
+		return fmt.Errorf("the license of the embedded font is missing: %v", err)
+	}
+	rendered := licenses.Render(meta.AppName, meta.License, meta.Publisher, notices, bundled+licenses.Quote(fontLicense, string(font))+"\n")
 	if check {
 		current, err := os.ReadFile(output)
 		if err != nil {

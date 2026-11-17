@@ -104,7 +104,25 @@ Certificates, Endpoints, Expiry Timeline, Chains, Configuration and Reports are 
 
 ## Theming
 
-A theme is a value of `theme.Tokens`: palette, semantic and severity colors, spacing, type scale, radius. `internal/gui/skin.go` maps the tokens onto the toolkit so no toolkit default color, size or icon remains, and `internal/theme` maps the same tokens to ANSI colors for the terminal UI. Icons are one set of original drawings defined in `internal/gui/skin.go`.
+A theme is a value of `theme.Tokens`: palette, semantic and severity colors, spacing, type scale, corner radii. `internal/gui/skin.go` maps the tokens onto the toolkit so no toolkit default color, size or icon remains, and `internal/theme` maps the same tokens to ANSI colors for the terminal UI. Icons are one set of original drawings defined in `internal/gui/skin.go`.
+
+The interface follows one direction, and a change to it should fit these five lines:
+
+- Product: a desktop monitor for TLS certificates and the endpoints that present them, used by one operator.
+- Character: watchful, exact, quiet.
+- World: a duty log of deadlines. Surfaces are cool grey paper, text is near-black ink, and one cobalt accent marks the current place and the main action.
+- Where color goes: the tally of tracked certificates by time left on the Overview, and the time-left bars of the expiry timeline. Navigation, top bar and settings stay grey.
+- Signature: the tally square. One square stands for a fixed number of certificates, in the color of its expiry period, next to the count as a figure.
+
+The rules that follow from it:
+
+- Spacing sits on a four pixel grid: 4, 8, 12, 16, 24, 32. Rows are 32 high, 24 in compact density. Text sizes are 12, 14, 16, 24 and 28, multiplied by the text size setting.
+- One text family in two weights, regular and medium, plus a monospaced face for counts.
+- Corner radii are 4 for small marks, 8 for controls and 12 for panels. The high contrast theme has square corners.
+- The seven themes share one grey ramp. A named theme moves the hue of the greys slightly and sets the accent; severity colors never change with the theme.
+- Severity and status are always an icon and a word. Color is an addition, never the only carrier.
+- The Overview draws only stored data. The tally reads the same counts as the figures beside it, and every row opens the list it counts.
+- Text and icons meet WCAG AA contrast on every surface of every theme; `internal/theme` tests this for all themes, both modes and custom accents.
 
 ## Builds
 

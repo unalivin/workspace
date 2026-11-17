@@ -175,6 +175,10 @@ func fence(text string) string {
 	return fence + "text\n" + strings.TrimRight(text, "\n") + "\n" + fence + "\n"
 }
 
+func Quote(name, text string) string {
+	return "`" + name + "`\n\n" + fence(Redact(text))
+}
+
 func Render(appName, appLicense, holder string, notices []Notice, extra string) string {
 	sort.Slice(notices, func(i, j int) bool { return notices[i].Module.Path < notices[j].Module.Path })
 	var builder strings.Builder

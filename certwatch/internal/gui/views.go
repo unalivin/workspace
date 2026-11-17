@@ -9,7 +9,6 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
-	fynetheme "fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/unalivin/certwatch/internal/app"
@@ -674,13 +673,18 @@ type tileCard struct {
 	number *widget.Label
 	state  *widget.Icon
 	open   *widget.Button
+	marks  *tally
 }
 
 type overviewPage struct {
 	d       *dashboard
 	root    fyne.CanvasObject
 	tiles   map[string]*tileCard
-	cards   *fyne.Container
+	expiry  *fyne.Container
+	checks  *fyne.Container
+	charts  *fyne.Container
+	scale   *tallyScale
+	note    *widget.Label
 	summary *widget.Label
 	content *fyne.Container
 	soonest *fyne.Container
@@ -691,12 +695,29 @@ type overviewPage struct {
 }
 
 func newOverviewPage(d *dashboard) *overviewPage {
-	p := &overviewPage{d: d, tiles: map[string]*tileCard{}}
-	p.cards = container.NewGridWithColumns(4)
+	p := &overviewPage{d: d, tiles: map[string]*tileCard{}, scale: &tallyScale{unit: 1}}
+	gap := func() float32 { return d.tokens.Spacing.L }
+	p.expiry = container.NewVBox()
+	p.checks = container.NewVBox()
+	p.note = caption(horizonCaption(p.scale.unit))
+	p.note.Truncation = fyne.TextTruncateOff
+	p.note.Wrapping = fyne.TextWrapWord
+	p.scale.changed = func() {
+		p.note.SetText(horizonCaption(p.scale.unit))
+		for _, card := range p.tiles {
+			if card.marks != nil {
+				card.marks.Refresh()
+			}
+		}
+	}
+	p.charts = container.New(&shareLayout{shares: []float32{3, 2}, gap: gap},
+		panel(container.NewBorder(heading("Tracked certificates by time left"), p.note, nil, nil, p.expiry)),
+		panel(container.NewBorder(heading("Endpoint checks"), nil, nil, nil, p.checks)))
 	p.summary = muted("")
+	p.summary.Wrapping = fyne.TextWrapWord
 	p.soonest = container.NewVBox()
 	p.alerts = container.NewVBox()
-	p.tables = container.NewVBox(heading("Soonest to expire"), p.soonest, heading("Recent alerts"), p.alerts)
+	p.tables = container.New(&pileLayout{gap: gap}, panel(container.NewVBox(heading("Soonest to expire"), p.soonest)), panel(container.NewVBox(heading("Recent alerts"), p.alerts)))
 	add := widget.NewButtonWithIcon("Add endpoint", glyph("plus"), func() {
 		d.show(app.ViewEndpoints)
 		d.beginNamed(app.ViewEndpoints, "add")
@@ -706,40 +727,61 @@ func newOverviewPage(d *dashboard) *overviewPage {
 		wrapped("Nothing is monitored yet. Add a host you are authorized to test, import a PEM file under Certificates, or load labeled demo data to look around. Demo hosts are never contacted."),
 		container.NewHBox(add, widget.NewButtonWithIcon("Load demo data", glyph("download"), d.loadDemo)))
 	p.demo = muted("Demo data is loaded. Demo hosts end in .demo.invalid and are never contacted. Remove them in Settings, Data, Remove demo data.")
-	p.content = container.NewVBox(heading("What needs attention"), p.cards, p.summary, p.empty, p.demo, p.tables)
-	p.root = container.NewVScroll(p.content)
+	p.demo.Wrapping = fyne.TextWrapWord
+	p.content = container.New(&pileLayout{gap: gap}, p.empty, p.charts, p.summary, p.demo, p.tables)
+	p.root = scrolled(p.content)
 	return p
 }
 
 func (p *overviewPage) object() fyne.CanvasObject { return p.root }
 
+func (p *overviewPage) card(tile app.Tile) *tileCard {
+	if card, found := p.tiles[tile.ID]; found {
+		return card
+	}
+	number := widget.NewLabel("0")
+	number.TextStyle = fyne.TextStyle{Monospace: true}
+	number.Alignment = fyne.TextAlignTrailing
+	card := &tileCard{number: number, state: widget.NewIcon(p.d.severityIcon(""))}
+	view, filter := tile.View, tile.Filter
+	card.open = widget.NewButtonWithIcon("Show", glyph("arrow-right"), func() { p.d.openList(view, filter) })
+	card.open.Importance = widget.LowImportance
+	name := container.NewBorder(nil, nil, card.state, nil, cell(tile.Label))
+	if tile.View == app.ViewCertificates {
+		card.marks = newTally(p.d, p.scale)
+		p.expiry.Add(container.New(&columns{weights: []float32{0, 1, 0, 0}, fixed: []float32{184, 88, 40, 88}}, name, card.marks, number, card.open))
+	} else {
+		p.checks.Add(container.New(&columns{weights: []float32{1, 0, 0}, fixed: []float32{168, 32, 80}}, name, number, card.open))
+	}
+	p.tiles[tile.ID] = card
+	return card
+}
+
 func (p *overviewPage) refresh() {
 	o := p.d.overview
+	p.scale.largest = max(o.Counts.Expired, o.Counts.Within90)
 	for _, tile := range o.Tiles {
-		card, found := p.tiles[tile.ID]
-		if !found {
-			number := widget.NewLabel("0")
-			number.TextStyle = fyne.TextStyle{Bold: true}
-			number.SizeName = fynetheme.SizeNameHeadingText
-			card = &tileCard{number: number, state: widget.NewIcon(p.d.severityIcon(""))}
-			view, filter := tile.View, tile.Filter
-			card.open = widget.NewButtonWithIcon("Show", glyph("arrow-right"), func() { p.d.openList(view, filter) })
-			card.open.Importance = widget.LowImportance
-			p.tiles[tile.ID] = card
-			p.cards.Add(panel(container.NewVBox(container.NewBorder(nil, nil, card.state, nil, widget.NewLabel(tile.Label)), container.NewBorder(nil, nil, card.number, card.open))))
-		}
+		card := p.card(tile)
 		card.number.SetText(fmt.Sprintf("%d", tile.Value))
 		card.state.SetResource(p.d.severityIcon(tile.Severity))
+		if card.marks != nil {
+			card.marks.setParts(horizonParts(tile.ID, o.Counts))
+		}
 	}
 	p.summary.SetText(fmt.Sprintf("%s · %s, %d disabled · %s", words.Count(o.Counts.Certificates, "tracked certificate", "tracked certificates"), words.Count(o.Counts.Endpoints, "endpoint", "endpoints"), o.Counts.DisabledEndpoints, words.Count(o.Counts.UnreadAlerts, "unread alert", "unread alerts")))
 	p.soonest.Objects = []fyne.CanvasObject{p.d.staticTable(o.Soonest)}
 	p.alerts.Objects = []fyne.CanvasObject{p.d.staticTable(o.Alerts)}
+	for _, part := range []fyne.CanvasObject{p.charts, p.summary, p.tables} {
+		if o.Empty {
+			part.Hide()
+		} else {
+			part.Show()
+		}
+	}
 	if o.Empty {
 		p.empty.Show()
-		p.tables.Hide()
 	} else {
 		p.empty.Hide()
-		p.tables.Show()
 	}
 	if o.Demo {
 		p.demo.Show()

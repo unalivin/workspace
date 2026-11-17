@@ -2,8 +2,8 @@ use app_core::meta;
 use app_core::records::DEMO_RECORDS;
 use app_core::service::{NAV_ABOUT, NAV_NOTIFICATIONS, NAV_OVERVIEW, NAV_RECORDS, NAV_SETTINGS};
 use egui::{
-    Align, Button, CentralPanel, Context, Frame, Image, Key, Label, Layout, Margin, MenuBar, Modifiers, Panel,
-    RichText, ScrollArea, TextEdit, Ui, vec2,
+    Align, Button, CentralPanel, Context, Frame, Image, Key, Label, Layout, Margin, MenuBar, Modifiers, Panel, Rect,
+    RichText, ScrollArea, TextEdit, Ui, pos2, vec2,
 };
 
 use crate::forms::{Verdict, muted};
@@ -12,7 +12,8 @@ use crate::skin::{self, ICON_SCALE, alpha, color, severity_icon, status_icon, su
 use crate::table::{self, Cell, fixed, flexible};
 
 const PAGE_KEYS: [Key; 5] = [Key::Num1, Key::Num2, Key::Num3, Key::Num4, Key::Num5];
-const SIDEBAR_WIDTH: f32 = 196.0;
+const SIDEBAR_WIDTH: f32 = 224.0;
+const NAV_MARKER: f32 = 4.0;
 const FLASH_SECONDS: f32 = 0.6;
 pub(crate) const SEARCH_HINT: &str = "Search records and the usage guide, then press Enter";
 pub(crate) const DEMO_NOTE: &str =
@@ -256,19 +257,29 @@ impl Dashboard<'_> {
         let nav = self.nav;
         let item = &nav[index];
         let current = index == self.page;
-        let tint = if current { self.tokens.on_accent } else { self.tokens.palette.text };
-        let image = self.icon(ui.ctx(), nav_icon(item.id), tint);
+        let tint = self.tokens.palette.text;
+        let image = self.icon(ui.ctx(), nav_icon(item.id), self.tokens.palette.text_muted);
         let label = self.nav_label(item);
         let button = if self.collapsed {
             Button::image(image)
         } else {
             Button::image_and_text(image, RichText::new(label.clone()).color(color(tint)))
         };
-        let button =
-            if current { button.fill(color(self.tokens.palette.accent)) } else { button.frame_when_inactive(false) };
+        let button = if current {
+            button.fill(color(self.tokens.palette.surface_alt))
+        } else {
+            button.frame_when_inactive(false)
+        };
         let button = button.min_size(vec2(ui.available_width(), self.tokens.spacing.row_height));
         let hint = if self.collapsed { format!("{label}: {}", item.hint) } else { item.hint.to_string() };
-        if ui.add(button).on_hover_text(hint).clicked() {
+        let shown = ui.add(button);
+        if current {
+            let inset = self.tokens.spacing.m / 2.0;
+            let top = pos2(shown.rect.left() - self.tokens.spacing.s + 2.0, shown.rect.top() + inset);
+            let marker = Rect::from_min_size(top, vec2(NAV_MARKER, shown.rect.height() - 2.0 * inset));
+            ui.painter().rect_filled(marker, NAV_MARKER / 2.0, color(self.tokens.palette.accent));
+        }
+        if shown.on_hover_text(hint).clicked() {
             self.page = index;
         }
     }
@@ -281,7 +292,7 @@ impl Dashboard<'_> {
             SIDEBAR_WIDTH
         };
         let frame =
-            Frame::new().fill(color(self.tokens.palette.surface)).inner_margin(Margin::same(gaps.s.round() as i8));
+            Frame::new().fill(color(self.tokens.palette.background)).inner_margin(Margin::same(gaps.s.round() as i8));
         Panel::left("sidebar").frame(frame).resizable(false).exact_size(width).show(ui, |ui| {
             let nav = self.nav;
             ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {

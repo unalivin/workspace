@@ -343,7 +343,7 @@ func TestAppearanceFollowsSettingsAndOverrides(t *testing.T) {
 		}
 	}
 	tokens, _ = opened.Appearance(ctx, true)
-	if tokens.Name != "contrast" || tokens.Dark || tokens.Motion || tokens.Radius != 0 || tokens.Type.Body != 19.5 || tokens.Spacing.RowHeight != 36 {
+	if tokens.Name != "contrast" || tokens.Dark || tokens.Motion || tokens.Radius != (theme.Radii{}) || tokens.Type.Body != 21 || tokens.Spacing.RowHeight != 36 {
 		t.Fatalf("stored settings not applied: %+v", tokens)
 	}
 	if len(tokens.Warnings) != 1 || !strings.Contains(tokens.Warnings[0], "adjusted") {

@@ -163,12 +163,17 @@ func (s Semantic) Severity(level Severity) Color {
 }
 
 type Spacing struct {
-	XS, S, M, L, XL float32
-	RowHeight       float32
+	XS, S, M, L, XL, XXL float32
+	RowHeight            float32
+	RowGap               float32
 }
 
 type TypeScale struct {
-	Caption, Body, Subheading, Heading float32
+	Caption, Body, Subheading, Heading, Figure float32
+}
+
+type Radii struct {
+	Chip, Control, Card float32
 }
 
 type Tokens struct {
@@ -182,7 +187,7 @@ type Tokens struct {
 	Semantic  Semantic
 	Spacing   Spacing
 	Type      TypeScale
-	Radius    float32
+	Radius    Radii
 	Elevation float32
 	Motion    bool
 	Warnings  []string
@@ -201,30 +206,30 @@ func palette(background, surface, alt, border, divider, text, muted, accent stri
 
 var themes = []definition{
 	{"slate", "Neutral slate",
-		palette("#F4F5F7", "#FFFFFF", "#E9ECF0", "#6B7480", "#D5DAE1", "#1B1F24", "#4F5965", "#3D4C5E"),
-		palette("#14171B", "#1C2026", "#262B33", "#8894A3", "#343B45", "#E8EBEF", "#A9B3C0", "#9FB4CC")},
+		palette("#F6F7F8", "#FFFFFF", "#ECEEF1", "#6E7681", "#DDE0E4", "#16191D", "#535B66", "#2459C9"),
+		palette("#121416", "#191C1F", "#23272B", "#7F8894", "#2D3237", "#ECEEF0", "#A3ABB5", "#84ADFF")},
 	{"blue", "Blue",
-		palette("#F2F6FC", "#FFFFFF", "#E3ECF9", "#64758F", "#CFDCEF", "#14202E", "#475569", "#1257C4"),
-		palette("#0F1620", "#16202E", "#1E2C40", "#7F93B0", "#2A3B55", "#E6EDF7", "#A5B4C8", "#6FA8FF")},
+		palette("#F5F7F9", "#FFFFFF", "#EBEEF2", "#6D7682", "#DCE0E5", "#16191D", "#535B66", "#1257C4"),
+		palette("#121416", "#191C1F", "#23262B", "#7F8894", "#2D3137", "#ECEEF0", "#A5ABB3", "#6FA8FF")},
 	{"green", "Green",
-		palette("#F2F8F4", "#FFFFFF", "#E1F0E6", "#5F7A69", "#CBE2D3", "#14241A", "#46584C", "#136B38"),
-		palette("#0F1913", "#15231A", "#1D3125", "#7FA08B", "#294535", "#E6F2EA", "#A3BBAC", "#5FD08A")},
+		palette("#F5F9F7", "#FFFFFF", "#EBF2EE", "#6D8276", "#DCE5E0", "#161D19", "#53665B", "#136B38"),
+		palette("#121614", "#191F1C", "#232B26", "#7F9488", "#2D3731", "#ECF0EE", "#A5B3AB", "#5FD08A")},
 	{"crimson", "Crimson",
-		palette("#FBF4F5", "#FFFFFF", "#F5E3E6", "#86656A", "#EBCFD4", "#2A1418", "#5E464A", "#A8112F"),
-		palette("#1C1113", "#27171A", "#352024", "#B08A90", "#4A2D33", "#F7E8EA", "#C9AAB0", "#FF7A90")},
+		palette("#F9F5F6", "#FFFFFF", "#F2EBEC", "#826D70", "#E5DCDD", "#1D1617", "#665356", "#A8112F"),
+		palette("#161213", "#1F191A", "#2B2324", "#947F82", "#372D2F", "#F0ECED", "#B3A5A8", "#FF7A90")},
 	{"amber", "Amber",
-		palette("#FBF7EF", "#FFFFFF", "#F4EAD3", "#7D6C48", "#E8DAB8", "#261D0B", "#5A4D33", "#8A5200"),
-		palette("#1A150B", "#241D10", "#322916", "#A8956A", "#47391F", "#F6EEDD", "#C4B595", "#F2B544")},
+		palette("#F9F7F5", "#FFFFFF", "#F2EFEB", "#827A6D", "#E5E2DC", "#1D1A16", "#665F53", "#8A5200"),
+		palette("#161512", "#1F1D19", "#2B2823", "#948C7F", "#37332D", "#F0EEEC", "#B3AEA5", "#F2B544")},
 	{"purple", "Purple",
-		palette("#F7F4FC", "#FFFFFF", "#EBE3F8", "#73658F", "#DCD0F0", "#1E1630", "#504668", "#6230C2"),
-		palette("#15111E", "#1D182A", "#29223B", "#9A8CB8", "#3A3053", "#EEE9F8", "#B5A9CF", "#B79BFF")},
+		palette("#F7F5F9", "#FFFFFF", "#EEEBF2", "#756D82", "#E0DCE5", "#19161D", "#5B5366", "#6230C2"),
+		palette("#141216", "#1B191F", "#26232B", "#877F94", "#312D37", "#EEECF0", "#ABA5B3", "#B79BFF")},
 	{"contrast", "High contrast",
 		palette("#FFFFFF", "#FFFFFF", "#E6E6E6", "#000000", "#000000", "#000000", "#1A1A1A", "#0000C8"),
 		palette("#000000", "#000000", "#1F1F1F", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#E6E6E6", "#FFD60A")},
 }
 
 var (
-	lightSemantic = Semantic{Critical: Hex("#B0003A"), High: Hex("#7A3000"), Medium: Hex("#636300"), Low: Hex("#1456B8"), Info: Hex("#525B66"), Success: Hex("#166534"), Warning: Hex("#7A4A00"), Error: Hex("#B0003A")}
+	lightSemantic = Semantic{Critical: Hex("#C01439"), High: Hex("#8E2E0B"), Medium: Hex("#7F600A"), Low: Hex("#1E5FC4"), Info: Hex("#59626E"), Success: Hex("#16713D"), Warning: Hex("#7F600A"), Error: Hex("#C01439")}
 	darkSemantic  = Semantic{Critical: Hex("#FF7B88"), High: Hex("#FFA057"), Medium: Hex("#F2CC60"), Low: Hex("#7AB7FF"), Info: Hex("#B6BEC9"), Success: Hex("#56D364"), Warning: Hex("#E3B341"), Error: Hex("#FF7B88")}
 )
 
@@ -299,16 +304,16 @@ func Resolve(options Options) Tokens {
 	if options.TextScale < 80 || options.TextScale > 200 {
 		scale = 1
 	}
-	tokens.Type = TypeScale{Caption: 11 * scale, Body: 13 * scale, Subheading: 15 * scale, Heading: 20 * scale}
+	tokens.Type = TypeScale{Caption: 12 * scale, Body: 14 * scale, Subheading: 16 * scale, Heading: 24 * scale, Figure: 28 * scale}
 	if options.Density == "compact" {
-		tokens.Spacing = Spacing{XS: 2, S: 4, M: 6, L: 10, XL: 16, RowHeight: 24 * scale}
+		tokens.Spacing = Spacing{XS: 4, S: 4, M: 8, L: 12, XL: 16, XXL: 24, RowHeight: 24 * scale, RowGap: 4}
 	} else {
-		tokens.Spacing = Spacing{XS: 4, S: 8, M: 12, L: 16, XL: 24, RowHeight: 32 * scale}
+		tokens.Spacing = Spacing{XS: 4, S: 8, M: 12, L: 16, XL: 24, XXL: 32, RowHeight: 32 * scale, RowGap: 4}
 	}
-	tokens.Radius = 4
+	tokens.Radius = Radii{Chip: 4, Control: 8, Card: 12}
 	tokens.Elevation = 1
 	if selected.name == "contrast" {
-		tokens.Radius = 0
+		tokens.Radius = Radii{}
 		tokens.Elevation = 0
 	}
 	tokens.Motion = !options.ReducedMotion
