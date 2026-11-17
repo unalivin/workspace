@@ -1,0 +1,21 @@
+[package]
+name = "secretsentry-gui"
+description = "Dashboard window of SecretSentry"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lib]
+name = "app_gui"
+
+[lints]
+workspace = true
+
+[dependencies]
+app_core = { package = "secretsentry-core", path = "../secretsentry-core" }
+eframe = { workspace = true }
+egui = { workspace = true }

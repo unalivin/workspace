@@ -3,6 +3,7 @@
 Every project has its own pull request template with its commit scope, test commands and rules. If this pull request changes a project, open it with that project's template: add the query shown below to the address of the page where you write this pull request, then reload.
 
 - `certwatch` (CertWatch): `?template=certwatch.md`
+- `secretsentry` (SecretSentry): `?template=secretsentry.md`
 
 Use the form below only for the workspace tooling in `scripts/`, the templates in `templates/`, the generated workflows and the root documents.
 

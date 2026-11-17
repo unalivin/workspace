@@ -1,0 +1,72 @@
+[package]
+name = "secretsentry-fuzz"
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[workspace]
+
+[dependencies]
+app_core = { package = "secretsentry-core", path = "../crates/secretsentry-core" }
+libfuzzer-sys = "=0.4.13"
+rusqlite = { version = "=0.43.0", features = ["bundled"] }
+
+[[bin]]
+name = "clock_parse"
+path = "fuzz_targets/clock_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "csv_parse"
+path = "fuzz_targets/csv_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "guide_parse_and_search"
+path = "fuzz_targets/guide_parse_and_search.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "notify_safe_title"
+path = "fuzz_targets/notify_safe_title.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "records_search_expression"
+path = "fuzz_targets/records_search_expression.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "settings_normalize"
+path = "fuzz_targets/settings_normalize.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "theme_accent"
+path = "fuzz_targets/theme_accent.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "transfer_parse"
+path = "fuzz_targets/transfer_parse.rs"
+test = false
+doc = false
+bench = false

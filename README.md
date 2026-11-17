@@ -27,7 +27,7 @@ What exists and what does not is stated in [docs/ROADMAP.md](docs/ROADMAP.md).
 | 12 | `vulntrack` | VulnTrack | Go | Vulnerability Management | Not started | - |
 | 13 | `threatatlas` | ThreatAtlas | Go | Threat Intelligence Workspace | Not started | - |
 | 14 | `secops-copilot` | SecOps-Copilot | Go | Evidence-Grounded Security Assistant | Not started | - |
-| 15 | `secretsentry` | SecretSentry | Rust | Secret Detection and Triage | Not started | - |
+| 15 | [`secretsentry`](secretsentry/) | SecretSentry | Rust | Secret Detection and Triage | In progress | [docs](secretsentry/docs/README.md) |
 | 16 | `sbom-navigator` | SBOM-Navigator | Rust | Software Supply Chain Inventory | Not started | - |
 | 17 | `iac-sentinel` | IaC-Sentinel | Rust | Infrastructure-as-Code Security | Not started | - |
 | 18 | `sigmalab` | SigmaLab | Rust | Detection Rule Engineering | Not started | - |
