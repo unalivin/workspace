@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::time::Instant;
@@ -8,7 +8,8 @@ use rusqlite::{Connection, OptionalExtension, Row, Transaction, TransactionBehav
 use crate::allowlists::Allowlists;
 use crate::clock::{Clock, Timestamp, Zone};
 use crate::error::{AppError, Result};
-use crate::findings::{self, Recorded, Recording, RuleLabel, Sighting, Source};
+use crate::findings::{self, CommitRecord, Recorded, Recording, RuleLabel, Sighting, Source};
+use crate::git;
 use crate::notify::{self, Event};
 use crate::rulebook::{self, Rulebook};
 use crate::scanner::{Candidate, Detector};
@@ -17,6 +18,8 @@ use crate::tree;
 
 pub const RECORD_KIND: &str = "scan";
 pub const MAX_CANDIDATES_PER_SCAN: usize = 100_000;
+pub const MAX_SIGHTINGS_PER_FINDING: usize = 5;
+const LATEST_TIME: i64 = 253_402_300_799;
 pub const MAX_PROBLEM_LENGTH: usize = 1000;
 pub const DEFAULT_LIMIT: i64 = 100;
 pub const INTERRUPTED: &str = "The scan was interrupted before it finished. Start it again.";
@@ -166,6 +169,26 @@ pub struct Outcome {
     pub stats: tree::Stats,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HistoryOutcome {
+    pub scan: Scan,
+    pub recorded: Recorded,
+    pub stats: git::HistoryStats,
+}
+
+struct Harvest<'a> {
+    source: Source,
+    sightings: Vec<Sighting<'a>>,
+    commits: Vec<CommitRecord>,
+    complete: bool,
+    cancelled: bool,
+    files_scanned: u64,
+    files_skipped: u64,
+    bytes_scanned: u64,
+    commits_scanned: u64,
+    problem: String,
+}
+
 type RawScan =
     (i64, String, String, String, String, Option<String>, i64, i64, i64, i64, i64, i64, i64, i64, String, i64);
 
@@ -191,8 +214,24 @@ fn scan_row(row: &Row<'_>) -> rusqlite::Result<RawScan> {
 }
 
 fn build(raw: RawScan) -> Result<Scan> {
-    let (id, kind, root, status, started, finished, duration_ms, files, skipped, bytes, commits, rules, seen, new, problem, demo) =
-        raw;
+    let (
+        id,
+        kind,
+        root,
+        status,
+        started,
+        finished,
+        duration_ms,
+        files,
+        skipped,
+        bytes,
+        commits,
+        rules,
+        seen,
+        new,
+        problem,
+        demo,
+    ) = raw;
     let unreadable = |what: &str| AppError::Storage(format!("scan {id} has an unreadable {what}"));
     Ok(Scan {
         id,
@@ -397,7 +436,13 @@ impl<'a> Scans<'a> {
         let started = Instant::now();
         let id = start(
             self.conn,
-            &Start { kind: Kind::Tree, root: &name, rules_used: detector.rule_count(), demo: false, now: self.clock.now() },
+            &Start {
+                kind: Kind::Tree,
+                root: &name,
+                rules_used: detector.rule_count(),
+                demo: false,
+                now: self.clock.now(),
+            },
         )?;
         let mut candidates: Vec<Candidate> = Vec::new();
         let mut overflow = false;
@@ -416,37 +461,6 @@ impl<'a> Scans<'a> {
                 return Err(error);
             }
         };
-        let stored = self.store_tree(id, &name, started, &stats, overflow, &candidates);
-        match stored {
-            Ok(recorded) => Ok(Outcome { scan: self.get(id)?, recorded, stats }),
-            Err(error) => {
-                self.fail(id, &name, started, &error)?;
-                Err(error)
-            }
-        }
-    }
-
-    fn store_tree(
-        &self,
-        id: i64,
-        root: &str,
-        started: Instant,
-        stats: &tree::Stats,
-        overflow: bool,
-        candidates: &[Candidate],
-    ) -> Result<Recorded> {
-        let labels = rule_labels(&Rulebook::new(self.conn, self.clock.clone()))?;
-        let sightings: Vec<Sighting<'_>> =
-            candidates.iter().map(|candidate| Sighting { candidate, commit_id: "" }).collect();
-        let transaction = self.begin()?;
-        let now = self.clock.now();
-        let complete = stats.complete() && !overflow;
-        let recorded = findings::record(
-            &transaction,
-            &Recording { scan_id: id, root, source: Source::Tree, demo: false, complete, now },
-            &labels,
-            &sightings,
-        )?;
         let problem = if overflow {
             format!(
                 "Stopped collecting after {MAX_CANDIDATES_PER_SCAN} candidates. Scan a smaller directory or allowlist generated files."
@@ -456,23 +470,136 @@ impl<'a> Scans<'a> {
         } else {
             String::new()
         };
+        let harvest = Harvest {
+            source: Source::Tree,
+            sightings: candidates.iter().map(|candidate| Sighting { candidate, commit_id: "" }).collect(),
+            commits: Vec::new(),
+            complete: stats.complete() && !overflow,
+            cancelled: stats.cancelled,
+            files_scanned: stats.files_scanned,
+            files_skipped: stats.skipped(),
+            bytes_scanned: stats.bytes_scanned,
+            commits_scanned: 0,
+            problem,
+        };
+        match self.store(id, &name, started, &harvest) {
+            Ok(recorded) => Ok(Outcome { scan: self.get(id)?, recorded, stats }),
+            Err(error) => {
+                self.fail(id, &name, started, &error)?;
+                Err(error)
+            }
+        }
+    }
+
+    pub fn scan_history(&self, root: &Path, options: &git::HistoryOptions, cancel: &AtomicBool) -> Result<HistoryOutcome> {
+        let name = root_name(root)?;
+        let mut repository = git::Repository::open(Path::new(&name))?;
+        let detector = self.detector()?;
+        let started = Instant::now();
+        let id = start(
+            self.conn,
+            &Start { kind: Kind::History, root: &name, rules_used: detector.rule_count(), demo: false, now: self.clock.now() },
+        )?;
+        let mut kept: Vec<(Candidate, String)> = Vec::new();
+        let mut per_finding: HashMap<String, usize> = HashMap::new();
+        let mut commits: BTreeMap<String, CommitRecord> = BTreeMap::new();
+        let mut overflow = false;
+        let stats = git::walk_history(&mut repository, options, cancel, &mut |commit, path, content| {
+            for candidate in detector.scan_text(path, content).candidates {
+                let count = per_finding.entry(candidate.fingerprint.clone()).or_insert(0);
+                if *count >= MAX_SIGHTINGS_PER_FINDING {
+                    continue;
+                }
+                if kept.len() >= MAX_CANDIDATES_PER_SCAN {
+                    overflow = true;
+                    return;
+                }
+                *count += 1;
+                let commit_id = commit.id.to_hex();
+                commits.entry(commit_id.clone()).or_insert_with(|| CommitRecord {
+                    id: commit_id.clone(),
+                    author: commit.author.clone(),
+                    authored_at: Timestamp::from_unix(commit.time.clamp(0, LATEST_TIME)),
+                    subject: commit.subject.clone(),
+                });
+                kept.push((candidate, commit_id));
+            }
+        });
+        let mut notes = Vec::new();
+        if overflow {
+            notes.push(format!(
+                "Stopped collecting after {MAX_CANDIDATES_PER_SCAN} candidates. Allowlist generated files and scan again."
+            ));
+        }
+        if stats.limit_reached {
+            notes.push(format!(
+                "Stopped at the limit of {} commits or {} objects, so older or newer history may be missing.",
+                options.max_commits,
+                git::MAX_VISITED
+            ));
+        }
+        if stats.skipped_packs > 0 {
+            notes.push(format!("{} pack files could not be read and were skipped.", stats.skipped_packs));
+        }
+        if stats.missing > 0 {
+            notes.push(format!(
+                "{} objects are not in the repository, which is usual for a shallow or partial clone.",
+                stats.missing
+            ));
+        }
+        let harvest = Harvest {
+            source: Source::History,
+            sightings: kept.iter().map(|(candidate, commit_id)| Sighting { candidate, commit_id }).collect(),
+            commits: commits.into_values().collect(),
+            complete: stats.complete() && !overflow && stats.skipped_packs == 0,
+            cancelled: stats.cancelled,
+            files_scanned: stats.files_scanned,
+            files_skipped: stats.skipped(),
+            bytes_scanned: stats.bytes_scanned,
+            commits_scanned: stats.commits_scanned,
+            problem: notes.join(" "),
+        };
+        match self.store(id, &name, started, &harvest) {
+            Ok(recorded) => Ok(HistoryOutcome { scan: self.get(id)?, recorded, stats }),
+            Err(error) => {
+                self.fail(id, &name, started, &error)?;
+                Err(error)
+            }
+        }
+    }
+
+    fn store(&self, id: i64, root: &str, started: Instant, harvest: &Harvest<'_>) -> Result<Recorded> {
+        let labels = rule_labels(&Rulebook::new(self.conn, self.clock.clone()))?;
+        let transaction = self.begin()?;
+        let now = self.clock.now();
+        findings::record_commits(&transaction, root, &harvest.commits)?;
+        let recorded = findings::record(
+            &transaction,
+            &Recording { scan_id: id, root, source: harvest.source, demo: false, complete: harvest.complete, now },
+            &labels,
+            &harvest.sightings,
+        )?;
         finish(
             &transaction,
             &Finish {
                 id,
-                status: if stats.cancelled { Status::Cancelled } else { Status::Completed },
+                status: if harvest.cancelled { Status::Cancelled } else { Status::Completed },
                 now,
                 duration_ms: elapsed(started),
-                files_scanned: stats.files_scanned,
-                files_skipped: stats.skipped(),
-                bytes_scanned: stats.bytes_scanned,
-                commits_scanned: 0,
+                files_scanned: harvest.files_scanned,
+                files_skipped: harvest.files_skipped,
+                bytes_scanned: harvest.bytes_scanned,
+                commits_scanned: harvest.commits_scanned,
                 recorded,
-                problem: &problem,
+                problem: &harvest.problem,
             },
         )?;
         if recorded.new > 0 {
             let noun = if recorded.new == 1 { "new likely secret" } else { "new likely secrets" };
+            let place = match harvest.source {
+                Source::Tree => "in",
+                Source::History => "in the history of",
+            };
             notify::publish_with(
                 &transaction,
                 now,
@@ -480,7 +607,7 @@ impl<'a> Scans<'a> {
                 &Event {
                     event_type: notify::EVENT_SCAN_FINDING.to_string(),
                     severity: recorded.top_new_severity.unwrap_or(Severity::Medium),
-                    title: format!("{} {noun} in {}", recorded.new, short_name(root)),
+                    title: format!("{} {noun} {place} {}", recorded.new, short_name(root)),
                     record_kind: RECORD_KIND.to_string(),
                     record_id: id,
                     dedup_key: format!("scan:{id}"),
@@ -507,7 +634,9 @@ mod tests {
     use crate::notify::{Filter, Notifications};
     use crate::scanner::Allowed;
     use crate::store::Store;
-    use crate::testkit::{TempDir, fixed_time, sample_cloud_key, sample_hosting_token, sample_package_token};
+    use crate::testkit::{
+        GitFixture, TempDir, fixed_time, sample_cloud_key, sample_hosting_token, sample_package_token,
+    };
 
     struct Fixture {
         directory: TempDir,
@@ -564,7 +693,10 @@ mod tests {
     fn seeded(label: &str) -> Fixture {
         let fixture = Fixture::new(label);
         fixture.write("src/config.py", &format!("AWS_KEY = \"{}\"\nother = 1\n", sample_cloud_key()));
-        fixture.write("deploy/ci.yaml", &format!("token: {}\nagain: {}\n", sample_hosting_token(), sample_hosting_token()));
+        fixture.write(
+            "deploy/ci.yaml",
+            &format!("token: {}\nagain: {}\n", sample_hosting_token(), sample_hosting_token()),
+        );
         fixture.write("README.md", "No secrets here.\n");
         fixture
     }
@@ -583,7 +715,10 @@ mod tests {
         assert_eq!(outcome.scan.scope_label(), format!("3 files, {} B", outcome.scan.bytes_scanned));
 
         let all = fixture.all();
-        assert_eq!(all.iter().map(|finding| finding.path.as_str()).collect::<Vec<_>>(), vec!["deploy/ci.yaml", "src/config.py"]);
+        assert_eq!(
+            all.iter().map(|finding| finding.path.as_str()).collect::<Vec<_>>(),
+            vec!["deploy/ci.yaml", "src/config.py"]
+        );
         let token = &all[0];
         assert_eq!((token.rule_id.as_str(), token.rule_name.as_str()), ("github-token", "GitHub token"));
         assert_eq!(token.preview, "ghp_********");
@@ -621,7 +756,8 @@ mod tests {
         let fixture = seeded("scans-again");
         fixture.scan();
         let first = fixture.all();
-        let decided = fixture.findings().decide(first[1].id, first[1].revision, Decision::AcceptedRisk, " rotated ").unwrap();
+        let decided =
+            fixture.findings().decide(first[1].id, first[1].revision, Decision::AcceptedRisk, " rotated ").unwrap();
         assert_eq!((decided.status, decided.note.as_str(), decided.revision), (Decision::AcceptedRisk, "rotated", 2));
         assert_eq!(fixture.findings().accept_baseline("").unwrap(), 2);
 
@@ -698,10 +834,16 @@ mod tests {
     fn the_overview_counts_by_rule_confidence_and_file() {
         let fixture = seeded("scans-overview");
         fixture.write("tests/fixture.txt", &format!("key = {}\n", ["AK", "IA", "T7XN4QWZ2KPLM6R3"].concat()));
-        fixture.write("src/config.py", &format!("AWS_KEY = \"{}\"\nNPM = \"{}\"\n", sample_cloud_key(), sample_package_token()));
+        fixture.write(
+            "src/config.py",
+            &format!("AWS_KEY = \"{}\"\nNPM = \"{}\"\n", sample_cloud_key(), sample_package_token()),
+        );
         let outcome = fixture.scan();
         let overview = fixture.findings().overview().unwrap();
-        assert_eq!((overview.attention, overview.new, overview.baseline, overview.gone, overview.demo), (4, 4, 0, 0, 0));
+        assert_eq!(
+            (overview.attention, overview.new, overview.baseline, overview.gone, overview.demo),
+            (4, 4, 0, 0, 0)
+        );
         assert_eq!((overview.scans, overview.failed_scans, overview.unread_notifications), (1, 0, 1));
         let aws = overview.by_rule.iter().find(|rule| rule.rule_id == "aws-access-key-id").unwrap();
         assert_eq!((aws.low, aws.medium, aws.high, aws.total()), (0, 1, 1, 2));
@@ -753,7 +895,10 @@ mod tests {
         assert_eq!(page.findings[0].path, "src/config.py");
         for key in findings::SORT_KEYS {
             for descending in [false, true] {
-                assert_eq!(findings.list(&Query { sort: (*key).to_string(), descending, ..Query::default() }).unwrap().len(), 3);
+                assert_eq!(
+                    findings.list(&Query { sort: (*key).to_string(), descending, ..Query::default() }).unwrap().len(),
+                    3
+                );
             }
         }
         let unknown = findings.list(&Query { sort: "colour".to_string(), ..Query::default() }).unwrap_err().to_string();
@@ -842,7 +987,10 @@ mod tests {
         assert!(cancelled.stats.cancelled);
         assert!(fixture.all().iter().all(|finding| finding.in_tree));
         let listed = fixture.scans().list(None, 0).unwrap();
-        assert_eq!(listed.iter().map(|scan| scan.status).collect::<Vec<_>>(), vec![Status::Cancelled, Status::Completed]);
+        assert_eq!(
+            listed.iter().map(|scan| scan.status).collect::<Vec<_>>(),
+            vec![Status::Cancelled, Status::Completed]
+        );
         assert_eq!(fixture.scans().list(Some(Kind::History), 10).unwrap().len(), 0);
         assert_eq!(fixture.scans().latest().unwrap().unwrap().id, cancelled.scan.id);
     }
@@ -851,9 +999,11 @@ mod tests {
     fn an_interrupted_scan_is_marked_failed_when_the_next_one_starts() {
         let fixture = seeded("scans-interrupted");
         let root = root_name(&fixture.root()).unwrap();
-        let abandoned =
-            start(fixture.store.conn(), &Start { kind: Kind::Tree, root: &root, rules_used: 1, demo: false, now: fixed_time() })
-                .unwrap();
+        let abandoned = start(
+            fixture.store.conn(),
+            &Start { kind: Kind::Tree, root: &root, rules_used: 1, demo: false, now: fixed_time() },
+        )
+        .unwrap();
         assert_eq!(fixture.scans().get(abandoned).unwrap().status, Status::Running);
         fixture.scan();
         let marked = fixture.scans().get(abandoned).unwrap();
@@ -866,17 +1016,171 @@ mod tests {
         let fixture = seeded("scans-failed");
         let root = root_name(&fixture.root()).unwrap();
         let scans = fixture.scans();
-        let id =
-            start(fixture.store.conn(), &Start { kind: Kind::Tree, root: &root, rules_used: 1, demo: false, now: fixed_time() })
-                .unwrap();
-        scans.fail(id, &root, Instant::now(), &AppError::Io("the directory cannot be read:\tdenied".to_string())).unwrap();
+        let id = start(
+            fixture.store.conn(),
+            &Start { kind: Kind::Tree, root: &root, rules_used: 1, demo: false, now: fixed_time() },
+        )
+        .unwrap();
+        scans
+            .fail(id, &root, Instant::now(), &AppError::Io("the directory cannot be read:\tdenied".to_string()))
+            .unwrap();
         let failed = scans.get(id).unwrap();
         assert_eq!((failed.status, failed.problem.as_str()), (Status::Failed, "the directory cannot be read: denied"));
         assert_eq!(failed.status.severity(), Severity::High);
         let announced = fixture.notifications();
         assert_eq!(announced.len(), 1);
-        assert_eq!((announced[0].event_type.as_str(), announced[0].title.as_str()), (notify::EVENT_SCAN_FAILED, "The scan of project failed"));
+        assert_eq!(
+            (announced[0].event_type.as_str(), announced[0].title.as_str()),
+            (notify::EVENT_SCAN_FAILED, "The scan of project failed")
+        );
         assert_eq!(fixture.findings().overview().unwrap().failed_scans, 1);
+    }
+
+    struct Repo {
+        fixture: Fixture,
+        git: GitFixture,
+        first: String,
+        app: String,
+    }
+
+    fn repo(label: &str) -> Repo {
+        let fixture = Fixture::new(label);
+        let git = GitFixture::create(&fixture.root());
+        let app = git.blob("print('hi')\n");
+        let secret = git.blob(&format!("TOKEN={}\n", sample_hosting_token()));
+        let cleaned = git.blob("TOKEN=\n");
+        let deploy = git.blob(&format!("export AWS_KEY=\"{}\"\n", sample_cloud_key()));
+        let tree_one = git.tree(&[("100644", "app.py", &app), ("100644", "config.env", &secret)]);
+        let tree_two = git.tree(&[("100644", "app.py", &app), ("100644", "config.env", &cleaned)]);
+        let tree_three =
+            git.tree(&[("100644", "app.py", &app), ("100644", "config.env", &cleaned), ("100755", "deploy.sh", &deploy)]);
+        let first = git.commit(&tree_one, &[], 1_700_000_000, "add configuration");
+        let second = git.commit(&tree_two, &[&first], 1_700_000_100, &format!("remove {}", sample_hosting_token()));
+        let third = git.commit(&tree_three, &[&second], 1_700_000_200, "add the deploy script");
+        git.set_reference("refs/heads/main", &third);
+        fixture.write("app.py", "print('hi')\n");
+        fixture.write("config.env", "TOKEN=\n");
+        fixture.write("deploy.sh", &format!("export AWS_KEY=\"{}\"\n", sample_cloud_key()));
+        Repo { fixture, git, first, app }
+    }
+
+    impl Repo {
+        fn scan(&self) -> HistoryOutcome {
+            self.fixture.hands.advance(60);
+            self.fixture
+                .scans()
+                .scan_history(&self.fixture.root(), &git::HistoryOptions::default(), &AtomicBool::new(false))
+                .unwrap()
+        }
+    }
+
+    #[test]
+    fn a_history_scan_finds_a_removed_secret_and_names_the_commit_that_added_it() {
+        let repo = repo("scans-history");
+        let outcome = repo.scan();
+        assert_eq!((outcome.scan.kind, outcome.scan.status), (Kind::History, Status::Completed));
+        assert_eq!((outcome.scan.commits_scanned, outcome.scan.files_scanned), (3, 4));
+        assert_eq!((outcome.scan.findings_seen, outcome.scan.findings_new), (2, 2));
+        assert_eq!(outcome.scan.scope_label(), "3 commits, 4 file versions");
+        assert_eq!(outcome.scan.problem, "");
+        assert!(outcome.stats.complete());
+
+        let all = repo.fixture.all();
+        assert_eq!(all.iter().map(|finding| finding.path.as_str()).collect::<Vec<_>>(), vec!["config.env", "deploy.sh"]);
+        let removed = &all[0];
+        assert_eq!(removed.rule_id, "github-token");
+        assert!(removed.in_history && !removed.in_tree);
+        assert_eq!(removed.state_label(), "New");
+        let places = repo.fixture.findings().occurrences(removed.id).unwrap();
+        assert_eq!(places.len(), 1);
+        assert_eq!((places[0].line, places[0].column, places[0].context.as_str()), (1, 7, "TOKEN=ghp_********"));
+        assert_eq!(places[0].commit_id, repo.first);
+        assert_eq!((places[0].author.as_str(), places[0].subject.as_str()), ("Sample Author", "add configuration"));
+        assert_eq!(places[0].authored_at, Some(Timestamp::from_unix(1_700_000_000)));
+        assert_eq!(repo.fixture.notifications()[0].title, "2 new likely secrets in the history of project");
+
+        let tree = repo.fixture.scan();
+        assert_eq!((tree.scan.findings_seen, tree.scan.findings_new), (1, 0));
+        let all = repo.fixture.all();
+        assert_eq!(all.len(), 2);
+        assert!(all[1].in_tree && all[1].in_history);
+        let both = repo.fixture.findings().occurrences(all[1].id).unwrap();
+        assert_eq!(both.iter().map(|place| place.commit_id.len()).collect::<Vec<_>>(), vec![0, 40]);
+        assert_eq!((both[0].author.as_str(), both[0].authored_at), ("", None));
+        let history = repo.fixture.findings().total(&Query { scope: Scope::History, ..Query::default() }).unwrap();
+        assert_eq!(history, 2);
+
+        let mut checked = 0;
+        for entry in fs::read_dir(repo.fixture.directory.path()).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_file() {
+                checked += 1;
+                let bytes = fs::read(&path).unwrap();
+                assert!(!String::from_utf8_lossy(&bytes).contains(&sample_hosting_token()), "{} holds a secret", path.display());
+            }
+        }
+        assert!(checked >= 1);
+    }
+
+    #[test]
+    fn a_rewritten_history_marks_its_findings_as_gone_from_the_history() {
+        let repo = repo("scans-rewritten");
+        repo.scan();
+        repo.fixture.scan();
+        let tree = repo.git.tree(&[("100644", "app.py", &repo.app)]);
+        let fresh = repo.git.commit(&tree, &[], 1_700_000_300, "start again");
+        repo.git.set_reference("refs/heads/main", &fresh);
+        let again = repo.scan();
+        assert_eq!((again.scan.commits_scanned, again.scan.files_scanned, again.scan.findings_seen), (1, 1, 0));
+        let all = repo.fixture.all();
+        assert!(!all[0].in_history && !all[0].in_tree);
+        assert_eq!(all[0].state_label(), "No longer found");
+        assert!(!all[1].in_history && all[1].in_tree);
+        assert_eq!(all[1].state_label(), "New");
+        assert_eq!(repo.fixture.scans().list(Some(Kind::History), 10).unwrap().len(), 2);
+    }
+
+    #[test]
+    fn a_history_scan_needs_a_repository_and_reports_what_it_could_not_read() {
+        let plain = seeded("scans-no-repository");
+        let refused = plain
+            .scans()
+            .scan_history(&plain.root(), &git::HistoryOptions::default(), &AtomicBool::new(false))
+            .unwrap_err()
+            .to_string();
+        assert!(refused.starts_with("path: ") && refused.contains("is not a Git repository"), "{refused}");
+        assert_eq!(plain.scans().count().unwrap(), 0);
+
+        let repo = repo("scans-shallow");
+        fs::remove_file(repo.git.object_path(&repo.first)).unwrap();
+        let shallow = repo.scan();
+        assert_eq!(shallow.scan.status, Status::Completed);
+        assert_eq!(shallow.scan.commits_scanned, 2);
+        assert_eq!(
+            shallow.scan.problem,
+            "1 objects are not in the repository, which is usual for a shallow or partial clone."
+        );
+        assert_eq!(shallow.scan.findings_seen, 1);
+
+        let limited = repo
+            .fixture
+            .scans()
+            .scan_history(
+                &repo.fixture.root(),
+                &git::HistoryOptions { max_commits: 1, ..git::HistoryOptions::default() },
+                &AtomicBool::new(false),
+            )
+            .unwrap();
+        assert!(limited.scan.problem.starts_with("Stopped at the limit of 1 commits or 5000000 objects"), "{}", limited.scan.problem);
+        assert!(repo.fixture.all().iter().all(|finding| finding.in_history));
+
+        let cancelled = repo
+            .fixture
+            .scans()
+            .scan_history(&repo.fixture.root(), &git::HistoryOptions::default(), &AtomicBool::new(true))
+            .unwrap();
+        assert_eq!(cancelled.scan.status, Status::Cancelled);
+        assert!(repo.fixture.all().iter().all(|finding| finding.in_history));
     }
 
     #[test]

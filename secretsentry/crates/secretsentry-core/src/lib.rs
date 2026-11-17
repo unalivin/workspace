@@ -9,6 +9,7 @@ pub mod error;
 pub mod files;
 pub mod findings;
 pub mod fingerprint;
+pub mod git;
 pub mod guide;
 pub mod launcher;
 pub mod meta;

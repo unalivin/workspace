@@ -105,7 +105,8 @@ pub fn fingerprint_key(conn: &Connection, now: Timestamp) -> Result<Vec<u8>> {
     let fresh = fingerprint::new_key()?;
     conn.execute(SQL_KEY_INSERT, (fingerprint::to_hex(&fresh), now.to_rfc3339()))?;
     let text: String = conn.query_row(SQL_KEY, [], |row| row.get(0))?;
-    fingerprint::key_from_hex(&text).ok_or_else(|| AppError::Storage("the stored fingerprint key is unreadable".to_string()))
+    fingerprint::key_from_hex(&text)
+        .ok_or_else(|| AppError::Storage("the stored fingerprint key is unreadable".to_string()))
 }
 
 pub struct Rulebook<'a> {
@@ -128,8 +129,8 @@ impl<'a> Rulebook<'a> {
 
     fn builtin(&self) -> Result<Vec<StoredRule>> {
         let mut statement = self.conn.prepare(SQL_STATES)?;
-        let rows =
-            statement.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?, row.get::<_, String>(2)?)))?;
+        let rows = statement
+            .query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?, row.get::<_, String>(2)?)))?;
         let mut states = std::collections::BTreeMap::new();
         for row in rows {
             let (id, enabled, updated) = row?;
@@ -374,9 +375,16 @@ mod tests {
         let book = book(&fixture);
         let created = book.create(&custom("internal")).unwrap();
         let edited = book
-            .update("internal", created.revision, &RuleSpec { name: "Renamed".to_string(), confidence: 80, ..custom("ignored") })
+            .update(
+                "internal",
+                created.revision,
+                &RuleSpec { name: "Renamed".to_string(), confidence: 80, ..custom("ignored") },
+            )
             .unwrap();
-        assert_eq!((edited.spec.id.as_str(), edited.spec.name.as_str(), edited.spec.confidence), ("internal", "Renamed", 80));
+        assert_eq!(
+            (edited.spec.id.as_str(), edited.spec.name.as_str(), edited.spec.confidence),
+            ("internal", "Renamed", 80)
+        );
         assert_eq!(edited.revision, 2);
 
         let stale = book.update("internal", 1, &custom("internal")).unwrap_err();
@@ -429,7 +437,8 @@ mod tests {
         book.create(&custom("internal")).unwrap();
         let twice = book.create(&custom("internal")).unwrap_err().to_string();
         assert!(twice.starts_with("id: a rule with the identifier \"internal\" already exists"), "{twice}");
-        let edit = book.update("internal", 1, &RuleSpec { secret_group: 5, ..custom("internal") }).unwrap_err().to_string();
+        let edit =
+            book.update("internal", 1, &RuleSpec { secret_group: 5, ..custom("internal") }).unwrap_err().to_string();
         assert!(edit.starts_with("secret group: "), "{edit}");
         assert_eq!(book.list().unwrap().len(), rules::builtin().len() + 1);
         assert_eq!(book.get("internal").unwrap().revision, 1);
@@ -438,7 +447,9 @@ mod tests {
     #[test]
     fn a_rule_can_be_tried_on_sample_text_before_it_is_saved() {
         let value = ["tok", "_", "a1b2c3d4e5f6"].concat();
-        let hits = try_rule(&RuleSpec { enabled: false, ..custom("trial") }, &format!("first line\ninternal = {value}\n")).unwrap();
+        let hits =
+            try_rule(&RuleSpec { enabled: false, ..custom("trial") }, &format!("first line\ninternal = {value}\n"))
+                .unwrap();
         assert_eq!(hits.len(), 1);
         assert_eq!((hits[0].line, hits[0].column, hits[0].length), (2, 12, 12));
         assert_eq!(hits[0].preview, "********");

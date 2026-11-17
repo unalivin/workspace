@@ -43,7 +43,13 @@ pub struct Stats {
 
 impl Stats {
     pub fn skipped(&self) -> u64 {
-        self.binary + self.too_large + self.links + self.special + self.unreadable + self.skipped_directories + self.too_deep
+        self.binary
+            + self.too_large
+            + self.links
+            + self.special
+            + self.unreadable
+            + self.skipped_directories
+            + self.too_deep
     }
 
     pub fn complete(&self) -> bool {
@@ -157,9 +163,8 @@ pub fn walk(root: &Path, options: &Options, cancel: &AtomicBool, visit: &mut dyn
     if walk.stopped() {
         return Ok(walk.stats);
     }
-    walk.directory(root, "", 1).map_err(|error| {
-        AppError::Io(format!("the directory \"{}\" cannot be read: {error}", root.display()))
-    })?;
+    walk.directory(root, "", 1)
+        .map_err(|error| AppError::Io(format!("the directory \"{}\" cannot be read: {error}", root.display())))?;
     Ok(walk.stats)
 }
 

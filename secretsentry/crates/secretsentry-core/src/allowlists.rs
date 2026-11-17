@@ -219,7 +219,8 @@ mod tests {
         let (clock, hands) = Clock::manual(fixed_time());
         let list = Allowlists::new(fixture.store.conn(), clock);
         assert_eq!(list.count().unwrap(), 0);
-        let path = list.create(&EntrySpec { note: " fixtures ".to_string(), ..entry(Kind::Path, " tests/** ") }).unwrap();
+        let path =
+            list.create(&EntrySpec { note: " fixtures ".to_string(), ..entry(Kind::Path, " tests/** ") }).unwrap();
         assert_eq!((path.spec.pattern.as_str(), path.spec.note.as_str()), ("tests/**", "fixtures"));
         assert_eq!((path.revision, path.demo, path.created_at), (1, false, fixed_time()));
         let value = list
@@ -234,7 +235,10 @@ mod tests {
 
         hands.advance(60);
         let edited = list.update(value.spec.id, value.revision, &entry(Kind::Path, "docs/")).unwrap();
-        assert_eq!((edited.spec.kind, edited.spec.pattern.as_str(), edited.spec.rule_id.as_str()), (Kind::Path, "docs/", ""));
+        assert_eq!(
+            (edited.spec.kind, edited.spec.pattern.as_str(), edited.spec.rule_id.as_str()),
+            (Kind::Path, "docs/", "")
+        );
         assert_eq!(edited.revision, 2);
         assert_eq!(edited.updated_at, fixed_time().plus_seconds(60));
         assert_eq!(edited.created_at, fixed_time());
@@ -266,9 +270,14 @@ mod tests {
         assert!(broken.starts_with("pattern: the pattern is not valid"), "{broken}");
         let first = list.create(&entry(Kind::Path, "tests/**")).unwrap();
         let twice = list.create(&entry(Kind::Path, " tests/** ")).unwrap_err().to_string();
-        assert_eq!(twice, "pattern: the same path pattern already exists. Edit the existing entry instead of adding it again");
-        let scoped = list.create(&EntrySpec { rule_id: "npm-token".to_string(), ..entry(Kind::Path, "tests/**") }).unwrap();
-        let clash = list.update(scoped.spec.id, scoped.revision, &entry(Kind::Path, "tests/**")).unwrap_err().to_string();
+        assert_eq!(
+            twice,
+            "pattern: the same path pattern already exists. Edit the existing entry instead of adding it again"
+        );
+        let scoped =
+            list.create(&EntrySpec { rule_id: "npm-token".to_string(), ..entry(Kind::Path, "tests/**") }).unwrap();
+        let clash =
+            list.update(scoped.spec.id, scoped.revision, &entry(Kind::Path, "tests/**")).unwrap_err().to_string();
         assert!(clash.starts_with("pattern: the same path pattern already exists"), "{clash}");
         assert!(list.update(first.spec.id, first.revision, &entry(Kind::Fingerprint, "short")).is_err());
         assert_eq!(list.count().unwrap(), 2);

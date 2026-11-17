@@ -5,6 +5,7 @@ use rusqlite::{Connection, OptionalExtension, Row, Transaction, TransactionBehav
 use crate::clock::{Clock, Timestamp};
 use crate::confidence::{self, Level, Reason};
 use crate::error::{AppError, Result};
+use crate::redact;
 use crate::scanner::{Allowed, Candidate};
 use crate::theme::Severity;
 
@@ -14,6 +15,7 @@ pub const MAX_OCCURRENCES_PER_FINDING: usize = 50;
 pub const DEFAULT_LIMIT: i64 = 200;
 pub const MAX_LIMIT: i64 = 5000;
 pub const TOP_FILES: i64 = 10;
+pub const MAX_COMMIT_TEXT_LENGTH: usize = 200;
 pub const SORT_KEYS: &[&str] = &["score", "rule", "path", "status", "seen"];
 
 const SQL_COLUMNS_GET: &str = "SELECT id, root, fingerprint, value_digest, rule_id, rule_name, severity, path, preview, value_length, entropy_tenths, score, reasons, status, note, allow_kind, allow_entry_id, baseline, in_tree, in_history, is_demo, revision, last_scan_id, first_seen_at, last_seen_at, updated_at, 1 FROM findings WHERE id = ?1";
@@ -55,7 +57,8 @@ const SQL_DROP_TREE_OCCURRENCES: &str = "DELETE FROM occurrences WHERE finding_i
 const SQL_DROP_HISTORY_OCCURRENCES: &str = "DELETE FROM occurrences WHERE finding_id = ?1 AND commit_id <> ''";
 const SQL_ADD_OCCURRENCE: &str =
     "INSERT INTO occurrences (finding_id, scan_id, line, col, context, commit_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6)";
-const SQL_OCCURRENCES: &str = "SELECT id, finding_id, scan_id, line, col, context, commit_id FROM occurrences WHERE finding_id = ?1 ORDER BY commit_id, line, col, id";
+const SQL_OCCURRENCES: &str = "SELECT o.id, o.finding_id, o.scan_id, o.line, o.col, o.context, o.commit_id, coalesce(c.author, ''), coalesce(c.authored_at, ''), coalesce(c.subject, '') FROM occurrences o JOIN findings f ON f.id = o.finding_id LEFT JOIN commits c ON c.root = f.root AND c.id = o.commit_id WHERE o.finding_id = ?1 ORDER BY o.commit_id <> '', o.id";
+const SQL_ADD_COMMIT: &str = "INSERT INTO commits (root, id, author, authored_at, subject) VALUES (?1, ?2, ?3, ?4, ?5) ON CONFLICT (root, id) DO UPDATE SET author = excluded.author, authored_at = excluded.authored_at, subject = excluded.subject";
 const SQL_GONE_FROM_TREE: &str = "UPDATE findings SET in_tree = 0, updated_at = ?3 WHERE root = ?1 AND in_tree = 1 AND (last_scan_id IS NULL OR last_scan_id <> ?2)";
 const SQL_GONE_FROM_HISTORY: &str = "UPDATE findings SET in_history = 0, updated_at = ?3 WHERE root = ?1 AND in_history = 1 AND (last_scan_id IS NULL OR last_scan_id <> ?2)";
 const SQL_DECIDE: &str = "UPDATE findings SET status = ?1, note = ?2, revision = revision + 1, updated_at = ?3 WHERE id = ?4 AND revision = ?5";
@@ -64,8 +67,7 @@ const SQL_RESET_BASELINE: &str = "UPDATE findings SET baseline = 0, revision = r
 const SQL_OVERVIEW: &str = "SELECT attention_total, new_total, baseline_total, allowlisted_total, decided_total, gone_total, demo_total, scan_total, failed_scan_total, unread_notifications FROM overview_scanning";
 const SQL_BY_RULE: &str =
     "SELECT rule_id, rule_name, confidence, total FROM overview_findings_by_rule ORDER BY rule_name, rule_id";
-const SQL_TOP_FILES: &str =
-    "SELECT root, path, total, top_score FROM overview_findings_by_file ORDER BY total DESC, top_score DESC, path, root LIMIT ?1";
+const SQL_TOP_FILES: &str = "SELECT root, path, total, top_score FROM overview_findings_by_file ORDER BY total DESC, top_score DESC, path, root LIMIT ?1";
 const SQL_ROOTS: &str = "SELECT DISTINCT root FROM findings ORDER BY root";
 const SQL_COUNT: &str = "SELECT count(*) FROM findings";
 
@@ -243,6 +245,29 @@ pub struct Occurrence {
     pub column: i64,
     pub context: String,
     pub commit_id: String,
+    pub author: String,
+    pub authored_at: Option<Timestamp>,
+    pub subject: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommitRecord {
+    pub id: String,
+    pub author: String,
+    pub authored_at: Timestamp,
+    pub subject: String,
+}
+
+pub fn record_commits(conn: &Connection, root: &str, commits: &[CommitRecord]) -> Result<()> {
+    for commit in commits {
+        let author: String = redact::printable(&commit.author).chars().take(MAX_COMMIT_TEXT_LENGTH).collect();
+        let subject: String = redact::mask_random_words(&redact::printable(&commit.subject))
+            .chars()
+            .take(MAX_COMMIT_TEXT_LENGTH)
+            .collect();
+        conn.execute(SQL_ADD_COMMIT, (root, &commit.id, author, commit.authored_at.to_rfc3339(), subject))?;
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -514,7 +539,8 @@ pub fn record(
     };
     let mut recorded = Recorded { seen: groups.len(), ..Recorded::default() };
     for (print, group) in &groups {
-        let best = group.iter().max_by_key(|sighting| sighting.candidate.score).map_or(group[0], |best| *best).candidate;
+        let best =
+            group.iter().max_by_key(|sighting| sighting.candidate.score).map_or(group[0], |best| *best).candidate;
         let label = rules.get(&best.rule_id);
         let name = label.map_or(best.rule_id.as_str(), |label| label.name.as_str());
         let severity = label.map_or(Severity::Medium, |label| label.severity);
@@ -686,6 +712,9 @@ impl<'a> Findings<'a> {
                 column: row.get(4)?,
                 context: row.get(5)?,
                 commit_id: row.get(6)?,
+                author: row.get(7)?,
+                authored_at: Timestamp::parse(&row.get::<_, String>(8)?),
+                subject: row.get(9)?,
             })
         })?;
         let mut list = Vec::new();
@@ -705,7 +734,11 @@ impl<'a> Findings<'a> {
             ));
         }
         if note.chars().any(|letter| letter.is_control() && letter != '\n' && letter != '\t') {
-            return Err(AppError::invalid("note", "the note contains a control character", "Remove the control character"));
+            return Err(AppError::invalid(
+                "note",
+                "the note contains a control character",
+                "Remove the control character",
+            ));
         }
         let transaction = self.begin()?;
         let changed =
@@ -772,7 +805,9 @@ impl<'a> Findings<'a> {
                     Some(Level::Low) => last.low += total,
                     Some(Level::Medium) => last.medium += total,
                     Some(Level::High) => last.high += total,
-                    None => return Err(AppError::Storage(format!("a finding has the unreadable confidence \"{level}\""))),
+                    None => {
+                        return Err(AppError::Storage(format!("a finding has the unreadable confidence \"{level}\"")));
+                    }
                 }
             }
         }

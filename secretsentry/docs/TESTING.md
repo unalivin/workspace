@@ -63,6 +63,8 @@ Rust has no race detector that works on the stable compiler, and the workspace f
 | `rules_compile` | `rules` | Any pattern is compiled or refused; an accepted rule never matches empty text and its secret group exists |
 | `allow_glob` | `allow` | Any path pattern is translated to a usable matcher or refused |
 | `scanner_scan_text` | `scanner` | Scanning any bytes never panics; previews show at most four characters; contexts are short and free of control characters |
+| `git_parse` | `git` | Any bytes are read as a loose object, commit, tag, tree or pack index, or refused; names in a tree never contain a separator |
+| `git_delta` | `git` | Any delta is applied within the size limit or refused with a named reason |
 
 ## Test data
 
