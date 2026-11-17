@@ -38,7 +38,7 @@ pub(crate) struct SettingsPage {
 
 const NOTIFIER_HELP: &str = "Enter turns the per-user sign-in entry on or off. The notifier shows system notifications while the application is closed. It needs no administrator rights and makes no network requests.";
 const LAUNCHER_HELP: &str = "Which front end opens when the application starts without a command. Enter changes it, u asks again at every start.";
-const DEMO_HELP: &str = "Enter removes the sample records whose names start with \"Demo:\" after confirmation. Your own records are not touched.";
+const DEMO_HELP: &str = "Enter removes the invented scans and findings of the demo data after confirmation. Your own scans and findings stay.";
 const NOTIFIER_TITLE: &str = "Notifier at sign-in";
 
 fn shown_value(value: &Value) -> String {
@@ -135,7 +135,7 @@ impl Model<'_> {
         rows.push(action(
             "Data",
             "Remove demo data",
-            format!("{} demo records", self.overview.demo),
+            format!("{} demo findings", self.overview.demo),
             "action",
             DEMO_HELP.to_string(),
             RowAction::Demo,
@@ -230,7 +230,7 @@ impl Model<'_> {
                 self.form = Some((Form::new("Database location", fields), Submit::MoveDatabase));
             }
             (Key::Enter, _, Some(RowAction::Demo)) => {
-                let count = self.app.records().remove_demo(true);
+                let count = self.app.scans().remove_demo(true);
                 let Some(count) = self.fail(count) else {
                     return;
                 };
@@ -240,7 +240,7 @@ impl Model<'_> {
                 }
                 self.ask(
                     "Remove demo data",
-                    format!("This removes {count} demo records. Your own records are not touched."),
+                    format!("This removes {count} demo findings with their scans. Your own scans and findings stay."),
                     "remove them",
                     Action::RemoveDemo,
                 );

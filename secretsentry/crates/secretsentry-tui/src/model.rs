@@ -5,15 +5,24 @@ use app_core::error::{AppError, Result};
 use app_core::meta;
 use app_core::notifier::Autostart;
 use app_core::platform::Env;
-use app_core::records::Overview;
-use app_core::service::{self, App, Link, MovePlan, NAV_ABOUT, NAV_NOTIFICATIONS, NAV_RECORDS, NAV_SETTINGS, NavItem};
+use app_core::findings::{Overview, Query, Scope};
+use app_core::jobs::{Job, Report};
+use app_core::scans::Scan;
+use app_core::service::{
+    self, App, Link, MovePlan, NAV_ABOUT, NAV_ALLOWLISTS, NAV_EXPORTS, NAV_FINDINGS, NAV_HISTORY, NAV_NOTIFICATIONS,
+    NAV_RULES, NAV_SCANS, NAV_SETTINGS, NavItem,
+};
 use app_core::settings::{self, Value};
-use app_core::theme::{self, Profile, Style};
+use app_core::theme::{self, Profile, Severity, Style};
 use app_core::userconfig::FRONT_END_GUI;
+use app_core::words;
 
 use crate::about::{AboutPage, AboutTab};
+use crate::catalog::{AllowPage, RulesPage};
+use crate::findings::FindingsPage;
 use crate::inbox::InboxPage;
-use crate::records::RecordsPage;
+use crate::reports::{ExportsPage, HistoryPage};
+use crate::scans::ScansPage;
 use crate::settings::SettingsPage;
 use crate::text::{Line, Look, pad, width, wrap, wrapped};
 use crate::widgets::{Form, FormEvent, Key, row, step, tail};
@@ -23,6 +32,7 @@ pub const MIN_HEIGHT: usize = 16;
 const MAX_NOTICE_LINES: usize = 3;
 pub(crate) const LIST_LIMIT: i64 = 500;
 pub(crate) const CANCELLED: &str = "Cancelled, nothing was changed";
+const SCANNING_INTERVAL: Duration = Duration::from_millis(200);
 const BUSY: &str = "The database is busy in another window. Nothing was lost; press r to try again.";
 
 pub type UrlOpener = dyn Fn(&str) -> Result<()>;
@@ -45,21 +55,26 @@ pub enum Notice {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Action {
-    RemoveRecord(i64),
     RemoveDemo,
     InstallNotifier,
     UninstallNotifier,
     MoveDatabase(MovePlan),
-    Import { path: String, format: String },
     OpenLink(Link),
+    AcceptBaseline,
+    ResetBaseline,
+    RemoveRule(String),
+    RemoveEntry(i64),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Submit {
-    AddRecord,
-    EditRecord { id: i64, revision: i64 },
-    Columns,
-    Import,
+    Scan,
+    Decide { id: i64, revision: i64 },
+    AddRule,
+    EditRule { id: String, revision: i64 },
+    TryRule(String),
+    AddEntry,
+    EditEntry { id: i64, revision: i64 },
     Export,
     Rule(String),
     Setting(String),
@@ -126,7 +141,14 @@ pub struct Model<'a> {
     switch_to: String,
     quitting: bool,
     pub(crate) overview: Overview,
-    pub(crate) rec: RecordsPage,
+    pub(crate) last_scan: Option<Scan>,
+    pub(crate) job: Option<Job>,
+    pub(crate) scan: ScansPage,
+    pub(crate) find: FindingsPage,
+    pub(crate) hist: HistoryPage,
+    pub(crate) rules: RulesPage,
+    pub(crate) allow: AllowPage,
+    pub(crate) exp: ExportsPage,
     pub(crate) inbox: InboxPage,
     pub(crate) set: SettingsPage,
     pub(crate) about: AboutPage,
@@ -156,7 +178,14 @@ impl<'a> Model<'a> {
             switch_to: String::new(),
             quitting: false,
             overview: Overview::default(),
-            rec: RecordsPage::new(),
+            last_scan: None,
+            job: None,
+            scan: ScansPage::default(),
+            find: FindingsPage::new(),
+            hist: HistoryPage::default(),
+            rules: RulesPage::default(),
+            allow: AllowPage::default(),
+            exp: ExportsPage::default(),
             inbox: InboxPage::default(),
             set: SettingsPage::default(),
             about: AboutPage::new(),
@@ -184,6 +213,9 @@ impl<'a> Model<'a> {
     }
 
     pub fn interval(&self) -> Duration {
+        if self.job.is_some() {
+            return SCANNING_INTERVAL;
+        }
         let seconds = self.values.get(settings::KEY_REFRESH_SECONDS).map(Value::int).unwrap_or(0);
         Duration::from_secs(if seconds < 1 { 2 } else { seconds.unsigned_abs() })
     }
@@ -251,12 +283,21 @@ impl<'a> Model<'a> {
 
     pub(crate) fn reload(&mut self) {
         self.restyle();
-        let overview = self.app.records().overview();
+        let overview = self.app.findings().overview();
         let Some(overview) = self.fail(overview) else {
             return;
         };
         self.overview = overview;
-        self.load_records();
+        let last = self.app.scans().latest();
+        if let Some(last) = self.fail(last) {
+            self.last_scan = last;
+        }
+        self.load_scans();
+        self.load_findings();
+        self.load_history();
+        self.load_rules();
+        self.load_allowlists();
+        self.load_exports();
         self.load_inbox();
         self.load_settings();
         self.load_about();
@@ -268,11 +309,47 @@ impl<'a> Model<'a> {
         self.say(Notice::Success, text);
     }
 
+    pub(crate) fn finish_scan(&mut self, outcome: Result<Report>) {
+        self.job = None;
+        self.reload();
+        match outcome {
+            Ok(report) => {
+                let kind = if report.cancelled() { Notice::Warning } else { Notice::Success };
+                self.say(kind, report.summary());
+            }
+            Err(error) => self.report(&error),
+        }
+    }
+
+    pub fn wait_for_scan(&mut self, limit: Duration) -> bool {
+        let Some(job) = &self.job else {
+            return true;
+        };
+        match job.wait(limit) {
+            Some(outcome) => {
+                self.finish_scan(outcome);
+                true
+            }
+            None => false,
+        }
+    }
+
+    pub fn stop_scan(&mut self, limit: Duration) {
+        if let Some(job) = self.job.take() {
+            job.cancel();
+            drop(job.wait(limit));
+        }
+    }
+
     pub fn tick(&mut self) {
+        if let Some(outcome) = self.job.as_ref().and_then(Job::poll) {
+            self.finish_scan(outcome);
+            return;
+        }
         match self.app.poll() {
             Ok(true) => {
                 self.reload();
-                if self.form.is_none() {
+                if self.form.is_none() && self.job.is_none() {
                     self.say(Notice::Info, "Updated by another window");
                 }
             }
@@ -312,13 +389,25 @@ impl<'a> Model<'a> {
 
     fn perform(&mut self, action: Action) -> Result<String> {
         match action {
-            Action::RemoveRecord(id) => {
-                self.app.records().delete(id)?;
-                Ok(format!("Removed record {id}"))
-            }
             Action::RemoveDemo => {
-                let removed = self.app.records().remove_demo(false)?;
-                Ok(format!("Removed {removed} demo records"))
+                let removed = self.app.scans().remove_demo(false)?;
+                Ok(format!("Removed {removed} demo findings"))
+            }
+            Action::AcceptBaseline => {
+                let changed = self.app.findings().accept_baseline("")?;
+                Ok(format!("Added {} to the baseline", words::count(changed as i64, "finding", "findings")))
+            }
+            Action::ResetBaseline => {
+                let changed = self.app.findings().reset_baseline("")?;
+                Ok(format!("Removed {} from the baseline", words::count(changed as i64, "finding", "findings")))
+            }
+            Action::RemoveRule(id) => {
+                self.app.rulebook().delete(&id)?;
+                Ok(format!("Removed rule {id}"))
+            }
+            Action::RemoveEntry(id) => {
+                self.app.allowlists().delete(id)?;
+                Ok(format!("Removed allowlist entry {id}"))
             }
             Action::InstallNotifier => {
                 self.autostart()?.install(false)?;
@@ -331,11 +420,6 @@ impl<'a> Model<'a> {
             Action::MoveDatabase(plan) => {
                 self.app.move_database(&plan)?;
                 Ok(format!("Now using {}", self.app.location().path.display()))
-            }
-            Action::Import { path, format } => {
-                let done = self.app.import_file(std::path::Path::new(&path), &format, false)?;
-                self.rec.query.include_disabled = true;
-                Ok(format!("Import finished: {}", done.summary()))
             }
             Action::OpenLink(link) => self.open_link(&link),
         }
@@ -374,14 +458,14 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn load_demo(&mut self) {
-        let added = self.app.records().load_demo();
+        let added = self.app.scans().load_demo();
         let Some(added) = self.fail(added) else {
             return;
         };
         if added == 0 {
             self.changed("The demo data is already loaded");
         } else {
-            self.changed(format!("Added {added} demo records. Remove them in Settings, Remove demo data."));
+            self.changed(format!("Added {added} demo findings. Remove them in Settings, Remove demo data."));
         }
     }
 
@@ -397,13 +481,26 @@ impl<'a> Model<'a> {
             MenuAction::Settings => self.open(NAV_SETTINGS),
             MenuAction::Refresh => self.changed("Refreshed"),
             MenuAction::Sidebar => self.toggle_sidebar(),
-            MenuAction::Quit => self.quitting = true,
+            MenuAction::Quit => self.quit(),
         }
+    }
+
+    fn quit(&mut self) {
+        if let Some(job) = &self.job {
+            job.cancel();
+        }
+        self.quitting = true;
+    }
+
+    pub(crate) fn show_findings(&mut self, query: Query) {
+        self.find.show(query);
+        self.load_findings();
+        self.open(NAV_FINDINGS);
     }
 
     pub fn handle(&mut self, key: Key) {
         if key == Key::Ctrl('c') {
-            self.quitting = true;
+            self.quit();
             return;
         }
         self.notice.clear();
@@ -477,7 +574,7 @@ impl<'a> Model<'a> {
             return;
         }
         match key {
-            Key::Char('q') => self.quitting = true,
+            Key::Char('q') => self.quit(),
             Key::Tab => self.page = (self.page + 1) % self.nav.len(),
             Key::BackTab => self.page = (self.page + self.nav.len() - 1) % self.nav.len(),
             Key::Char(',') => self.open(NAV_SETTINGS),
@@ -485,16 +582,14 @@ impl<'a> Model<'a> {
             Key::Char('r') => self.changed("Refreshed"),
             Key::Char('b') => self.toggle_sidebar(),
             Key::Char(':') | Key::F(10) => self.menu = Some(0),
-            Key::Char(digit @ '1'..='9') if (digit as usize - '1' as usize) < self.nav.len() => {
-                self.page = digit as usize - '1' as usize;
-            }
+            Key::Char(digit @ '0'..='9') if page_of(digit) < self.nav.len() => self.page = page_of(digit),
             _ => self.page_key(key),
         }
     }
 
     fn captures_text(&self) -> bool {
         match self.page_id() {
-            NAV_RECORDS => self.rec.searching,
+            NAV_FINDINGS => self.find.searching,
             NAV_ABOUT => self.about.searching,
             _ => false,
         }
@@ -502,13 +597,19 @@ impl<'a> Model<'a> {
 
     fn page_key(&mut self, key: Key) {
         match self.page_id() {
-            NAV_RECORDS => self.records_key(key),
+            NAV_SCANS => self.scans_key(key),
+            NAV_FINDINGS => self.findings_key(key),
+            NAV_HISTORY => self.history_key(key),
+            NAV_RULES => self.rules_key(key),
+            NAV_ALLOWLISTS => self.allowlists_key(key),
+            NAV_EXPORTS => self.exports_key(key),
             NAV_NOTIFICATIONS => self.inbox_key(key),
             NAV_SETTINGS => self.settings_key(key),
             NAV_ABOUT => self.about_key(key),
             _ => match key {
                 Key::Char('l') => self.load_demo(),
-                Key::Enter => self.open(NAV_RECORDS),
+                Key::Char('n') => self.scan_form(),
+                Key::Enter => self.show_findings(Query { scope: Scope::Attention, ..Query::default() }),
                 _ => {}
             },
         }
@@ -516,10 +617,13 @@ impl<'a> Model<'a> {
 
     fn submit(&mut self, form: &Form, submit: &Submit) -> Result<()> {
         match submit {
-            Submit::AddRecord => self.submit_add(form),
-            Submit::EditRecord { id, revision } => self.submit_edit(form, *id, *revision),
-            Submit::Columns => self.submit_columns(form),
-            Submit::Import => self.submit_import(form),
+            Submit::Scan => self.submit_scan(form),
+            Submit::Decide { id, revision } => self.submit_decide(form, *id, *revision),
+            Submit::AddRule => self.submit_rule_spec(form, None),
+            Submit::EditRule { id, revision } => self.submit_rule_spec(form, Some((id.as_str(), *revision))),
+            Submit::TryRule(id) => self.submit_try(form, id),
+            Submit::AddEntry => self.submit_entry(form, None),
+            Submit::EditEntry { id, revision } => self.submit_entry(form, Some((*id, *revision))),
             Submit::Export => self.submit_export(form),
             Submit::Rule(event) => self.submit_rule(form, event),
             Submit::Setting(key) => self.submit_setting(form, key),
@@ -530,18 +634,28 @@ impl<'a> Model<'a> {
     pub fn hints(&self) -> String {
         let common = ": menu · ? guide · q quit";
         match self.page_id() {
-            NAV_RECORDS if self.rec.searching => "Type to search · Enter keep · Esc clear".to_string(),
-            NAV_RECORDS => format!(
-                "n add · e edit · x enable/disable · d remove · / search · f status · v severity · s sort · c columns · a all · i import · o export · {common}"
+            NAV_SCANS => format!("n new scan · x cancel the running scan · Enter details · f findings of the scan · {common}"),
+            NAV_FINDINGS if self.find.searching => "Type to search · Enter keep · Esc clear".to_string(),
+            NAV_FINDINGS if self.find.detail => {
+                format!("e decide · Up/Down next finding · PageDown scroll · Esc back to the list · {common}")
+            }
+            NAV_FINDINGS => format!(
+                "Enter details · e decide · / search · f scope · v confidence · t decision · s sort · B accept baseline · R reset baseline · {common}"
             ),
+            NAV_HISTORY => format!("Enter findings of the commit · {common}"),
+            NAV_RULES => format!(
+                "n add · e edit · x enable/disable · t try on a sample · u restore built-in · d remove · Enter details · {common}"
+            ),
+            NAV_ALLOWLISTS => format!("n add · e edit · x enable/disable · d remove · {common}"),
+            NAV_EXPORTS => format!("o export to a file · f scope · {common}"),
             NAV_NOTIFICATIONS if self.inbox.rules => format!("e edit rule · u reset rule · Left inbox · {common}"),
             NAV_NOTIFICATIONS => {
-                format!("m mark read · M mark all · u unread only · Enter open record · Right rules · {common}")
+                format!("m mark read · M mark all · u unread only · Enter open the scan · Right rules · {common}")
             }
             NAV_SETTINGS => format!("Enter change · u reset · {common}"),
             NAV_ABOUT if self.about.searching => "Type to search the guide · Enter keep · Esc clear".to_string(),
             NAV_ABOUT => format!("Left/Right section · / search guide · Enter open · {common}"),
-            _ => format!("l load demo data · Enter records · 1-5 pages · {common}"),
+            _ => format!("n scan a directory · l load demo data · Enter findings · 1-9 and 0 pages · {common}"),
         }
     }
 
@@ -640,9 +754,10 @@ impl<'a> Model<'a> {
     fn sidebar_view(&self, size: usize, height: usize) -> Vec<Line> {
         let entry = |index: usize| {
             let item = &self.nav[index];
-            let mut label = format!("{} {}", index + 1, item.label);
+            let digit = (index + 1) % 10;
+            let mut label = format!("{digit} {}", item.label);
             if self.sidebar {
-                label = format!("{}", index + 1);
+                label = format!("{digit}");
             } else if item.id == NAV_NOTIFICATIONS && self.overview.unread_notifications > 0 {
                 label.push_str(&format!(" ({})", self.overview.unread_notifications));
             }
@@ -732,7 +847,12 @@ impl<'a> Model<'a> {
     fn page_view(&mut self, size: usize, height: usize) -> Vec<Line> {
         let room = height.saturating_sub(1);
         match self.page_id() {
-            NAV_RECORDS => self.records_view(size, room),
+            NAV_SCANS => self.scans_view(size, room),
+            NAV_FINDINGS => self.findings_view(size, room),
+            NAV_HISTORY => self.history_view(size, room),
+            NAV_RULES => self.rules_view(size, room),
+            NAV_ALLOWLISTS => self.allowlists_view(size, room),
+            NAV_EXPORTS => self.exports_view(size),
             NAV_NOTIFICATIONS => self.inbox_view(size, room),
             NAV_SETTINGS => self.settings_view(size, room),
             NAV_ABOUT => self.about_view(size, room),
@@ -743,47 +863,85 @@ impl<'a> Model<'a> {
     fn overview_view(&self, size: usize) -> Vec<Line> {
         let overview = &self.overview;
         let card = |label: &str, value: i64, hint: &str| {
-            Line::plain(pad(label, 24))
-                .with(pad(&value.to_string(), 6), Look::Accent)
+            Line::plain(pad(label, 30))
+                .with(pad(&value.to_string(), 7), Look::Accent)
                 .with(hint.to_string(), Look::Muted)
         };
         let mut lines = vec![
             Line::styled("What needs attention", Look::Heading),
             Line::new(),
-            card("Open records", overview.open, "not done and enabled"),
-            card("Urgent records", overview.urgent, "open with high or critical severity"),
-            card("Unread notifications", overview.unread_notifications, "press 3 to read them"),
-            card("Disabled records", overview.disabled, "kept but not counted"),
+            card("Findings that need attention", overview.attention, "open or confirmed, not allowlisted"),
+            card("New findings", overview.new, "not in the baseline"),
+            card("In the baseline", overview.baseline, "known and still open"),
+            card("Allowlisted", overview.allowlisted, "left out by an allowlist entry or a marker"),
+            card("Unread notifications", overview.unread_notifications, "press 8 to read them"),
             Line::new(),
         ];
-        if overview.total() == 0 {
+        if let Some(job) = &self.job {
             lines.extend(wrapped(
-                "No records yet. Press 2 and then n to add the first record, or press l to load labeled demo data.",
+                &format!("… Scanning {} ({}). Press 2 and then x to cancel.", job.root(), job.source().label()),
+                size,
+                Look::Accent,
+            ));
+        }
+        let Some(last) = &self.last_scan else {
+            lines.extend(wrapped(
+                "No scan yet. Press n to scan a directory, or press l to load labeled demo data.",
                 size,
                 Look::Plain,
             ));
             return lines;
-        }
-        lines.push(Line::styled("Enabled records by status and severity", Look::Heading));
+        };
+        lines.extend(wrapped(
+            &format!(
+                "Last scan: {} of {} · {} · {} in {} · {}",
+                last.kind.label(),
+                last.root,
+                last.status.label(),
+                last.scope_label(),
+                last.duration_label(),
+                self.app.format_time(last.started_at)
+            ),
+            size,
+            Look::Plain,
+        ));
         lines.push(Line::new());
-        let widths = [14, 12, 8];
-        lines.push(Line::styled(row(&["STATUS", "SEVERITY", "RECORDS"], &widths), Look::Muted));
-        for item in &overview.breakdown {
-            lines.push(Line::plain(row(
-                &[
-                    format!("{} {}", item.status.glyph(), item.status.label()),
-                    format!("{} {}", item.severity.glyph(), item.severity.label()),
-                    item.total.to_string(),
-                ],
-                &widths,
-            )));
+        if overview.by_rule.is_empty() {
+            lines.extend(wrapped("✔ No finding needs attention.", size, Look::Success));
+        } else {
+            lines.push(Line::styled("Findings that need attention by rule and confidence", Look::Heading));
+            let widths = [size.saturating_sub(34).clamp(12, 44), 5, 7, 4, 6];
+            lines.push(Line::styled(row(&["RULE", "HIGH", "MEDIUM", "LOW", "TOTAL"], &widths), Look::Muted));
+            for item in &overview.by_rule {
+                lines.push(Line::plain(row(
+                    &[
+                        item.rule_name.clone(),
+                        item.high.to_string(),
+                        item.medium.to_string(),
+                        item.low.to_string(),
+                        item.total().to_string(),
+                    ],
+                    &widths,
+                )));
+            }
+            lines.push(Line::new());
+            lines.push(Line::styled("Files with the most findings", Look::Heading));
+            let widths = [size.saturating_sub(26).clamp(12, 60), 8, 9];
+            lines.push(Line::styled(row(&["PATH", "FINDINGS", "TOP SCORE"], &widths), Look::Muted));
+            for item in &overview.top_files {
+                lines.push(Line::plain(row(
+                    &[item.path.clone(), item.total.to_string(), item.top_score.to_string()],
+                    &widths,
+                )));
+            }
         }
         if overview.demo > 0 {
             lines.push(Line::new());
             lines.extend(wrapped(
                 &format!(
-                    "ℹ Demo data is loaded: {} sample records whose names start with \"Demo:\". Remove them in Settings, Remove demo data.",
-                    overview.demo
+                    "ℹ Demo data is loaded: {} invented findings in \"{}\". Remove them in Settings, Remove demo data.",
+                    overview.demo,
+                    app_core::demo::ROOT
                 ),
                 size,
                 Look::Plain,
@@ -791,6 +949,29 @@ impl<'a> Model<'a> {
         }
         lines
     }
+}
+
+fn page_of(digit: char) -> usize {
+    match digit {
+        '0' => 9,
+        other => (other as usize).saturating_sub('1' as usize),
+    }
+}
+
+pub(crate) fn severity_options() -> Vec<(String, String)> {
+    Severity::ALL
+        .iter()
+        .map(|level| (level.as_str().to_string(), format!("{} {}", level.glyph(), level.label())))
+        .collect()
+}
+
+pub(crate) fn borrowed(options: &[(String, String)]) -> Vec<(&str, &str)> {
+    options.iter().map(|(value, label)| (value.as_str(), label.as_str())).collect()
+}
+
+pub(crate) fn next<T: Copy + PartialEq>(options: &[T], current: T) -> T {
+    let index = options.iter().position(|option| *option == current).map(|index| index + 1).unwrap_or(0);
+    options[index % options.len()]
 }
 
 pub(crate) fn move_cursor(cursor: &mut usize, key: Key, count: usize) -> bool {

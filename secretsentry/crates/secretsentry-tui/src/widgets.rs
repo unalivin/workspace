@@ -1,4 +1,4 @@
-use crate::text::{Line, Look, clip, pad, width, wrapped};
+use crate::text::{Line, Look, clip, pad, width, window, wrapped};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Key {
@@ -239,6 +239,20 @@ pub fn row<T: AsRef<str>>(cells: &[T], widths: &[usize]) -> String {
         out.push_str("  ");
     }
     out
+}
+
+pub fn table(columns: &[(&str, usize, bool)], rows: &[Vec<String>], cursor: usize, room: usize, size: usize) -> Vec<Line> {
+    let shape: Vec<(usize, bool)> = columns.iter().map(|(_, column, flex)| (*column, *flex)).collect();
+    let widths = layout(&shape, size.saturating_sub(2));
+    let titles: Vec<&str> = columns.iter().map(|(title, _, _)| *title).collect();
+    let mut lines = vec![Line::styled(format!("  {}", row(&titles, &widths)), Look::Muted)];
+    let (start, end) = window(rows.len(), cursor, room.max(3));
+    for (index, cells) in rows.iter().enumerate().take(end).skip(start) {
+        lines.push(selectable(&row(cells, &widths), index == cursor, size));
+    }
+    let at = cursor.min(rows.len().saturating_sub(1)) + 1;
+    lines.push(Line::styled(format!("Row {at} of {}", rows.len()), Look::Muted));
+    lines
 }
 
 pub fn tail(text: &str, size: usize) -> String {

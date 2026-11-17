@@ -249,7 +249,7 @@ impl<'a> Dashboard<'a> {
             options,
             tokens,
             values: BTreeMap::new(),
-            nav: service::NAVIGATION,
+            nav: service::LEGACY_NAVIGATION,
             page: 0,
             collapsed: false,
             notice: None,

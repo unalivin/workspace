@@ -2,16 +2,17 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fs;
 use std::rc::Rc;
+use std::time::Duration;
 
 use app_core::clock::{Clock, Zone};
+use app_core::findings::{Scope, Status};
 use app_core::meta;
 use app_core::notifier::Autostart;
 use app_core::platform::{Env, Os};
-use app_core::records::{DEMO_RECORDS, Input, Status};
-use app_core::service::{self, App, NAV_ABOUT, NAV_RECORDS, NAV_SETTINGS, NAVIGATION};
+use app_core::scans;
+use app_core::service::{self, App, NAV_ABOUT, NAV_FINDINGS, NAV_SCANS, NAV_SETTINGS, NAVIGATION};
 use app_core::settings;
-use app_core::testkit::{TempDir, fixed_time};
-use app_core::theme::Severity;
+use app_core::testkit::{TempDir, fixed_time, sample_hosting_token};
 use app_core::userconfig::FRONT_END_GUI;
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
@@ -102,6 +103,19 @@ fn setting_value(model: &Model<'_>, label: &str) -> String {
     model.set.rows.iter().find(|row| row.label == label).unwrap().value.clone()
 }
 
+fn project(home: &TempDir) -> String {
+    let root = home.path().join("project");
+    fs::create_dir_all(&root).unwrap();
+    fs::write(root.join("deploy.sh"), format!("export GITHUB_TOKEN={}\n", sample_hosting_token())).unwrap();
+    root.to_string_lossy().into_owned()
+}
+
+fn expect(screen: &str, wanted: &[&str]) {
+    for part in wanted {
+        assert!(screen.contains(part), "missing {part:?} in\n{screen}");
+    }
+}
+
 #[test]
 fn the_first_start_welcomes_and_offers_demo_data() {
     let home = TempDir::new("tui-welcome");
@@ -111,187 +125,335 @@ fn the_first_start_welcomes_and_offers_demo_data() {
     assert!(screen.contains("Welcome to SecretSentry"), "{screen}");
     assert!(screen.contains("Press l to load labeled demo data and look around."), "{screen}");
     model.handle(Key::Char('l'));
-    let expected = format!("Added {} demo records. Remove them in Settings, Remove demo data.", DEMO_RECORDS.len());
+    let loaded = model.app.findings().count().unwrap();
+    assert_eq!(loaded, 8);
+    let expected = format!("Added {loaded} demo findings. Remove them in Settings, Remove demo data.");
     assert_eq!(message(&model), (Notice::Success, expected));
     let screen = model.screen();
-    for wanted in ["What needs attention", "Open records", "Demo data is loaded", "3 Notifications (", "✔ Added"] {
-        assert!(screen.contains(wanted), "missing {wanted:?} in\n{screen}");
-    }
+    expect(
+        &screen,
+        &[
+            "What needs attention",
+            "In the baseline",
+            "Last scan: ",
+            "Findings that need attention by rule and confidence",
+            "Files with the most findings",
+            "Demo data is loaded",
+            "8 Notifications (",
+            "✔ Added",
+        ],
+    );
     model.handle(Key::Char('l'));
     assert_eq!(message(&model), (Notice::Success, "The demo data is already loaded".to_string()));
     model.handle(Key::Enter);
-    assert_eq!(model.page_id(), NAV_RECORDS);
+    assert_eq!(model.page_id(), NAV_FINDINGS);
+    assert_eq!(model.find.query.scope, Scope::Attention);
+    assert_eq!(model.find.list.len() as i64, model.overview.attention);
     drop(model);
     let mut model = Model::new(&mut app, options(&home, false, None));
     assert!(!model.screen().contains("Welcome to"));
 }
 
 #[test]
-fn a_record_is_added_edited_disabled_and_removed_with_the_keyboard() {
-    let home = TempDir::new("tui-records");
+fn a_directory_is_scanned_in_the_background_and_the_secret_stays_redacted() {
+    let home = TempDir::new("tui-scan");
     let mut app = open_app(&home);
+    let root = project(&home);
     let mut model = Model::new(&mut app, options(&home, false, None));
+    model.resize(150, 40);
     press(&mut model, &[Key::Esc, Key::Char('2')]);
-    assert!(model.screen().contains("No records yet. Press n to add the first record"));
+    assert!(model.screen().contains("No scans yet. Press n to scan a directory"));
+    model.handle(Key::Char('x'));
+    assert_eq!(message(&model), (Notice::Info, "No scan is running".to_string()));
+    let idle = model.interval();
     press(&mut model, &[Key::Char('n'), Key::Ctrl('s')]);
-    assert!(problem(&model).starts_with("name:"), "{}", problem(&model));
-    assert!(model.screen().contains("✖ Not saved: name:"));
-    write(&mut model, "Renew the lease");
+    assert!(problem(&model).starts_with("path: no directory was given"), "{}", problem(&model));
+    write(&mut model, &home.path().join("missing").to_string_lossy());
     model.handle(Key::Ctrl('s'));
-    assert_eq!(message(&model), (Notice::Success, "Added record 1: Renew the lease".to_string()));
-    let screen = model.screen();
-    assert!(screen.contains("Renew the lease") && screen.contains("Row 1 of 1"), "{screen}");
-    press(&mut model, &[Key::Char('e'), Key::Tab, Key::Right, Key::Tab, Key::Right, Key::Ctrl('s')]);
-    assert_eq!(message(&model), (Notice::Success, "Updated record 1".to_string()));
-    assert_eq!((model.rec.list[0].status, model.rec.list[0].severity), (Status::InProgress, Severity::Low));
+    assert!(problem(&model).contains("cannot be opened"), "{}", problem(&model));
+    assert!(model.job.is_none());
+    replace(&mut model, &root);
+    model.handle(Key::Ctrl('s'));
+    assert!(model.job.is_some() && model.form.is_none());
+    assert_eq!(model.page_id(), NAV_SCANS);
+    assert_eq!(message(&model), (Notice::Info, "The scan is running. Press x to cancel it.".to_string()));
+    assert!(model.screen().contains("… Scanning "));
+    assert!(model.interval() <= idle);
+    model.handle(Key::Char('n'));
+    let (kind, text) = message(&model);
+    assert!(kind == Notice::Warning && text.starts_with("A scan is already running."), "{text}");
+    assert!(model.wait_for_scan(Duration::from_secs(120)));
+    let (kind, text) = message(&model);
+    assert!(kind == Notice::Success && text.starts_with("Scanned ") && text.ends_with("1 new likely secret"), "{text}");
+    assert!(model.job.is_none());
+    assert_eq!(model.scan.list.len(), 1);
+    let scan = model.scan.list[0].clone();
+    assert_eq!((scan.status, scan.findings_seen, scan.findings_new), (scans::Status::Completed, 1, 1));
     model.handle(Key::Enter);
     let screen = model.screen();
-    assert!(screen.contains("Record 1: Renew the lease") && screen.contains("No note."), "{screen}");
-    press(&mut model, &[Key::Esc, Key::Char('x')]);
-    assert_eq!(message(&model), (Notice::Success, "Record 1 is disabled".to_string()));
-    assert!(model.screen().contains("Disabled: shown"));
-    model.handle(Key::Char('x'));
-    assert_eq!(message(&model), (Notice::Success, "Record 1 is enabled".to_string()));
-    model.handle(Key::Char('d'));
-    assert!(model.screen().contains("▲ Press y to remove it, or n or Esc to cancel."));
-    model.handle(Key::Char('n'));
-    assert_eq!(message(&model), (Notice::Info, CANCELLED.to_string()));
-    assert_eq!(model.rec.list.len(), 1);
-    press(&mut model, &[Key::Char('d'), Key::Char('y')]);
-    assert_eq!(message(&model), (Notice::Success, "Removed record 1".to_string()));
-    assert!(model.screen().contains("No records yet."));
-    assert!(model.app.records().get(1).is_err());
-    model.app.settings().set(settings::KEY_CONFIRM, "false").unwrap();
-    model.reload();
-    press(&mut model, &[Key::Char('n')]);
-    write(&mut model, "Short lived");
-    press(&mut model, &[Key::Ctrl('s'), Key::Delete]);
-    assert_eq!(message(&model), (Notice::Success, "Removed record 2".to_string()));
+    expect(
+        &screen,
+        &[&format!("Scan {}: ", scan.id), "Findings seen 1 · New findings 1", "No problem was reported."],
+    );
+    press(&mut model, &[Key::Esc, Key::Char('f')]);
+    assert_eq!(model.page_id(), NAV_FINDINGS);
+    assert_eq!((model.find.query.scan_id, model.find.list.len()), (scan.id, 1));
+    assert!(model.screen().contains(&format!("Scan: {}", scan.id)));
+    let secret = sample_hosting_token();
+    assert!(!model.screen().contains(&secret[8..]));
+    model.handle(Key::Enter);
+    let screen = model.screen();
+    assert!(!screen.contains(&secret) && !screen.contains(&secret[8..]), "{screen}");
+    expect(&screen, &["Why this confidence", "Where it was seen", "deploy.sh", "never stored", "Line 1, column "]);
+    press(&mut model, &[Key::Esc, Key::Char('2'), Key::Char('n'), Key::Ctrl('s'), Key::Char('x')]);
+    let (kind, text) = message(&model);
+    assert!(kind == Notice::Info && text.starts_with("Cancelling the scan."), "{text}");
+    assert!(model.screen().contains("… Cancelling the scan of "));
+    assert!(model.wait_for_scan(Duration::from_secs(120)));
+    let (kind, text) = message(&model);
+    assert!(matches!(kind, Notice::Success | Notice::Warning), "{text}");
+    assert_eq!(model.scan.list.len(), 2);
+    assert!(model.scan.list.iter().all(|scan| scan.status != scans::Status::Running));
+    assert_eq!(model.app.findings().count().unwrap(), 1);
+    press(&mut model, &[Key::Char('n'), Key::Ctrl('s')]);
+    assert!(model.job.is_some());
+    model.handle(Key::Char('q'));
+    assert!(model.finished());
+    model.stop_scan(Duration::from_secs(120));
+    assert!(model.job.is_none());
 }
 
 #[test]
-fn an_edit_that_lost_a_race_keeps_the_form_open_and_explains() {
-    let home = TempDir::new("tui-conflict");
+fn findings_are_filtered_shown_in_detail_and_decided() {
+    let home = TempDir::new("tui-findings");
     let mut app = open_app(&home);
     let other = open_app(&home);
     let mut model = Model::new(&mut app, options(&home, false, None));
-    press(&mut model, &[Key::Esc, Key::Char('2'), Key::Char('n')]);
-    write(&mut model, "Shared");
-    press(&mut model, &[Key::Ctrl('s'), Key::Char('e')]);
-    let current = other.records().get(1).unwrap();
-    other
-        .records()
-        .update(1, current.revision, &Input { note: "changed elsewhere".to_string(), ..current.input() })
-        .unwrap();
-    write(&mut model, " edited");
+    model.resize(150, 60);
+    press(&mut model, &[Key::Esc, Key::Char('3')]);
+    assert!(model.screen().contains("No findings yet. Press 2 and then n to scan a directory"));
+    press(&mut model, &[Key::Char('1'), Key::Char('l'), Key::Char('3')]);
+    let total = model.find.list.len();
+    assert_eq!(total, 8);
+    let screen = model.screen();
+    expect(&screen, &["Scope: All findings", "CONFIDENCE", "config/settings.py", "Row 1 of 8"]);
+    model.handle(Key::Char('f'));
+    assert_eq!(model.find.query.scope, Scope::Attention);
+    assert_eq!(model.find.list.len() as i64, model.overview.attention);
+    assert!(model.find.list.len() < total);
+    press(&mut model, &[Key::Char('f'), Key::Char('f'), Key::Char('f')]);
+    assert_eq!(model.find.query.scope, Scope::Allowlisted);
+    let paths: Vec<&str> = model.find.list.iter().map(|finding| finding.path.as_str()).collect();
+    assert_eq!(paths, ["demo-fixtures/payment_test.py"]);
+    model.handle(Key::Esc);
+    assert_eq!((model.find.query.scope, model.find.list.len()), (Scope::All, total));
+    model.handle(Key::Char('/'));
+    assert!(model.hints().starts_with("Type to search"));
+    write(&mut model, "release.sh");
+    assert!(!model.finished());
+    model.handle(Key::Enter);
+    assert!(!model.find.list.is_empty());
+    assert!(model.find.list.iter().all(|finding| finding.path == "deploy/release.sh"));
+    let shown = model.find.list.len();
+    model.handle(Key::Enter);
+    assert!(model.hints().starts_with("e decide"));
+    let screen = model.screen();
+    expect(
+        &screen,
+        &[
+            &format!("Finding 1 of {shown}: "),
+            "Why this confidence",
+            "Where it was seen",
+            "deploy/release.sh",
+            "(demo data)",
+            "never stored",
+        ],
+    );
+    let id = model.find.list[0].id;
+    press(&mut model, &[Key::Char('e'), Key::Right, Key::Right, Key::Tab]);
+    write(&mut model, "Rotated in March");
     model.handle(Key::Ctrl('s'));
-    assert!(problem(&model).starts_with("another window changed this record"), "{}", problem(&model));
-    assert_eq!(model.rec.list[0].note, "changed elsewhere");
+    assert_eq!(message(&model), (Notice::Success, format!("Finding {id} is false positive")));
+    let decided = model.find.list.iter().find(|finding| finding.id == id).unwrap();
+    assert_eq!((decided.status, decided.note.as_str()), (Status::FalsePositive, "Rotated in March"));
+    assert!(model.screen().contains("Note: Rotated in March"));
+    let current = other.findings().get(id).unwrap();
+    other.findings().decide(id, current.revision, Status::Confirmed, "seen elsewhere").unwrap();
+    press(&mut model, &[Key::Char('e'), Key::Ctrl('s')]);
+    assert!(problem(&model).starts_with("another window changed this finding"), "{}", problem(&model));
+    assert_eq!(model.find.list.iter().find(|finding| finding.id == id).unwrap().note, "seen elsewhere");
     model.handle(Key::Esc);
     assert_eq!(message(&model), (Notice::Info, CANCELLED.to_string()));
-    other.records().create(&Input { name: "From the other window".to_string(), ..Input::default() }).unwrap();
+    press(&mut model, &[Key::Esc, Key::Esc]);
+    assert_eq!(model.find.list.len(), total);
+    model.handle(Key::Char('s'));
+    assert_eq!((model.find.query.sort.as_str(), model.find.query.descending), ("rule", false));
+    model.handle(Key::Char('S'));
+    assert!(model.screen().contains("Sort: rule descending"));
+    press(&mut model, &[Key::Char('v'), Key::Char('v'), Key::Char('v')]);
+    assert!(model.screen().contains("Confidence: High"));
+    assert!(model.find.list.iter().all(|finding| finding.level() == app_core::confidence::Level::High));
+    model.handle(Key::Char('t'));
+    assert!(model.find.list.iter().all(|finding| finding.status == Status::Open));
+    press(&mut model, &[Key::Esc, Key::Char('B')]);
+    assert!(model.confirm.as_ref().unwrap().statement.starts_with("This marks every current finding as known."));
+    model.handle(Key::Char('y'));
+    let (kind, text) = message(&model);
+    assert!(kind == Notice::Success && text.starts_with("Added ") && text.ends_with(" to the baseline"), "{text}");
+    assert!(model.overview.baseline > 0 && model.overview.new == 0);
+    model.handle(Key::Char('1'));
+    assert!(model.screen().contains("In the baseline"));
+    press(&mut model, &[Key::Char('3'), Key::Char('R'), Key::Char('y')]);
+    let (kind, text) = message(&model);
+    assert!(kind == Notice::Success && text.starts_with("Removed ") && text.ends_with(" from the baseline"), "{text}");
+    assert_eq!(model.overview.baseline, 0);
+    other.findings().accept_baseline("").unwrap();
     model.tick();
     assert_eq!(message(&model), (Notice::Info, "Updated by another window".to_string()));
-    assert_eq!(model.rec.list.len(), 2);
-    model.tick();
-    assert_eq!(model.rec.list.len(), 2);
+    assert!(model.overview.baseline > 0);
 }
 
 #[test]
-fn records_are_searched_filtered_sorted_and_their_columns_chosen() {
-    let home = TempDir::new("tui-filters");
+fn rules_and_allowlist_entries_are_managed_with_the_keyboard() {
+    let home = TempDir::new("tui-rules");
     let mut app = open_app(&home);
     let mut model = Model::new(&mut app, options(&home, false, None));
-    press(&mut model, &[Key::Char('l'), Key::Char('2')]);
-    let enabled = DEMO_RECORDS.iter().filter(|record| record.enabled).count();
-    assert_eq!(model.rec.list.len(), enabled);
-    press(&mut model, &[Key::Char('/'), Key::Char('q'), Key::Backspace]);
-    assert!(!model.finished());
-    assert!(model.hints().starts_with("Type to search"));
-    write(&mut model, "router");
-    assert_eq!(model.rec.list.len(), 1);
-    assert!(model.screen().contains("Search: router▏"));
-    press(&mut model, &[Key::Enter, Key::Esc]);
-    assert_eq!(model.rec.list.len(), enabled);
-    model.handle(Key::Char('f'));
-    assert!(model.screen().contains("Status: Open"));
-    assert!(model.rec.list.iter().all(|record| record.status == Status::Open));
-    press(&mut model, &[Key::Esc, Key::Char('v')]);
-    assert!(model.screen().contains("No records match these filters. Press Esc to clear them."));
-    press(&mut model, &[Key::Esc, Key::Char('a')]);
-    assert_eq!(model.rec.list.len(), DEMO_RECORDS.len());
-    press(&mut model, &[Key::End, Key::Char('k'), Key::Home, Key::Char('j')]);
-    assert_eq!(model.rec.cursor, 1);
-    model.handle(Key::Char('s'));
-    let sorted = model.app.settings().text(settings::KEY_RECORD_SORT).unwrap();
-    assert!(sorted.starts_with("name:"), "{sorted}");
-    model.handle(Key::Char('S'));
-    let reversed = model.app.settings().text(settings::KEY_RECORD_SORT).unwrap();
-    assert!(reversed.starts_with("name:") && reversed != sorted, "{reversed}");
-    let names: Vec<&str> = model.rec.list.iter().map(|record| record.name.as_str()).collect();
-    let mut ordered = names.clone();
-    ordered.sort_unstable();
-    if reversed.ends_with(":desc") {
-        ordered.reverse();
-    }
-    assert_eq!(names, ordered);
-    model.handle(Key::Char('c'));
-    let hidden = model.form.as_ref().unwrap().0.fields[0].key.clone();
-    assert!(model.screen().contains("Columns of the record table"));
-    press(&mut model, &[Key::Right, Key::Ctrl('s')]);
-    let columns = model.app.settings().text(settings::KEY_RECORD_COLUMNS).unwrap();
-    assert!(!columns.split(',').any(|column| column == hidden), "{columns}");
-    assert!(!model.screen().contains(&format!("  {}  ", hidden.to_uppercase())));
-}
-
-#[test]
-fn records_are_exported_and_imported_through_a_preview() {
-    let home = TempDir::new("tui-transfer");
-    let mut app = open_app(&home);
-    let mut model = Model::new(&mut app, options(&home, false, None));
-    press(&mut model, &[Key::Char('l'), Key::Char('2'), Key::Char('o')]);
-    let target = home.path().join("out.csv").to_string_lossy().into_owned();
-    replace(&mut model, &target);
+    model.resize(150, 60);
+    press(&mut model, &[Key::Esc, Key::Char('5')]);
+    assert_eq!(model.rules.list.len(), 16);
+    let id = model.rules.list[0].spec.id.clone();
+    model.handle(Key::Char('x'));
+    assert_eq!(message(&model), (Notice::Success, format!("Rule {id} is off. It applies from the next scan.")));
+    assert!(model.screen().contains("○ off"));
+    model.handle(Key::Char('x'));
+    assert_eq!(message(&model), (Notice::Success, format!("Rule {id} is on. It applies from the next scan.")));
+    model.handle(Key::Enter);
+    expect(&model.screen(), &["Pattern", "Secret group", "Starting confidence", "Built-in"]);
+    model.handle(Key::Char('e'));
+    replace(&mut model, "Renamed rule");
     model.handle(Key::Ctrl('s'));
-    let expected = format!("Exported {} records to {target}", DEMO_RECORDS.len());
-    assert_eq!(message(&model), (Notice::Success, expected.clone()));
-    assert!(fs::read_to_string(&target).unwrap().starts_with("name,status,severity,note,enabled"));
+    assert_eq!(message(&model), (Notice::Success, format!("Saved rule {id}. It applies from the next scan.")));
+    let renamed = model.rules.list.iter().find(|rule| rule.spec.id == id).unwrap();
+    assert!(renamed.changed && renamed.spec.name == "Renamed rule");
+    assert!(model.screen().contains("Built-in, changed"));
+    model.handle(Key::Char('u'));
+    assert_eq!(message(&model), (Notice::Success, format!("Rule {id} is back to its built-in definition")));
+    assert!(!model.rules.list.iter().find(|rule| rule.spec.id == id).unwrap().changed);
+    model.handle(Key::Char('d'));
+    let (kind, text) = message(&model);
+    assert!(kind == Notice::Info && text.starts_with("A built-in rule cannot be removed."), "{text}");
+    model.handle(Key::Char('n'));
+    write(&mut model, "internal-token");
+    model.handle(Key::Tab);
+    write(&mut model, "Internal token");
+    model.handle(Key::Tab);
+    write(&mut model, "tok_(");
+    model.handle(Key::Ctrl('s'));
+    assert!(!problem(&model).is_empty());
+    write(&mut model, "[a-z0-9]{12})");
+    model.handle(Key::Tab);
+    replace(&mut model, "1");
+    model.handle(Key::Tab);
+    write(&mut model, "tok_, internal");
+    model.handle(Key::Tab);
+    replace(&mut model, "high");
+    model.handle(Key::Ctrl('s'));
+    assert!(problem(&model).starts_with("entropy: \"high\" is not an entropy threshold"), "{}", problem(&model));
+    replace(&mut model, "2.5");
+    press(&mut model, &[Key::Tab, Key::Right, Key::Tab]);
+    replace(&mut model, "70");
+    model.handle(Key::Ctrl('s'));
+    let added = "Added rule internal-token. It applies from the next scan.".to_string();
+    assert_eq!(message(&model), (Notice::Success, added));
+    assert_eq!(model.rules.list.len(), 17);
+    model.rules.cursor = model.rules.list.iter().position(|rule| rule.spec.id == "internal-token").unwrap();
+    assert_eq!(model.rules.list[model.rules.cursor].spec.entropy_tenths, 25);
+    model.handle(Key::Char('u'));
+    let (kind, text) = message(&model);
+    assert!(kind == Notice::Info && text.starts_with("Only a built-in rule can be restored."), "{text}");
+    model.handle(Key::Char('t'));
+    let value = ["tok", "_", "a1b2c3d4e5f6"].concat();
+    write(&mut model, &format!("internal = {value}"));
+    model.handle(Key::Ctrl('s'));
+    let preview = model.preview.as_ref().unwrap();
+    assert_eq!(preview.lines[0], "Rule internal-token reports 1 match in the sample.");
+    let screen = model.screen();
+    assert!(screen.contains("Try rule internal-token") && !screen.contains("a1b2c3d4e5f6"), "{screen}");
+    press(&mut model, &[Key::Esc, Key::Char('d')]);
+    let statement = model.confirm.as_ref().unwrap().statement.clone();
+    assert!(statement.starts_with("This removes the rule internal-token (Internal token)."), "{statement}");
+    model.handle(Key::Char('y'));
+    assert_eq!(message(&model), (Notice::Success, "Removed rule internal-token".to_string()));
+    assert_eq!(model.rules.list.len(), 16);
+    model.handle(Key::Char('6'));
+    assert!(model.screen().contains("No allowlist entries yet. Press n to add one."));
+    press(&mut model, &[Key::Char('n'), Key::Ctrl('s')]);
+    assert!(!problem(&model).is_empty());
+    model.handle(Key::Tab);
+    write(&mut model, "tests/**");
+    press(&mut model, &[Key::Tab, Key::Tab]);
+    write(&mut model, "Fixtures");
+    model.handle(Key::Ctrl('s'));
+    let entry = model.allow.list[0].spec.clone();
+    let added = format!("Added allowlist entry {}. It applies from the next scan.", entry.id);
+    assert_eq!(message(&model), (Notice::Success, added));
+    assert_eq!((entry.pattern.as_str(), entry.note.as_str(), entry.enabled), ("tests/**", "Fixtures", true));
+    expect(&model.screen(), &["Path pattern", "tests/**", "every rule", "Row 1 of 1"]);
+    model.handle(Key::Char('x'));
+    let off = format!("Allowlist entry {} is off. It applies from the next scan.", entry.id);
+    assert_eq!(message(&model), (Notice::Success, off));
+    press(&mut model, &[Key::Char('e'), Key::Tab]);
+    replace(&mut model, "docs/**");
+    model.handle(Key::Ctrl('s'));
+    let saved = format!("Saved allowlist entry {}. It applies from the next scan.", entry.id);
+    assert_eq!(message(&model), (Notice::Success, saved));
+    assert_eq!(model.allow.list[0].spec.pattern, "docs/**");
+    press(&mut model, &[Key::Char('d'), Key::Char('y')]);
+    assert_eq!(message(&model), (Notice::Success, format!("Removed allowlist entry {}", entry.id)));
+    assert!(model.allow.list.is_empty());
+}
+
+#[test]
+fn the_git_history_is_listed_and_findings_are_exported() {
+    let home = TempDir::new("tui-export");
+    let mut app = open_app(&home);
+    let mut model = Model::new(&mut app, options(&home, false, None));
+    model.resize(150, 40);
+    press(&mut model, &[Key::Esc, Key::Char('4')]);
+    assert!(model.screen().contains("No findings in Git history yet."));
+    press(&mut model, &[Key::Char('1'), Key::Char('l'), Key::Char('4')]);
+    assert!(!model.hist.list.is_empty());
+    expect(&model.screen(), &["COMMIT", "SUBJECT", "Add the deployment settings", "Demo Author"]);
+    let commit = model.hist.list[model.hist.cursor].clone();
+    model.handle(Key::Enter);
+    assert_eq!(model.page_id(), NAV_FINDINGS);
+    assert_eq!(model.find.query.commit_id, commit.commit_id);
+    assert_eq!(model.find.list.len() as i64, commit.findings);
+    assert!(model.screen().contains(&format!("Commit: {}", &commit.commit_id[..10])));
+    model.handle(Key::Char('7'));
+    expect(&model.screen(), &["Export findings", "Findings to export  Needs attention", "SARIF 2.1.0"]);
+    let attention = model.overview.attention;
+    let report = home.path().join("reports").join("findings.sarif");
     model.handle(Key::Char('o'));
-    replace(&mut model, &target);
+    replace(&mut model, "findings.txt");
+    model.handle(Key::Ctrl('s'));
+    assert!(problem(&model).contains("is not clear from its name"), "{}", problem(&model));
+    replace(&mut model, &report.to_string_lossy());
+    model.handle(Key::Ctrl('s'));
+    let done = format!("Exported {attention} findings as SARIF 2.1.0 to {}", report.display());
+    assert_eq!(message(&model), (Notice::Success, done.clone()));
+    assert!(model.screen().contains("✔ Exported"));
+    let text = fs::read_to_string(&report).unwrap();
+    assert!(text.contains("secretSentryFinding/v1") && text.contains("2.1.0"), "{text}");
+    model.handle(Key::Char('o'));
+    replace(&mut model, &report.to_string_lossy());
     model.handle(Key::Ctrl('s'));
     assert!(problem(&model).contains("already exists. Choose another name"), "{}", problem(&model));
-    press(&mut model, &[Key::Tab, Key::Tab, Key::Right, Key::Ctrl('s')]);
-    assert_eq!(message(&model), (Notice::Success, expected));
-    press(&mut model, &[Key::Char('i'), Key::Ctrl('s')]);
-    assert_eq!(problem(&model), "give the path of the file to import");
-    write(&mut model, &home.path().join("missing.csv").to_string_lossy());
-    model.handle(Key::Ctrl('s'));
-    assert!(problem(&model).contains("cannot open the import file"), "{}", problem(&model));
-    let source = home.path().join("in.csv").to_string_lossy().into_owned();
-    fs::write(&source, "name,status,severity,note,enabled\nImported row,open,high,,true\n,open,low,,true\n").unwrap();
-    replace(&mut model, &source);
-    model.handle(Key::Ctrl('s'));
-    let screen = model.screen();
-    for wanted in ["Import preview", "Dry run of", "✖ rejected row", "Press Enter to import these rows"] {
-        assert!(screen.contains(wanted), "missing {wanted:?} in\n{screen}");
-    }
-    press(&mut model, &[Key::Down, Key::PageDown, Key::Up, Key::Esc]);
-    assert_eq!(message(&model), (Notice::Info, CANCELLED.to_string()));
-    assert!(model.app.records().by_name("Imported row").unwrap().is_none());
-    model.handle(Key::Char('i'));
-    write(&mut model, &source);
-    press(&mut model, &[Key::Ctrl('s'), Key::Enter]);
-    let (kind, text) = message(&model);
-    assert!(kind == Notice::Success && text.starts_with("Import finished: "), "{text}");
-    assert!(model.app.records().by_name("Imported row").unwrap().is_some());
-    fs::write(&source, "name,status,severity,note,enabled\n,open,low,,true\n").unwrap();
-    model.handle(Key::Char('i'));
-    write(&mut model, &source);
-    model.handle(Key::Ctrl('s'));
-    let screen = model.screen();
-    assert!(screen.contains("There is nothing to import.") && screen.contains("Esc close"), "{screen}");
-    model.handle(Key::Enter);
-    assert!(model.preview.is_none());
+    press(&mut model, &[Key::Tab, Key::Right, Key::Tab, Key::Tab, Key::Right, Key::Ctrl('s')]);
+    assert_eq!(message(&model), (Notice::Success, format!("Exported {attention} findings as JSON to {}", report.display())));
+    assert!(fs::read_to_string(&report).unwrap().contains("secretsentry-findings"));
+    model.handle(Key::Char('f'));
+    assert_eq!(model.exp.scope, Scope::New);
 }
 
 #[test]
@@ -300,22 +462,22 @@ fn notifications_are_read_and_rules_are_edited() {
     let mut app = open_app(&home);
     let mut model = Model::new(&mut app, options(&home, false, None));
     model.resize(120, 30);
-    press(&mut model, &[Key::Esc, Key::Char('3')]);
-    assert!(model.screen().contains("No notifications. They appear when a record needs attention or is completed."));
-    press(&mut model, &[Key::Char('1'), Key::Char('l'), Key::Char('3')]);
+    press(&mut model, &[Key::Esc, Key::Char('8')]);
+    assert!(model.screen().contains("No notifications. They appear when a scan finds a new likely secret or fails."));
+    press(&mut model, &[Key::Char('1'), Key::Char('l'), Key::Char('8')]);
     let unread = model.inbox.list.len();
-    assert!(unread >= 1);
+    assert_eq!(unread, 2);
     let screen = model.screen();
-    for wanted in [format!("Showing all notifications · {unread} unread"), "A record needs attention".to_string()] {
+    for wanted in [format!("Showing all notifications · {unread} unread"), "new likely secret".to_string()] {
         assert!(screen.contains(&wanted), "missing {wanted:?} in\n{screen}");
     }
     let first = model.inbox.list[0].clone();
     model.handle(Key::Char('m'));
     assert_eq!(message(&model), (Notice::Success, format!("Marked notification {} as read", first.id)));
     model.handle(Key::Enter);
-    assert_eq!(model.page_id(), NAV_RECORDS);
-    assert!(model.screen().contains(&format!("Record {}: ", first.record_id)));
-    press(&mut model, &[Key::Char('3'), Key::Char('M')]);
+    assert_eq!(model.page_id(), NAV_SCANS);
+    assert!(model.screen().contains(&format!("Scan {}: ", first.record_id)));
+    press(&mut model, &[Key::Char('8'), Key::Char('M')]);
     assert_eq!(message(&model), (Notice::Success, format!("Marked {} notifications as read", unread - 1)));
     model.handle(Key::Char('u'));
     assert!(model.screen().contains("No unread notifications. Press u to show all of them."));
@@ -378,9 +540,11 @@ fn settings_are_changed_reset_and_the_actions_ask_first() {
     press(&mut model, &[Key::Char('1'), Key::Char('l')]);
     select_setting(&mut model, "Remove demo data");
     model.handle(Key::Enter);
-    assert!(model.screen().contains(&format!("This removes {} demo records.", DEMO_RECORDS.len())));
+    assert!(model.screen().contains("This removes 8 demo findings with their scans."));
     model.handle(Key::Char('y'));
-    assert_eq!(message(&model), (Notice::Success, format!("Removed {} demo records", DEMO_RECORDS.len())));
+    assert_eq!(message(&model), (Notice::Success, "Removed 8 demo findings".to_string()));
+    assert_eq!((model.scan.list.len(), model.find.list.len(), model.allow.list.len()), (0, 0, 0));
+    assert_eq!(model.overview.unread_notifications, 0);
     select_setting(&mut model, "Open with");
     model.handle(Key::Enter);
     assert_eq!(message(&model), (Notice::Success, "Open with: Dashboard window".to_string()));
@@ -418,7 +582,7 @@ fn about_opens_links_only_on_request_and_shows_the_guide_and_diagnostics() {
     let mut app = open_app(&home);
     let mut model = Model::new(&mut app, options(&home, false, None));
     model.resize(120, 40);
-    press(&mut model, &[Key::Esc, Key::Char('5')]);
+    press(&mut model, &[Key::Esc, Key::Char('9')]);
     let screen = model.screen();
     let publisher = format!("Publisher: {}", meta::PUBLISHER);
     for wanted in [
@@ -440,7 +604,7 @@ fn about_opens_links_only_on_request_and_shows_the_guide_and_diagnostics() {
     let opened: Opened = Rc::new(RefCell::new(Vec::new()));
     let mut model = Model::new(&mut app, options(&home, false, Some(opened.clone())));
     model.resize(120, 40);
-    press(&mut model, &[Key::Char('5'), Key::Enter]);
+    press(&mut model, &[Key::Char('9'), Key::Enter]);
     assert_eq!(message(&model), (Notice::Success, "Opened Source Code in the browser".to_string()));
     assert_eq!(opened.borrow().as_slice(), [service::source_link().url]);
     press(&mut model, &[Key::Down, Key::Enter]);
@@ -488,9 +652,11 @@ fn the_menu_the_sidebar_and_quitting_work_from_the_keyboard() {
     press(&mut model, &[Key::F(10), Key::Down, Key::Down, Key::Down, Key::Down, Key::Enter]);
     assert_eq!(message(&model), (Notice::Success, "Refreshed".to_string()));
     press(&mut model, &[Key::Char(':'), Key::Esc, Key::Tab]);
-    assert_eq!(model.page_id(), NAV_RECORDS);
-    assert!(model.hints().starts_with("n add"));
-    model.handle(Key::BackTab);
+    assert_eq!(model.page_id(), NAV_SCANS);
+    assert!(model.hints().starts_with("n new scan"));
+    press(&mut model, &[Key::Char('0')]);
+    assert_eq!(model.page_id(), NAV_SETTINGS);
+    press(&mut model, &[Key::Char('2'), Key::BackTab]);
     assert!(model.screen().contains("1 Overview"));
     model.handle(Key::Char('b'));
     assert!(!model.screen().contains("1 Overview"));
@@ -530,26 +696,35 @@ fn every_screen_fills_the_terminal_exactly_at_every_size() {
     check(&mut model, "welcome");
     model.handle(Key::Char('l'));
     check(&mut model, "notice");
-    for page in ['1', '2', '3', '4', '5'] {
+    for page in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] {
         model.handle(Key::Char(page));
         check(&mut model, "page");
+        model.handle(Key::Enter);
+        check(&mut model, "page after Enter");
+        model.handle(Key::Esc);
     }
-    press(&mut model, &[Key::Char('2'), Key::Enter]);
+    press(&mut model, &[Key::Char('3'), Key::Enter]);
     check(&mut model, "detail");
-    model.handle(Key::Char('e'));
+    model.handle(Key::PageDown);
+    check(&mut model, "scrolled detail");
+    press(&mut model, &[Key::Char('e'), Key::Tab]);
     write(
         &mut model,
-        " 日本語のテキスト and a very long name that keeps going beyond the width of a narrow terminal window",
+        " 日本語のテキスト and a very long note that keeps going beyond the width of a narrow terminal window",
     );
     check(&mut model, "form");
-    press(&mut model, &[Key::Esc, Key::Char('d')]);
+    press(&mut model, &[Key::Esc, Key::Char('B')]);
     check(&mut model, "confirm");
     press(&mut model, &[Key::Esc, Key::Char(':')]);
     check(&mut model, "menu");
-    press(&mut model, &[Key::Esc, Key::Char('3'), Key::Right]);
+    press(&mut model, &[Key::Esc, Key::Char('5'), Key::Char('t')]);
+    write(&mut model, "nothing to find here");
+    model.handle(Key::Ctrl('s'));
+    check(&mut model, "trial");
+    press(&mut model, &[Key::Esc, Key::Char('8'), Key::Right]);
     check(&mut model, "rules");
     for _ in 0..4 {
-        press(&mut model, &[Key::Char('5'), Key::Right]);
+        press(&mut model, &[Key::Char('9'), Key::Right]);
         check(&mut model, "about");
     }
     assert_eq!(short_hints("a · b · c", 40), "a · b · c");
@@ -606,7 +781,7 @@ fn every_terminal_capability_is_reachable() {
     hints.push(model.hints());
     model.handle(Key::Char('l'));
     for index in 0..NAVIGATION.len() {
-        let digit = char::from_digit(index as u32 + 1, 10).unwrap();
+        let digit = char::from_digit((index as u32 + 1) % 10, 10).unwrap();
         model.handle(Key::Char(digit));
         screens.push(model.screen());
         hints.push(model.hints());
@@ -615,10 +790,10 @@ fn every_terminal_capability_is_reachable() {
             screens.push(model.screen());
         }
     }
-    press(&mut model, &[Key::Char('3'), Key::Right]);
+    press(&mut model, &[Key::Char('8'), Key::Right]);
     screens.push(model.screen());
     hints.push(model.hints());
-    press(&mut model, &[Key::Left, Key::Char('5')]);
+    press(&mut model, &[Key::Left, Key::Char('9')]);
     for _ in 0..6 {
         model.handle(Key::Right);
         screens.push(model.screen());

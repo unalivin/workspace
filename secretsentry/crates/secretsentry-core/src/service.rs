@@ -494,12 +494,31 @@ pub struct NavItem {
 }
 
 pub const NAV_OVERVIEW: &str = "overview";
+pub const NAV_SCANS: &str = "scans";
+pub const NAV_FINDINGS: &str = "findings";
+pub const NAV_HISTORY: &str = "history";
+pub const NAV_RULES: &str = "rules";
+pub const NAV_ALLOWLISTS: &str = "allowlists";
+pub const NAV_EXPORTS: &str = "exports";
 pub const NAV_RECORDS: &str = "records";
 pub const NAV_NOTIFICATIONS: &str = "notifications";
 pub const NAV_SETTINGS: &str = "settings";
 pub const NAV_ABOUT: &str = "about";
 
 pub const NAVIGATION: &[NavItem] = &[
+    NavItem { id: NAV_OVERVIEW, label: "Overview", hint: "What needs attention", bottom: false },
+    NavItem { id: NAV_SCANS, label: "Scans", hint: "Scan runs on directories and Git history", bottom: false },
+    NavItem { id: NAV_FINDINGS, label: "Findings", hint: "Likely secrets with redacted values", bottom: false },
+    NavItem { id: NAV_HISTORY, label: "Git History", hint: "History findings by commit", bottom: false },
+    NavItem { id: NAV_RULES, label: "Rules", hint: "Detector rules", bottom: false },
+    NavItem { id: NAV_ALLOWLISTS, label: "Allowlists", hint: "Test and example data to leave out", bottom: false },
+    NavItem { id: NAV_EXPORTS, label: "Exports", hint: "JSON and SARIF reports", bottom: false },
+    NavItem { id: NAV_NOTIFICATIONS, label: "Notifications", hint: "Events and notification rules", bottom: false },
+    NavItem { id: NAV_ABOUT, label: "About", hint: "Guide, shortcuts, diagnostics and licenses", bottom: true },
+    NavItem { id: NAV_SETTINGS, label: "Settings", hint: "Appearance, data and notifier", bottom: true },
+];
+
+pub const LEGACY_NAVIGATION: &[NavItem] = &[
     NavItem { id: NAV_OVERVIEW, label: "Overview", hint: "What needs attention", bottom: false },
     NavItem { id: NAV_RECORDS, label: "Records", hint: "Everything the application tracks", bottom: false },
     NavItem { id: NAV_NOTIFICATIONS, label: "Notifications", hint: "Events and notification rules", bottom: false },
@@ -515,16 +534,16 @@ pub struct Shortcut {
 }
 
 pub const SHORTCUTS: &[Shortcut] = &[
-    Shortcut { keys: "Ctrl/Cmd+1 to 5", terminal: "1 to 5", action: "Open a category" },
+    Shortcut { keys: "Ctrl/Cmd+1 to 5", terminal: "1 to 9 and 0", action: "Open a category" },
     Shortcut { keys: "Ctrl/Cmd+F", terminal: "/", action: "Search" },
     Shortcut { keys: "Ctrl/Cmd+,", terminal: ",", action: "Open Settings" },
     Shortcut { keys: "F1", terminal: "F1 or ?", action: "Open the usage guide" },
-    Shortcut { keys: "Ctrl/Cmd+N", terminal: "n", action: "Add a record" },
+    Shortcut { keys: "Ctrl/Cmd+N", terminal: "n", action: "Start a scan or add an entry" },
     Shortcut { keys: "Enter", terminal: "Enter", action: "Open the selected row" },
     Shortcut { keys: "Up and Down", terminal: "Up, Down, j, k", action: "Move between rows" },
     Shortcut { keys: "Ctrl/Cmd+R", terminal: "r", action: "Refresh now" },
     Shortcut { keys: "Ctrl/Cmd+B", terminal: "b", action: "Collapse or expand the sidebar" },
-    Shortcut { keys: "Delete", terminal: "d", action: "Remove the selected record after confirmation" },
+    Shortcut { keys: "Delete", terminal: "d", action: "Remove the selected entry after confirmation" },
     Shortcut { keys: "Escape", terminal: "Esc", action: "Close a panel or cancel" },
     Shortcut { keys: "Ctrl/Cmd+Q", terminal: "q or Ctrl+C", action: "Quit" },
 ];
@@ -597,90 +616,78 @@ pub const CAPABILITIES: &[Capability] = &[
     ),
     capability("database.check", "Check database health", "About, Diagnostics", "About, Diagnostics", "db check"),
     capability("overview.show", "See what needs attention", "Overview", "Overview", "overview"),
-    capability("scan.run", "Scan a directory, its Git history or both", NOT_APPLICABLE, NOT_APPLICABLE, "scan"),
-    capability("scan.list", "See earlier scan runs", NOT_APPLICABLE, NOT_APPLICABLE, "scans list"),
-    capability("scan.show", "Show one scan run", NOT_APPLICABLE, NOT_APPLICABLE, "scans show"),
+    capability("scan.run", "Scan a directory, its Git history or both", NOT_APPLICABLE, "Scans, n", "scan"),
+    capability("scan.list", "See earlier scan runs", NOT_APPLICABLE, "Scans", "scans list"),
+    capability("scan.show", "Show one scan run", NOT_APPLICABLE, "Scans, Enter", "scans show"),
     capability(
         "finding.list",
         "List, search, filter and sort findings",
         NOT_APPLICABLE,
-        NOT_APPLICABLE,
+        "Findings",
         "findings list",
     ),
     capability(
         "finding.show",
         "Show one finding with its reasons and places",
         NOT_APPLICABLE,
-        NOT_APPLICABLE,
+        "Findings, Enter",
         "findings show",
     ),
     capability(
         "finding.decide",
         "Record a decision and a note for a finding",
         NOT_APPLICABLE,
-        NOT_APPLICABLE,
+        "Findings, e",
         "findings decide",
     ),
-    capability("finding.export", "Export findings as JSON or SARIF", NOT_APPLICABLE, NOT_APPLICABLE, "export"),
+    capability("finding.export", "Export findings as JSON or SARIF", NOT_APPLICABLE, "Exports, o", "export"),
     capability(
         "history.list",
         "See findings by the commit that added them",
         NOT_APPLICABLE,
-        NOT_APPLICABLE,
+        "Git History",
         "history list",
     ),
-    capability("baseline.status", "Count new and baseline findings", NOT_APPLICABLE, NOT_APPLICABLE, "baseline status"),
+    capability("baseline.status", "Count new and baseline findings", NOT_APPLICABLE, "Overview, In the baseline", "baseline status"),
     capability(
         "baseline.accept",
         "Accept the current findings as the baseline",
         NOT_APPLICABLE,
-        NOT_APPLICABLE,
+        "Findings, B",
         "baseline accept",
     ),
-    capability("baseline.reset", "Empty the baseline", NOT_APPLICABLE, NOT_APPLICABLE, "baseline reset"),
-    capability("rule.list", "List detector rules", NOT_APPLICABLE, NOT_APPLICABLE, "rules list"),
-    capability("rule.show", "Show one detector rule", NOT_APPLICABLE, NOT_APPLICABLE, "rules show"),
-    capability("rule.add", "Add a custom rule", NOT_APPLICABLE, NOT_APPLICABLE, "rules add"),
-    capability("rule.edit", "Edit a custom rule", NOT_APPLICABLE, NOT_APPLICABLE, "rules edit"),
-    capability("rule.enable", "Enable a rule", NOT_APPLICABLE, NOT_APPLICABLE, "rules enable"),
-    capability("rule.disable", "Disable a rule", NOT_APPLICABLE, NOT_APPLICABLE, "rules disable"),
+    capability("baseline.reset", "Empty the baseline", NOT_APPLICABLE, "Findings, R", "baseline reset"),
+    capability("rule.list", "List detector rules", NOT_APPLICABLE, "Rules", "rules list"),
+    capability("rule.show", "Show one detector rule", NOT_APPLICABLE, "Rules, Enter", "rules show"),
+    capability("rule.add", "Add a custom rule", NOT_APPLICABLE, "Rules, n", "rules add"),
+    capability("rule.edit", "Edit a custom rule", NOT_APPLICABLE, "Rules, e", "rules edit"),
+    capability("rule.enable", "Enable a rule", NOT_APPLICABLE, "Rules, x", "rules enable"),
+    capability("rule.disable", "Disable a rule", NOT_APPLICABLE, "Rules, x", "rules disable"),
     capability(
         "rule.restore",
         "Return a built-in rule to its built-in state",
         NOT_APPLICABLE,
-        NOT_APPLICABLE,
+        "Rules, u",
         "rules restore",
     ),
-    capability("rule.remove", "Remove a custom rule", NOT_APPLICABLE, NOT_APPLICABLE, "rules remove"),
-    capability("rule.try", "Try a rule on sample text", NOT_APPLICABLE, NOT_APPLICABLE, "rules try"),
-    capability("allowlist.list", "List allowlist entries", NOT_APPLICABLE, NOT_APPLICABLE, "allowlist list"),
-    capability("allowlist.add", "Add an allowlist entry", NOT_APPLICABLE, NOT_APPLICABLE, "allowlist add"),
-    capability("allowlist.edit", "Edit an allowlist entry", NOT_APPLICABLE, NOT_APPLICABLE, "allowlist edit"),
-    capability("allowlist.enable", "Enable an allowlist entry", NOT_APPLICABLE, NOT_APPLICABLE, "allowlist enable"),
-    capability("allowlist.disable", "Disable an allowlist entry", NOT_APPLICABLE, NOT_APPLICABLE, "allowlist disable"),
-    capability("allowlist.remove", "Remove an allowlist entry", NOT_APPLICABLE, NOT_APPLICABLE, "allowlist remove"),
-    capability("record.list", "List, search, filter and sort records", "Records", "Records", "records list"),
-    capability(
-        "record.columns",
-        "Choose the columns of the record table",
-        "Records, Columns",
-        "Records, c",
-        "config set",
-    ),
-    capability("record.show", "Show one record", "Records, row detail panel", "Records, Enter", "records show"),
-    capability("record.add", "Add a record", "Records, Add record", "Records, n", "records add"),
-    capability("record.edit", "Edit a record", "Records, row detail panel, Edit", "Records, e", "records edit"),
-    capability("record.enable", "Enable a record", "Records, row detail panel, Enable", "Records, x", "records enable"),
-    capability(
-        "record.disable",
-        "Disable a record",
-        "Records, row detail panel, Disable",
-        "Records, x",
-        "records disable",
-    ),
-    capability("record.remove", "Remove a record", "Records, row detail panel, Remove", "Records, d", "records remove"),
-    capability("record.import", "Import records from CSV or JSON", "Records, Import", "Records, i", "records import"),
-    capability("record.export", "Export records to CSV or JSON", "Records, Export", "Records, o", "records export"),
+    capability("rule.remove", "Remove a custom rule", NOT_APPLICABLE, "Rules, d", "rules remove"),
+    capability("rule.try", "Try a rule on sample text", NOT_APPLICABLE, "Rules, t", "rules try"),
+    capability("allowlist.list", "List allowlist entries", NOT_APPLICABLE, "Allowlists", "allowlist list"),
+    capability("allowlist.add", "Add an allowlist entry", NOT_APPLICABLE, "Allowlists, n", "allowlist add"),
+    capability("allowlist.edit", "Edit an allowlist entry", NOT_APPLICABLE, "Allowlists, e", "allowlist edit"),
+    capability("allowlist.enable", "Enable an allowlist entry", NOT_APPLICABLE, "Allowlists, x", "allowlist enable"),
+    capability("allowlist.disable", "Disable an allowlist entry", NOT_APPLICABLE, "Allowlists, x", "allowlist disable"),
+    capability("allowlist.remove", "Remove an allowlist entry", NOT_APPLICABLE, "Allowlists, d", "allowlist remove"),
+    capability("record.list", "List, search, filter and sort records", "Records", NOT_APPLICABLE, "records list"),
+    capability("record.columns", "Choose the columns of the record table", "Records, Columns", NOT_APPLICABLE, "config set"),
+    capability("record.show", "Show one record", "Records, row detail panel", NOT_APPLICABLE, "records show"),
+    capability("record.add", "Add a record", "Records, Add record", NOT_APPLICABLE, "records add"),
+    capability("record.edit", "Edit a record", "Records, row detail panel, Edit", NOT_APPLICABLE, "records edit"),
+    capability("record.enable", "Enable a record", "Records, row detail panel, Enable", NOT_APPLICABLE, "records enable"),
+    capability("record.disable", "Disable a record", "Records, row detail panel, Disable", NOT_APPLICABLE, "records disable"),
+    capability("record.remove", "Remove a record", "Records, row detail panel, Remove", NOT_APPLICABLE, "records remove"),
+    capability("record.import", "Import records from CSV or JSON", "Records, Import", NOT_APPLICABLE, "records import"),
+    capability("record.export", "Export records to CSV or JSON", "Records, Export", NOT_APPLICABLE, "records export"),
     capability("demo.load", "Load labeled demo data", "Overview, Load demo data", "Overview, l", "demo load"),
     capability(
         "demo.remove",
@@ -1041,7 +1048,7 @@ mod tests {
 
     #[test]
     fn navigation_shortcuts_links_and_capabilities_are_complete() {
-        assert_eq!(NAVIGATION.len(), 5);
+        assert_eq!((NAVIGATION.len(), LEGACY_NAVIGATION.len()), (10, 5));
         assert!(SHORTCUTS.iter().all(|shortcut| !shortcut.keys.is_empty() && !shortcut.terminal.is_empty()));
         assert!(source_link().allowed && advisory_link().allowed);
         let outside = external_link("Elsewhere", "https://example.test/");

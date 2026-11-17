@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use app_core::error::{AppError, Result};
 use app_core::platform::Env;
@@ -11,6 +11,8 @@ use ratatui::style::{Color, Modifier, Style};
 use crate::model::{Model, Options};
 use crate::text::{Line, width};
 use crate::widgets::Key;
+
+const STOP_LIMIT: Duration = Duration::from_secs(5);
 
 pub fn convert(event: KeyEvent) -> Option<Key> {
     if event.kind == KeyEventKind::Release {
@@ -118,6 +120,7 @@ pub fn run(app: &mut App, options: Options) -> Result<String> {
                 Ok(Event::Key(pressed)) => {
                     if let Some(key) = convert(pressed) {
                         model.handle(key);
+                        deadline = deadline.min(Instant::now() + model.interval());
                     }
                 }
                 Ok(_) => {}
@@ -130,6 +133,7 @@ pub fn run(app: &mut App, options: Options) -> Result<String> {
             Err(error) => break Err(error),
         }
     };
+    model.stop_scan(STOP_LIMIT);
     let restored = ratatui::try_restore();
     outcome.map_err(failed)?;
     restored.map_err(failed)?;

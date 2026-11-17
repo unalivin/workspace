@@ -1,11 +1,10 @@
 use app_core::error::{AppError, Result};
 use app_core::notify::{self, Filter, Notification, Rule};
-use app_core::records::Query;
-use app_core::service::NAV_RECORDS;
+use app_core::scans;
+use app_core::service::NAV_SCANS;
 use app_core::theme::Severity;
 
-use crate::model::{LIST_LIMIT, Model, Notice, Submit, move_cursor};
-use crate::records::{borrowed, severity_options};
+use crate::model::{LIST_LIMIT, Model, Notice, Submit, borrowed, move_cursor, severity_options};
 use crate::text::{Line, Look, width, window, wrapped};
 use crate::widgets::{Field, Form, Key, layout, row, selectable};
 
@@ -88,16 +87,13 @@ impl Model<'_> {
                 if key != Key::Enter {
                     return;
                 }
-                if item.record_id == 0 {
-                    self.say(Notice::Info, "The record of this notification was removed");
+                let found = item.record_kind == scans::RECORD_KIND && self.scan.select(item.record_id);
+                if !found {
+                    self.say(Notice::Info, "The scan of this notification was removed");
                     return;
                 }
-                self.rec.query =
-                    Query { sort: "updated".to_string(), descending: true, include_disabled: true, ..Query::default() };
-                self.load_records();
-                self.rec.select(item.record_id);
-                self.rec.detail = true;
-                self.open(NAV_RECORDS);
+                self.scan.detail = true;
+                self.open(NAV_SCANS);
             }
             _ => {}
         }
@@ -147,7 +143,7 @@ impl Model<'_> {
                         "dedup",
                         "De-duplication",
                         &rule.dedup_minutes.to_string(),
-                        "Minutes in which the same event for the same record is not raised again. 0 turns it off.",
+                        "Minutes in which the same event for the same scanned directory is not raised again. 0 turns it off.",
                         5,
                     ),
                 ];
@@ -229,7 +225,7 @@ impl Model<'_> {
             let message = if page.unread_only {
                 "No unread notifications. Press u to show all of them."
             } else {
-                "No notifications. They appear when a record needs attention or is completed."
+                "No notifications. They appear when a scan finds a new likely secret or fails."
             };
             lines.extend(wrapped(message, size, Look::Plain));
             return lines;

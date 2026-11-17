@@ -1,3 +1,5 @@
+pub const MAX_TENTHS: u32 = 80;
+
 pub fn bits_per_character(text: &str) -> f64 {
     let bytes = text.as_bytes();
     if bytes.is_empty() {
@@ -26,6 +28,18 @@ pub fn show(tenths: u32) -> String {
     format!("{}.{}", tenths / 10, tenths % 10)
 }
 
+pub fn parse(text: &str) -> Option<u32> {
+    let text = text.trim();
+    let (whole, tenth) = text.split_once('.').unwrap_or((text, "0"));
+    if whole.is_empty() || tenth.len() != 1 || !whole.bytes().chain(tenth.bytes()).all(|byte| byte.is_ascii_digit()) {
+        return None;
+    }
+    let whole: u32 = whole.parse().ok()?;
+    let tenth: u32 = tenth.parse().ok()?;
+    let tenths = whole.checked_mul(10)?.checked_add(tenth)?;
+    (tenths <= MAX_TENTHS).then_some(tenths)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -41,6 +55,16 @@ mod tests {
         assert_eq!(show(46), "4.6");
         assert_eq!(show(0), "0.0");
         assert_eq!(show(80), "8.0");
+    }
+
+    #[test]
+    fn thresholds_are_parsed_with_one_decimal() {
+        assert_eq!(parse("0"), Some(0));
+        assert_eq!(parse(" 3.5 "), Some(35));
+        assert_eq!(parse("8.0"), Some(80));
+        for wrong in ["", "high", "3.55", ".5", "3.", "-1", "8.1", "9", "99999999999"] {
+            assert_eq!(parse(wrong), None, "{wrong}");
+        }
     }
 
     #[test]

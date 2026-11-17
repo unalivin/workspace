@@ -79,7 +79,7 @@ Tests never touch the real user directories: each one gets a temporary home and 
 |---|---|
 | The three interfaces offer the same capabilities | `navigation_shortcuts_links_and_capabilities_are_complete`, `every_capability_names_a_real_command_and_every_command_has_help`, `every_dashboard_capability_is_reachable`, `every_terminal_capability_is_reachable`, `the_generated_command_tables_are_current` |
 | A change in one interface appears in the others | `changes_made_by_another_connection_are_noticed_once`, `changes_from_another_window_keep_the_selection_and_unsaved_input` |
-| Conflicting edits lose nothing | `a_stale_revision_or_a_removed_record_is_a_conflict`, `an_edit_that_lost_a_race_keeps_the_form_and_explains`, `an_edit_that_lost_a_race_keeps_the_form_open_and_explains` |
+| Conflicting edits lose nothing | `a_stale_revision_or_a_removed_record_is_a_conflict`, `an_edit_that_lost_a_race_keeps_the_form_and_explains`, `findings_are_filtered_shown_in_detail_and_decided` |
 | A second writer waits and is told, never corrupts | `a_second_writer_waits_then_reports_a_busy_database`, `a_failing_migration_is_rolled_back_completely`, `a_batch_is_created_completely_or_not_at_all` |
 | Settings are validated, resettable and never dropped | `values_are_stored_listed_and_reset`, `stored_values_from_other_versions_are_kept_and_not_used`, `flag_beats_environment_beats_stored_beats_default`, `invalid_overrides_are_ignored_and_explained` |
 | Themes meet the contrast rules | `every_theme_meets_wcag_aa_in_light_and_dark`, `severities_are_ordered_named_and_never_color_only`, `a_weak_custom_accent_is_adjusted_and_reported`, `any_accent_ends_up_readable` |

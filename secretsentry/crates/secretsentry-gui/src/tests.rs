@@ -9,7 +9,7 @@ use app_core::meta;
 use app_core::notifier::Autostart;
 use app_core::platform::{Env, Os};
 use app_core::records::{Input, Status};
-use app_core::service::{self, App, NAV_ABOUT, NAV_NOTIFICATIONS, NAV_OVERVIEW, NAV_RECORDS, NAV_SETTINGS, NAVIGATION};
+use app_core::service::{self, App, NAV_ABOUT, NAV_NOTIFICATIONS, NAV_OVERVIEW, NAV_RECORDS, NAV_SETTINGS, LEGACY_NAVIGATION};
 use app_core::settings;
 use app_core::testkit::{TempDir, fixed_time};
 use app_core::theme::Severity;
@@ -159,7 +159,7 @@ fn the_first_start_welcomes_and_the_overview_counts() {
         (4, 2, 2, 1)
     );
     assert_eq!(board.overview.demo, 6);
-    let bell = NAVIGATION.iter().find(|item| item.id == NAV_NOTIFICATIONS).unwrap();
+    let bell = LEGACY_NAVIGATION.iter().find(|item| item.id == NAV_NOTIFICATIONS).unwrap();
     assert_eq!(board.nav_label(bell), "Notifications (2)");
     board.load_demo();
     shows(&board, &["The demo data is already loaded"]);
@@ -175,7 +175,7 @@ fn navigation_the_sidebar_and_the_terminal_hand_over_work() {
     let (opened, terminals) = (Log::default(), Log::default());
     let mut app = open_app(&home);
     let mut board = started(&mut app, wired(&home, &opened, &terminals));
-    for (index, item) in NAVIGATION.iter().enumerate() {
+    for (index, item) in LEGACY_NAVIGATION.iter().enumerate() {
         board.shortcut(Shortcut::Page(index));
         assert_eq!(board.page_id(), item.id);
     }
@@ -353,7 +353,7 @@ fn changes_from_another_window_keep_the_selection_and_unsaved_input() {
     board.tick();
     shows(&board, &["Updated by another window"]);
     assert_eq!(board.rec.list.len(), 3);
-    let bell = NAVIGATION.iter().find(|item| item.id == NAV_NOTIFICATIONS).unwrap();
+    let bell = LEGACY_NAVIGATION.iter().find(|item| item.id == NAV_NOTIFICATIONS).unwrap();
     assert_eq!(board.nav_label(bell), "Notifications (3)");
     board.sort_by("name", false);
     board.rec.selected = board.rec.list.iter().find(|record| record.name == "beta").map(|record| record.id);
@@ -734,7 +734,7 @@ fn every_dashboard_capability_is_reachable() {
     assert!(!empty.contains("Welcome to"), "the dialog stays open:\n{empty}");
     seen.push(empty);
     board.load_demo();
-    for item in NAVIGATION {
+    for item in LEGACY_NAVIGATION {
         board.show(item.id);
         seen.push(painted(&mut stage, &mut board));
     }
@@ -1066,7 +1066,7 @@ fn every_icon_the_dashboard_draws_comes_from_the_application_set() {
     let mut board = started(&mut app, options(&home));
     board.load_demo();
     let mut stage = Stage::new(1280.0, 2600.0, 1.0);
-    for item in NAVIGATION {
+    for item in LEGACY_NAVIGATION {
         board.show(item.id);
         painted(&mut stage, &mut board);
     }
@@ -1087,7 +1087,7 @@ fn every_icon_the_dashboard_draws_comes_from_the_application_set() {
     for name in &drawn {
         assert!(PATHS.iter().any(|(known, _)| known == name), "{name} is drawn but is not in the application set");
     }
-    for item in NAVIGATION {
+    for item in LEGACY_NAVIGATION {
         let name = crate::view::nav_icon(item.id);
         assert!(drawn.iter().any(|known| known == name), "the icon {name} of {} was never drawn", item.id);
     }

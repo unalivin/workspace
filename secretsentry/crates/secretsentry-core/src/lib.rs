@@ -14,6 +14,7 @@ pub mod findings;
 pub mod fingerprint;
 pub mod git;
 pub mod guide;
+pub mod jobs;
 pub mod launcher;
 pub mod meta;
 pub mod notifier;

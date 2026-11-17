@@ -333,21 +333,11 @@ const RULE_FLAGS: [crate::cli::Flag; 8] = [
 ];
 
 fn parse_entropy(raw: &str) -> Result<u32> {
-    let problem = || {
+    entropy::parse(raw).ok_or_else(|| {
         usage(format!(
             "\"{raw}\" is not an entropy threshold: use a number from 0 to 8 with one decimal, for example 3.5"
         ))
-    };
-    let (whole, tenth) = raw.trim().split_once('.').unwrap_or((raw.trim(), "0"));
-    if whole.is_empty() || tenth.len() != 1 || !whole.bytes().chain(tenth.bytes()).all(|byte| byte.is_ascii_digit()) {
-        return Err(problem());
-    }
-    let whole: u32 = whole.parse().map_err(|_| problem())?;
-    let tenth: u32 = tenth.parse().map_err(|_| problem())?;
-    if whole > 8 {
-        return Err(problem());
-    }
-    Ok(whole * 10 + tenth)
+    })
 }
 
 fn apply_rule_flags(call: &Call, spec: &mut RuleSpec) -> Result<bool> {

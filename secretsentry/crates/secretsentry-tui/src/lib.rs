@@ -1,7 +1,10 @@
 mod about;
+mod catalog;
+mod findings;
 mod inbox;
 pub mod model;
-mod records;
+mod reports;
+mod scans;
 pub mod screen;
 mod settings;
 pub mod text;

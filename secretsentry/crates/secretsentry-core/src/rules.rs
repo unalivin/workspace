@@ -10,7 +10,7 @@ pub const MAX_PATTERN_LENGTH: usize = 1000;
 pub const MAX_KEYWORDS: usize = 16;
 pub const MIN_KEYWORD_LENGTH: usize = 2;
 pub const MAX_KEYWORD_LENGTH: usize = 40;
-pub const MAX_ENTROPY_TENTHS: u32 = 80;
+pub const MAX_ENTROPY_TENTHS: u32 = crate::entropy::MAX_TENTHS;
 pub const MAX_CONFIDENCE: u8 = 100;
 pub const COMPILED_SIZE_LIMIT: usize = 4 << 20;
 
