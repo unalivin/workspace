@@ -1,0 +1,348 @@
+   Compiling secretsentry-core v0.1.0-dev (/home/runner/work/workspace/workspace/secretsentry/crates/secretsentry-core)
+   Compiling secretsentry-app v0.1.0-dev (/home/runner/work/workspace/workspace/secretsentry/crates/secretsentry-app)
+   Compiling secretsentry-tui v0.1.0-dev (/home/runner/work/workspace/workspace/secretsentry/crates/secretsentry-tui)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 8.82s
+     Running unittests src/lib.rs (target/debug/build/secretsentry-app/43edc426fa07e642/out/app_cli-43edc426fa07e642)
+
+running 19 tests
+test tests::allowlist_entries_are_managed_and_apply_to_the_next_scan ... ok
+test tests::a_history_scan_groups_findings_by_the_commit_that_added_them ... ok
+test tests::diagnostics_the_guide_about_and_licenses_are_available ... ok
+test tests::every_capability_names_a_real_command_and_every_command_has_help ... ok
+test tests::demo_data_feeds_the_overview_and_the_notifications ... ok
+test tests::flags_and_positional_arguments_can_be_mixed ... ok
+test tests::help_version_and_unknown_commands ... ok
+test tests::notification_rules_are_listed_changed_and_reset ... ok
+test tests::a_scan_lists_redacted_findings_and_new_ones_give_exit_code_three ... ok
+test tests::records_are_added_listed_changed_and_removed ... ok
+test tests::records_are_imported_and_exported ... ok
+test tests::a_baseline_file_makes_known_findings_pass_and_new_ones_fail ... ok
+test tests::removal_asks_on_an_interactive_terminal_unless_confirmation_is_off ... ok
+test tests::findings_are_filtered_shown_decided_and_exported ... ok
+test tests::starting_without_a_command_follows_the_launch_decision ... ok
+test tests::settings_themes_and_the_launcher_preference_are_managed ... ok
+test tests::the_notifier_delivers_new_items_and_manages_the_sign_in_entry ... ok
+test tests::the_database_is_created_located_moved_and_checked ... ok
+test tests::rules_are_listed_added_tried_changed_and_removed ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.86s
+
+     Running unittests src/main.rs (target/debug/build/secretsentry-app/c29646f034d6a964/out/secretsentry-c29646f034d6a964)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/repository.rs (target/debug/build/secretsentry-app/c659a2500b45c078/out/repository-c659a2500b45c078)
+
+running 9 tests
+test required_files_and_readme_sections_exist ... ok
+test relative_links_in_documents_resolve ... ok
+test sql_stays_in_the_storage_modules_and_is_not_built_from_text ... ok
+test the_configuration_document_lists_every_setting ... ok
+test the_generated_command_tables_are_current ... ok
+test the_version_is_the_same_everywhere ... ok
+test tests_named_in_documents_exist ... ok
+test source_files_have_no_comments ... ok
+test no_email_address_appears_anywhere ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running unittests src/lib.rs (target/debug/build/secretsentry-core/8917e0bd3e7598b2/out/app_core-8917e0bd3e7598b2)
+
+running 243 tests
+test allow::tests::entries_match_by_value_fingerprint_and_rule ... ok
+test allow::tests::unusable_entries_name_the_problem_and_the_fix ... ok
+test allow::tests::validation_trims_and_keeps_the_identity ... ok
+test allowlists::tests::demo_entries_are_labelled_and_removed_alone ... ok
+test allow::tests::path_patterns_follow_the_documented_rules ... ok
+test allowlists::tests::entries_are_created_listed_edited_disabled_and_removed ... ok
+test allowlists::tests::hot_queries_use_an_index ... ok
+test baseline::tests::a_baseline_round_trips_through_its_file ... ok
+test allowlists::tests::invalid_and_duplicate_entries_are_refused ... ok
+test allow::tests::any_path_pattern_is_translated_or_refused_without_a_panic ... ok
+test baseline::tests::fresh_baselines_have_different_keys ... ok
+test baseline::tests::other_files_are_refused_with_a_reason ... ok
+test brand::tests::small_sizes_use_the_simplified_motif ... ok
+test baseline::tests::any_set_of_fingerprints_round_trips ... ok
+test brand::tests::the_generator_writes_and_checks_every_file ... ok
+test baseline::tests::any_text_is_parsed_or_refused ... ok
+test allow::tests::a_literal_path_matches_itself_and_nothing_longer ... ok
+test brand::tests::the_ico_file_lists_valid_pictures ... ok
+test brand::tests::the_icon_has_the_plate_and_the_motif_at_every_size ... ok
+test brand::tests::the_svg_sources_are_plain_shapes_with_a_title ... ok
+test clock::tests::display_applies_the_offset_and_drops_seconds ... ok
+test clock::tests::every_second_round_trips_through_text ... ok
+test clock::tests::known_moments_round_trip ... ok
+test clock::tests::manual_clock_moves_only_when_told ... ok
+test clock::tests::parse_never_panics ... ok
+test clock::tests::parse_rejects_malformed_text ... ok
+test clock::tests::zones_shift_the_display_and_the_minute_of_day ... ok
+test confidence::tests::each_reason_changes_the_score_by_its_documented_effect ... ok
+test confidence::tests::levels_follow_the_documented_borders ... ok
+test confidence::tests::placeholders_are_recognized_and_real_looking_values_are_not ... ok
+test confidence::tests::reasons_survive_storage_as_json ... ok
+test confidence::tests::test_and_documentation_paths_are_recognized ... ok
+test confidence::tests::the_score_is_always_between_one_and_one_hundred ... ok
+test csv::tests::formula_cells_are_neutralised_and_restored ... ok
+test csv::tests::malformed_input_is_rejected_with_the_row ... ok
+test csv::tests::parsing_never_panics ... ok
+test csv::tests::rows_fields_quotes_and_line_endings_are_read ... ok
+test brand::tests::the_png_pictures_decode_to_the_drawn_pixels ... ok
+test demo::tests::the_demo_content_is_stable_and_labelled ... ok
+test csv::tests::written_rows_are_read_back_unchanged ... ok
+test entropy::tests::known_texts_have_the_expected_entropy ... ok
+test entropy::tests::random_looking_text_scores_above_words ... ok
+test entropy::tests::thresholds_are_parsed_with_one_decimal ... ok
+test error::tests::validation_errors_name_the_field_the_problem_and_the_fix ... ok
+test entropy::tests::entropy_stays_between_zero_and_the_size_of_the_alphabet ... ok
+test export::tests::formats_are_named_and_chosen_from_the_file_name ... ok
+test export::tests::a_file_is_written_privately_and_not_replaced_without_consent ... ok
+test export::tests::json_lists_every_finding_with_redacted_values ... ok
+test files::tests::files_are_written_whole_private_and_never_overwritten_silently ... ok
+test files::tests::oversized_and_missing_files_are_not_read ... ok
+test fingerprint::tests::any_text_is_accepted_or_refused_without_a_panic ... ok
+test fingerprint::tests::field_boundaries_cannot_be_shifted ... ok
+test fingerprint::tests::fingerprints_depend_on_every_part_and_never_show_the_value ... ok
+test fingerprint::tests::hexadecimal_text_is_read_back ... ok
+test fingerprint::tests::keys_are_random_and_survive_the_text_form ... ok
+test fingerprint::tests::the_digest_matches_the_published_sha256_vectors ... ok
+test git::tests::a_delta_between_any_two_texts_rebuilds_the_second ... ok
+test git::tests::a_delta_may_have_its_base_outside_the_pack ... ok
+test git::tests::a_history_walk_respects_cancelling_the_commit_limit_and_missing_objects ... ok
+test git::tests::a_pack_index_is_validated_and_finds_large_offsets ... ok
+test git::tests::a_packed_history_gives_the_same_visits_as_loose_objects ... ok
+test export::tests::sarif_has_the_same_findings_with_rules_locations_and_states ... ok
+test git::tests::a_repository_is_found_in_its_usual_shapes ... ok
+test git::tests::commits_and_tags_are_parsed_and_damage_is_named ... ok
+test git::tests::damaged_packs_are_refused_without_a_panic ... ok
+test git::tests::deltas_rebuild_the_object_and_damage_is_named ... ok
+test git::tests::any_bytes_are_parsed_without_a_panic ... ok
+test git::tests::loose_headers_are_checked ... ok
+test git::tests::loose_objects_are_read_with_their_type_and_within_the_limit ... ok
+test git::tests::object_names_round_trip_and_reject_other_text ... ok
+test git::tests::history_is_walked_oldest_first_and_each_file_version_is_visited_once ... ok
+test git::tests::packed_objects_are_read_whole_and_through_delta_chains ... ok
+test git::tests::references_come_from_files_and_the_packed_list ... ok
+test git::tests::trees_are_parsed_and_damage_is_named ... ok
+test guide::tests::headings_become_sections_with_unique_anchors ... ok
+test guide::tests::plain_text_drops_markup_and_keeps_code_and_tables_readable ... ok
+test guide::tests::search_requires_every_term_and_shows_an_excerpt ... ok
+test jobs::tests::a_cancelled_run_stops_before_the_history_and_says_so ... ok
+test guide::tests::parsing_searching_and_flattening_never_panic ... ok
+test jobs::tests::a_request_reads_its_limits_from_the_settings_and_needs_a_directory ... ok
+test jobs::tests::a_job_scans_in_the_background_with_its_own_connection ... ok
+test launcher::tests::a_subcommand_always_runs_and_never_prompts ... ok
+test launcher::tests::sessions_are_classified_per_platform ... ok
+test launcher::tests::the_decision_table_holds ... ok
+test launcher::tests::the_terminal_prompt_accepts_keys_words_and_enter ... ok
+test launcher::tests::the_terminal_request_is_read_from_the_arguments ... ok
+test meta::tests::environment_names_follow_the_setting_keys ... ok
+test meta::tests::identity_is_complete ... ok
+test meta::tests::issue_links_encode_every_reserved_character ... ok
+test meta::tests::only_links_below_the_repository_are_accepted ... ok
+test notifier::tests::a_failed_delivery_is_retried_and_a_broken_state_file_starts_over ... ok
+test notifier::tests::autostart_entries_are_placed_and_written_per_platform ... ok
+test notifier::tests::delivery_commands_pass_text_as_data_never_as_code ... ok
+test notifier::tests::install_status_and_uninstall_follow_the_file ... ok
+test notifier::tests::the_first_tick_only_records_the_position_then_new_items_are_announced_once ... ok
+test notifier::tests::the_loop_clamps_the_interval_logs_errors_and_stops_when_told ... ok
+test notify::tests::clock_parsing_accepts_exactly_valid_times ... ok
+test notify::tests::evaluation_checks_enabled_severity_quiet_hours_then_duplicates ... ok
+test notify::tests::publishing_stores_delivers_and_suppresses_duplicates ... ok
+test notify::tests::quiet_hours_may_cross_midnight ... ok
+test notify::tests::rules_are_validated_before_they_are_stored ... ok
+test jobs::tests::a_run_scans_the_chosen_sources_and_sums_up_what_it_found ... ok
+test notify::tests::stored_rules_change_what_is_delivered ... ok
+test notify::tests::the_system_notification_shows_a_count_and_titles_only_on_request ... ok
+test notify::tests::titles_are_cleaned_shortened_and_never_carry_secrets ... ok
+test platform::tests::a_browser_that_does_not_start_tells_the_user_to_copy_the_link ... ok
+test platform::tests::a_missing_home_is_reported_with_the_way_out ... ok
+test platform::tests::linux_follows_the_xdg_variables_and_falls_back_to_home ... ok
+test platform::tests::macos_and_windows_use_their_application_folders ... ok
+test platform::tests::only_repository_links_reach_the_browser ... ok
+test platform::tests::terminal_windows_are_tried_in_order_and_arguments_are_quoted ... ok
+test platform::tests::the_configuration_directory_can_be_overridden_and_empty_values_are_ignored ... ok
+test png::tests::checksums_match_the_published_values ... ok
+test png::tests::damaged_pictures_are_rejected ... ok
+test png::tests::deflate_round_trips_runs_literals_and_every_byte_value ... ok
+test png::tests::pictures_round_trip_and_flat_areas_shrink ... ok
+test png::tests::the_empty_stream_is_the_known_fixed_block ... ok
+test records::tests::a_batch_is_created_completely_or_not_at_all ... ok
+test records::tests::a_stale_revision_or_a_removed_record_is_a_conflict ... ok
+test notify::tests::safe_titles_are_bounded_single_line_and_free_of_long_tokens ... ok
+test records::tests::demo_data_is_labelled_loaded_once_and_removed_alone ... ok
+test records::tests::hot_queries_use_an_index ... ok
+test records::tests::invalid_input_names_the_field_and_the_fix ... ok
+test records::tests::duplicate_names_are_refused_with_a_clear_message ... ok
+test records::tests::listing_filters_sorts_pages_and_searches ... ok
+test records::tests::normalized_input_is_stable_and_within_limits ... ok
+test records::tests::records_are_created_read_updated_and_deleted ... ok
+test records::tests::search_follows_edits_and_deletions ... ok
+test records::tests::the_overview_counts_follow_the_fixture ... ok
+test records::tests::search_expressions_are_always_valid_fts_queries ... ok
+test redact::tests::a_long_line_is_cut_around_the_focus ... ok
+test records::tests::urgent_and_completed_records_publish_notifications_once ... ok
+test redact::tests::a_preview_shows_at_most_four_characters_of_a_long_value ... ok
+test redact::tests::a_preview_never_contains_more_than_the_prefix ... ok
+test redact::tests::control_characters_become_spaces ... ok
+test redact::tests::long_random_looking_words_are_masked_and_ordinary_text_is_kept ... ok
+test redact::tests::a_window_never_exceeds_the_limit ... ok
+test rulebook::tests::a_built_in_rule_can_be_disabled_and_restored_but_not_edited_or_removed ... ok
+test redact::tests::masking_leaves_no_long_random_word ... ok
+test rulebook::tests::a_rule_can_be_tried_on_sample_text_before_it_is_saved ... ok
+test rulebook::tests::a_custom_rule_is_edited_disabled_and_removed ... ok
+test rulebook::tests::hot_queries_use_an_index ... ok
+test rulebook::tests::invalid_and_duplicate_rules_are_refused_and_nothing_is_stored ... ok
+test rulebook::tests::the_built_in_rules_are_listed_first_and_custom_rules_follow ... ok
+test rulebook::tests::the_fingerprint_key_is_created_once_and_kept ... ok
+test rules::tests::any_pattern_is_compiled_or_refused_without_a_panic ... ok
+test rules::tests::every_built_in_rule_compiles_and_is_described ... ok
+test rules::tests::invalid_rules_name_the_field_and_the_fix ... ok
+test rules::tests::validation_trims_text_and_normalizes_keywords ... ok
+test scanner::tests::a_custom_rule_uses_its_keyword_and_the_whole_match ... ok
+test rules::tests::a_pattern_that_would_need_too_much_memory_is_refused ... ok
+test scanner::tests::a_private_key_is_reported_at_its_first_line_without_its_body ... ok
+test scanner::tests::a_value_dropped_by_the_entropy_check_is_still_masked_in_contexts ... ok
+test scanner::tests::a_planted_token_is_found_and_never_shown ... ok
+test scanner::tests::allowlists_and_the_line_marker_mark_candidates_without_hiding_them ... ok
+test scanner::tests::any_text_is_scanned_without_a_panic_and_within_the_limits ... ok
+test scanner::tests::confidence_follows_the_value_and_the_path ... ok
+test scanner::tests::control_characters_never_reach_a_context ... ok
+test scanner::tests::every_built_in_rule_reports_its_sample_once_with_the_exact_value ... ok
+test scanner::tests::every_value_on_a_line_is_masked_in_every_context ... ok
+test scanner::tests::lines_and_columns_count_characters_and_ignore_carriage_returns ... ok
+test scanner::tests::long_lines_are_cut_around_the_value ... ok
+test scanner::tests::near_misses_report_nothing ... ok
+test scanner::tests::only_enabled_rules_run_and_a_broken_rule_is_named ... ok
+test scanner::tests::the_more_specific_rule_wins_when_two_rules_match_one_value ... ok
+test scanner::tests::code_like_lines_are_scanned_without_showing_long_random_words ... ok
+test scanner::tests::values_never_appear_in_a_report ... ok
+test scanner::tests::the_number_of_hits_in_one_file_is_limited ... ok
+test scans::tests::a_cancelled_scan_is_recorded_and_does_not_mark_findings_as_gone ... ok
+test scans::tests::a_failure_is_stored_with_its_reason_and_announced ... ok
+test scans::tests::a_history_scan_finds_a_removed_secret_and_names_the_commit_that_added_it ... ok
+test scans::tests::a_baseline_file_carries_known_findings_to_another_database ... ok
+test scans::tests::a_history_scan_needs_a_repository_and_reports_what_it_could_not_read ... ok
+test scans::tests::a_scan_that_cannot_start_names_the_problem_and_stores_nothing ... ok
+test scans::tests::a_rewritten_history_marks_its_findings_as_gone_from_the_history ... ok
+test scans::tests::a_tree_scan_stores_findings_without_their_values_and_reports_the_scope ... ok
+test scans::tests::a_second_scan_keeps_decisions_and_marks_what_is_gone_and_what_is_new ... ok
+test scans::tests::an_interrupted_scan_is_marked_failed_when_the_next_one_starts ... ok
+test scans::tests::allowlisted_findings_are_kept_and_marked_but_not_counted_as_new ... ok
+test scans::tests::decisions_need_the_current_revision_and_a_usable_note ... ok
+test scans::tests::durations_sizes_and_names_are_shown_in_plain_units ... ok
+test scans::tests::findings_are_filtered_sorted_and_paged ... ok
+test brand::tests::the_icns_file_lists_valid_pictures ... ok
+test scans::tests::hot_queries_use_an_index ... ok
+test scans::tests::demo_data_is_labelled_loaded_once_and_removed_alone ... ok
+test scans::tests::history_findings_are_grouped_by_the_commit_that_added_them ... ok
+test service::tests::appearance_and_time_format_follow_the_settings ... ok
+test service::tests::changes_made_by_another_connection_are_noticed_once ... ok
+test service::tests::diagnostics_report_the_build_the_database_and_changed_settings ... ok
+test service::tests::files_are_exported_privately_and_imported_back ... ok
+test scans::tests::the_overview_counts_by_rule_confidence_and_file ... ok
+test service::tests::navigation_shortcuts_links_and_capabilities_are_complete ... ok
+test service::tests::opening_creates_the_database_once_and_read_only_needs_an_existing_one ... ok
+test service::tests::the_database_location_follows_flag_environment_saved_then_default ... ok
+test service::tests::moving_the_database_copies_or_switches_and_never_overwrites ... ok
+test settings::tests::every_default_is_valid_and_every_key_is_unique ... ok
+test settings::tests::flag_beats_environment_beats_stored_beats_default ... ok
+test settings::tests::invalid_input_is_rejected_with_the_problem_and_the_fix ... ok
+test service::tests::the_front_end_choice_is_remembered_in_the_configuration_file ... ok
+test settings::tests::normalization_produces_canonical_text ... ok
+test settings::tests::invalid_overrides_are_ignored_and_explained ... ok
+test settings::tests::stored_values_from_other_versions_are_kept_and_not_used ... ok
+test settings::tests::normalize_is_idempotent_and_never_panics ... ok
+test settings::tests::values_are_stored_listed_and_reset ... ok
+test store::tests::a_database_from_a_newer_build_is_refused ... ok
+test store::tests::a_failing_migration_is_rolled_back_completely ... ok
+test store::tests::a_new_database_is_created_private_migrated_and_configured ... ok
+test store::tests::files_that_are_not_databases_are_refused_and_left_untouched ... ok
+test store::tests::migration_files_must_be_named_numbered_and_terminated ... ok
+test store::tests::read_only_stores_reject_writes_and_missing_files ... ok
+test store::tests::schema_matches_the_committed_snapshot ... ok
+test testkit::tests::temporary_directories_are_unique_and_removed ... ok
+test theme::tests::a_weak_custom_accent_is_adjusted_and_reported ... ok
+test scans::tests::new_findings_and_failures_are_announced_once ... ok
+test theme::tests::color_parsing_never_panics ... ok
+test theme::tests::colors_parse_print_and_map_to_the_256_color_cube ... ok
+test theme::tests::density_text_scale_and_unknown_names_resolve_to_safe_values ... ok
+test theme::tests::every_theme_meets_wcag_aa_in_light_and_dark ... ok
+test theme::tests::mode_follows_the_system_only_when_asked ... ok
+test theme::tests::monochrome_terminals_use_attributes_instead_of_color ... ok
+test theme::tests::severities_are_ordered_named_and_never_color_only ... ok
+test theme::tests::terminal_profiles_are_detected_from_the_environment ... ok
+test transfer::tests::a_dry_run_reports_and_changes_nothing ... ok
+test store::tests::a_second_writer_waits_then_reports_a_busy_database ... ok
+test theme::tests::any_accent_ends_up_readable ... ok
+test transfer::tests::bad_rows_are_listed_with_their_number_and_good_rows_still_load ... ok
+test transfer::tests::parsing_arbitrary_bytes_never_panics ... ok
+test transfer::tests::the_format_comes_from_the_flag_or_the_file_name ... ok
+test transfer::tests::unreadable_imports_are_refused_whole ... ok
+test tree::tests::a_cancelled_walk_stops_and_says_so ... ok
+test tree::tests::a_root_that_is_not_a_directory_is_refused_with_the_fix ... ok
+test tree::tests::an_empty_directory_gives_empty_statistics ... ok
+test tree::tests::an_unreadable_directory_is_counted_and_the_rest_is_scanned ... ok
+test tree::tests::directories_deeper_than_the_limit_are_counted_not_entered ... ok
+test tree::tests::files_are_visited_in_a_stable_order_and_skips_are_counted ... ok
+test tree::tests::symbolic_links_are_counted_and_never_followed ... ok
+test tree::tests::the_skipped_directories_are_a_choice ... ok
+test userconfig::tests::a_missing_file_means_defaults_and_saved_values_come_back ... ok
+test userconfig::tests::broken_files_are_reported_with_the_way_out ... ok
+test words::tests::count_chooses_the_singular_only_for_one ... ok
+test transfer::tests::an_export_can_be_imported_into_an_empty_database_in_both_formats ... ok
+test transfer::tests::any_valid_record_survives_a_csv_round_trip ... ok
+test brand::tests::the_committed_assets_match_the_generator ... ok
+
+test result: ok. 243 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.29s
+
+     Running tests/git_real.rs (target/debug/build/secretsentry-core/6f986ff12bb54e56/out/git_real-6f986ff12bb54e56)
+
+running 1 test
+test a_repository_written_by_git_is_read_the_same_way_git_reads_it ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.17s
+
+     Running unittests src/lib.rs (target/debug/build/secretsentry-tui/da99ac16a082f190/out/app_tui-da99ac16a082f190)
+
+running 18 tests
+test tests::about_opens_links_only_on_request_and_shows_the_guide_and_diagnostics ... ok
+test tests::a_directory_is_scanned_in_the_background_and_the_secret_stays_redacted ... ok
+test tests::keys_and_styles_are_converted_and_the_screen_is_painted ... ok
+test tests::every_terminal_capability_is_reachable ... ok
+test tests::rules_and_allowlist_entries_are_managed_with_the_keyboard ... ok
+test tests::findings_are_filtered_shown_in_detail_and_decided ... ok
+test tests::notifications_are_read_and_rules_are_edited ... ok
+test tests::the_first_start_welcomes_and_offers_demo_data ... ok
+test tests::the_menu_the_sidebar_and_quitting_work_from_the_keyboard ... ok
+test text::tests::lines_fit_their_column_exactly ... ok
+test text::tests::text_is_clipped_padded_and_wrapped_by_display_width ... ok
+test text::tests::the_scroll_window_always_contains_the_cursor ... ok
+test tests::settings_are_changed_reset_and_the_actions_ask_first ... ok
+test widgets::tests::columns_share_spare_room_and_rows_keep_their_widths ... ok
+test widgets::tests::a_form_moves_between_fields_changes_choices_and_submits_on_the_last_field ... ok
+test widgets::tests::the_text_input_edits_at_the_cursor_and_respects_its_limit ... ok
+test tests::the_git_history_is_listed_and_findings_are_exported ... ok
+test tests::every_screen_fills_the_terminal_exactly_at_every_size ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.88s
+
+   Doc-tests app_cli
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests app_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests app_tui
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

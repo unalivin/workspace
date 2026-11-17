@@ -1,0 +1,4 @@
+    Checking secretsentry-core v0.1.0-dev (/home/runner/work/workspace/workspace/secretsentry/crates/secretsentry-core)
+   Compiling secretsentry-app v0.1.0-dev (/home/runner/work/workspace/workspace/secretsentry/crates/secretsentry-app)
+    Checking secretsentry-tui v0.1.0-dev (/home/runner/work/workspace/workspace/secretsentry/crates/secretsentry-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.16s

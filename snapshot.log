@@ -1,0 +1,15 @@
+   Compiling secretsentry-core v0.1.0-dev (/home/runner/work/workspace/workspace/secretsentry/crates/secretsentry-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.99s
+     Running unittests src/lib.rs (target/debug/build/secretsentry-core/4bf9520e9185d8b6/out/app_core-4bf9520e9185d8b6)
+
+running 1 test
+test store::tests::schema_matches_the_committed_snapshot ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 242 filtered out; finished in 0.93s
+
+     Running tests/git_real.rs (target/debug/build/secretsentry-core/3c889f86168b2556/out/git_real-3c889f86168b2556)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
