@@ -70,3 +70,24 @@ path = "fuzz_targets/transfer_parse.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "allow_glob"
+path = "fuzz_targets/allow_glob.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rules_compile"
+path = "fuzz_targets/rules_compile.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "scanner_scan_text"
+path = "fuzz_targets/scanner_scan_text.rs"
+test = false
+doc = false
+bench = false

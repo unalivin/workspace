@@ -2,6 +2,7 @@
 
 | Page | Content |
 |---|---|
+| [REQUIREMENTS.md](REQUIREMENTS.md) | What the application must do and how each requirement is accepted |
 | [INSTALLATION.md](INSTALLATION.md) | Downloads, digest check, unsigned builds, building from source |
 | [USAGE.md](USAGE.md) | The usage guide that is also built into the application |
 | [COMMANDS.md](COMMANDS.md) | Capability matrix, command reference, flags, environment, exit codes |

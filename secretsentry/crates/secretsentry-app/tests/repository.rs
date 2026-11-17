@@ -21,6 +21,7 @@ const REQUIRED_FILES: &[&str] = &[
     "THIRD_PARTY_NOTICES.md",
     "docs/README.md",
     "docs/CONTRIBUTING.md",
+    "docs/REQUIREMENTS.md",
     "docs/INSTALLATION.md",
     "docs/USAGE.md",
     "docs/COMMANDS.md",

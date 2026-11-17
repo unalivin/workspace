@@ -60,6 +60,9 @@ Rust has no race detector that works on the stable compiler, and the workspace f
 | `theme_accent` | `theme` | Any accent color ends up readable on every theme |
 | `guide_parse_and_search` | `guide` | Guide parsing and search never panic and anchors stay unique |
 | `clock_parse` | `clock` | Time parsing never panics |
+| `rules_compile` | `rules` | Any pattern is compiled or refused; an accepted rule never matches empty text and its secret group exists |
+| `allow_glob` | `allow` | Any path pattern is translated to a usable matcher or refused |
+| `scanner_scan_text` | `scanner` | Scanning any bytes never panics; previews show at most four characters; contexts are short and free of control characters |
 
 ## Test data
 

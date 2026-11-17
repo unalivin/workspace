@@ -10,19 +10,29 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: dev-evidence-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   collect:
-    name: collect (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 150
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+    name: collect
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            secretsentry/target
+          key: dev-evidence-${{ hashFiles('secretsentry/Cargo.toml', 'secretsentry/crates/*/Cargo.toml') }}
+          restore-keys: dev-evidence-
       - name: Run request
         shell: bash
         run: |
@@ -31,34 +41,14 @@ jobs:
           status=0
           bash .github/dev-evidence/request.sh > "$EVIDENCE_DIR/request.log" 2>&1 || status=$?
           printf 'request exit status: %s\n' "$status" >> "$EVIDENCE_DIR/request.log"
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always()
-        with:
-          name: evidence-${{ matrix.os }}
-          path: ${{ runner.temp }}/evidence
-          include-hidden-files: true
-          if-no-files-found: error
-          retention-days: 1
-
-  store:
-    name: store evidence ref
-    needs: collect
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with:
-          path: evidence
       - name: Push evidence ref
+        if: always()
         shell: bash
         env:
           TOKEN: ${{ github.token }}
         run: |
-          cd evidence
+          cd "$RUNNER_TEMP/evidence"
           git init -q
           git add -A
           git -c user.name=ci-evidence -c user.email=ci-evidence commit -q -m "evidence for ${GITHUB_SHA}"
-          git push -q "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "+HEAD:refs/ci-evidence/${GITHUB_SHA}"
+          git push -q "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "+HEAD:refs/ci-evidence/latest"
