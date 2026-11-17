@@ -849,7 +849,11 @@ fn the_overview_draws_a_tally_beside_the_table_with_the_same_numbers() {
         for (tint, wanted) in [(tokens.semantic.severity(level), strong), (faded, pale)] {
             let drawn = tinted(&picture, row, from, to, tint) as f32;
             let (least, most) = (wanted * (square - 2.0), wanted * (square + 1.0));
-            assert!(drawn >= least && drawn <= most, "{}: {drawn} pixels of {tint:?}, wanted {least} to {most}", level.label());
+            assert!(
+                drawn >= least && drawn <= most,
+                "{}: {drawn} pixels of {tint:?}, wanted {least} to {most}",
+                level.label()
+            );
         }
     }
     assert_eq!(stage.areas("Medium").len(), 3, "the table does not repeat the tally:\n{text}");
