@@ -33,6 +33,7 @@ const MAX_NOTICE_LINES: usize = 3;
 pub(crate) const LIST_LIMIT: i64 = 500;
 pub(crate) const CANCELLED: &str = "Cancelled, nothing was changed";
 const SCANNING_INTERVAL: Duration = Duration::from_millis(200);
+const OVERVIEW_STEP: usize = 8;
 const BUSY: &str = "The database is busy in another window. Nothing was lost; press r to try again.";
 
 pub type UrlOpener = dyn Fn(&str) -> Result<()>;
@@ -142,6 +143,7 @@ pub struct Model<'a> {
     quitting: bool,
     pub(crate) overview: Overview,
     pub(crate) last_scan: Option<Scan>,
+    pub(crate) scroll: usize,
     pub(crate) job: Option<Job>,
     pub(crate) scan: ScansPage,
     pub(crate) find: FindingsPage,
@@ -179,6 +181,7 @@ impl<'a> Model<'a> {
             quitting: false,
             overview: Overview::default(),
             last_scan: None,
+            scroll: 0,
             job: None,
             scan: ScansPage::default(),
             find: FindingsPage::new(),
@@ -610,6 +613,11 @@ impl<'a> Model<'a> {
                 Key::Char('l') => self.load_demo(),
                 Key::Char('n') => self.scan_form(),
                 Key::Enter => self.show_findings(Query { scope: Scope::Attention, ..Query::default() }),
+                Key::Down | Key::Char('j') => self.scroll += 1,
+                Key::Up | Key::Char('k') => self.scroll = self.scroll.saturating_sub(1),
+                Key::PageDown | Key::Char(' ') => self.scroll += OVERVIEW_STEP,
+                Key::PageUp => self.scroll = self.scroll.saturating_sub(OVERVIEW_STEP),
+                Key::Home | Key::Char('g') => self.scroll = 0,
                 _ => {}
             },
         }
@@ -657,7 +665,7 @@ impl<'a> Model<'a> {
             NAV_SETTINGS => format!("Enter change · u reset · {common}"),
             NAV_ABOUT if self.about.searching => "Type to search the guide · Enter keep · Esc clear".to_string(),
             NAV_ABOUT => format!("Left/Right section · / search guide · Enter open · {common}"),
-            _ => format!("n scan a directory · l load demo data · Enter findings · 1-9 and 0 pages · {common}"),
+            _ => format!("n scan · l demo data · Enter findings · Up/Down scroll · {common}"),
         }
     }
 
@@ -858,7 +866,11 @@ impl<'a> Model<'a> {
             NAV_NOTIFICATIONS => self.inbox_view(size, room),
             NAV_SETTINGS => self.settings_view(size, room),
             NAV_ABOUT => self.about_view(size, room),
-            _ => self.overview_view(size),
+            _ => {
+                let lines = self.overview_view(size);
+                self.scroll = self.scroll.min(lines.len().saturating_sub(room));
+                lines.into_iter().skip(self.scroll).collect()
+            }
         }
     }
 
@@ -879,6 +891,18 @@ impl<'a> Model<'a> {
             card("Unread notifications", overview.unread_notifications, "press 8 to read them"),
             Line::new(),
         ];
+        if overview.demo > 0 {
+            lines.extend(wrapped(
+                &format!(
+                    "ℹ Demo data is loaded: {} invented findings in \"{}\". Remove them in Settings, Remove demo data.",
+                    overview.demo,
+                    app_core::demo::ROOT
+                ),
+                size,
+                Look::Plain,
+            ));
+            lines.push(Line::new());
+        }
         if let Some(job) = &self.job {
             lines.extend(wrapped(
                 &format!("… Scanning {} ({}). Press 2 and then x to cancel.", job.root(), job.source().label()),
@@ -936,18 +960,6 @@ impl<'a> Model<'a> {
                     &widths,
                 )));
             }
-        }
-        if overview.demo > 0 {
-            lines.push(Line::new());
-            lines.extend(wrapped(
-                &format!(
-                    "ℹ Demo data is loaded: {} invented findings in \"{}\". Remove them in Settings, Remove demo data.",
-                    overview.demo,
-                    app_core::demo::ROOT
-                ),
-                size,
-                Look::Plain,
-            ));
         }
         lines
     }

@@ -196,7 +196,16 @@ impl Model<'_> {
             (Key::Esc, _) => self.rules.detail = false,
             (Key::Char('n'), _) => self.rule_form(None),
             (Key::Enter, Some(_)) => self.rules.detail = !self.rules.detail,
-            (Key::Char('e'), Some(rule)) => self.rule_form(Some(&rule)),
+            (Key::Char('e'), Some(rule)) => {
+                if rule.spec.builtin {
+                    self.say(
+                        Notice::Info,
+                        "A built-in rule cannot be edited. Press x to turn it off, then press n to add your own rule.",
+                    );
+                    return;
+                }
+                self.rule_form(Some(&rule));
+            }
             (Key::Char('x'), Some(rule)) => {
                 let saved = self.app.rulebook().set_enabled(&rule.spec.id, !rule.spec.enabled);
                 if let Some(saved) = self.fail(saved) {
