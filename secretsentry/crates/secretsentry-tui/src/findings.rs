@@ -10,8 +10,10 @@ use crate::widgets::{Field, Form, Input as TextInput, Key, table};
 
 const SEARCH_LIMIT: usize = 200;
 const DETAIL_STEP: usize = 5;
-const DECISION_HELP: &str = "Open and confirmed findings need attention. False positive, accepted risk and resolved close the finding.";
-const ACCEPT_STATEMENT: &str = "This marks every current finding as known. Findings that appear later count as new. Decisions and notes stay.";
+const DECISION_HELP: &str =
+    "Open and confirmed findings need attention. False positive, accepted risk and resolved close the finding.";
+const ACCEPT_STATEMENT: &str =
+    "This marks every current finding as known. Findings that appear later count as new. Decisions and notes stay.";
 const RESET_STATEMENT: &str = "This empties the baseline: every finding counts as new again. Decisions and notes stay.";
 
 pub(crate) struct FindingsPage {
@@ -338,7 +340,11 @@ impl Model<'_> {
         lines.extend(table(&columns, &rows, self.find.cursor, room, size));
         if self.find.total > self.find.list.len() as i64 {
             lines.push(Line::styled(
-                format!("The first {} of {} findings are shown. Narrow the filters to see the others.", rows.len(), self.find.total),
+                format!(
+                    "The first {} of {} findings are shown. Narrow the filters to see the others.",
+                    rows.len(),
+                    self.find.total
+                ),
                 Look::Muted,
             ));
         }
@@ -353,7 +359,10 @@ impl Model<'_> {
         let demo = if finding.demo { " (demo data)" } else { "" };
         let mut body = vec![
             Line::plain("Severity ")
-                .with(format!("{} {}", finding.severity.glyph(), finding.severity.label()), Look::Level(finding.severity))
+                .with(
+                    format!("{} {}", finding.severity.glyph(), finding.severity.label()),
+                    Look::Level(finding.severity),
+                )
                 .with(
                     format!(
                         " · Confidence {} · State {} · Decision {}",
@@ -404,7 +413,13 @@ impl Model<'_> {
             ));
             body.extend(wrapped(&format!("    {}", place.context), size, Look::Muted));
         }
-        let title = format!("Finding {} of {}: {} ({})", self.find.cursor + 1, self.find.list.len(), finding.rule_name, finding.rule_id);
+        let title = format!(
+            "Finding {} of {}: {} ({})",
+            self.find.cursor + 1,
+            self.find.list.len(),
+            finding.rule_name,
+            finding.rule_id
+        );
         let room = height.saturating_sub(3).max(1);
         let scroll = self.find.scroll.min(body.len().saturating_sub(room));
         let mut lines = vec![Line::styled(pad(&title, size), Look::Heading), Line::new()];

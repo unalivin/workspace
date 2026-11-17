@@ -13,10 +13,12 @@ use crate::widgets::{Field, Form, Key, table};
 
 const NUMBER_LIMIT: usize = 4;
 const KEYWORDS_LIMIT: usize = 700;
-const ID_HELP: &str = "1 to 60 lower-case letters, digits and hyphens, for example internal-api-token. It cannot change later.";
+const ID_HELP: &str =
+    "1 to 60 lower-case letters, digits and hyphens, for example internal-api-token. It cannot change later.";
 const PATTERN_HELP: &str = "Regular expression that matches the secret. Look-around and back-references are not supported, so a pattern can never run for a long time.";
 const GROUP_HELP: &str = "Number of the capture group that holds the secret value. 0 means the whole match.";
-const KEYWORDS_HELP: &str = "Comma-separated words. A file is only checked when it contains one of them. Leave empty to check every file.";
+const KEYWORDS_HELP: &str =
+    "Comma-separated words. A file is only checked when it contains one of them. Leave empty to check every file.";
 const ENTROPY_HELP: &str = "Lowest entropy of the value in bits per character, for example 3.5. 0 turns the check off.";
 const CONFIDENCE_HELP: &str = "Starting confidence from 1 to 100 before the context of the match raises or lowers it.";
 const SAMPLE_HELP: &str = "Text to try the rule on. It is not stored. The result shows redacted previews only.";
@@ -119,7 +121,8 @@ impl Model<'_> {
         spec.name = form.value("name");
         spec.pattern = form.value("pattern");
         spec.description = form.value("description");
-        spec.secret_group = number(form, "group", "secret group", "Enter 0 for the whole match, or the number of a capture group")?;
+        spec.secret_group =
+            number(form, "group", "secret group", "Enter 0 for the whole match, or the number of a capture group")?;
         spec.keywords = rules::parse_keywords(&form.value("keywords"));
         spec.entropy_tenths = entropy::parse(&form.value("entropy")).ok_or_else(|| {
             AppError::invalid(
@@ -171,8 +174,13 @@ impl Model<'_> {
             ));
             lines.push(format!("    {}", hit.context));
         }
-        self.preview =
-            Some(Preview { title: format!("Try rule {}", rule.spec.id), lines, offset: 0, accept: String::new(), action: None });
+        self.preview = Some(Preview {
+            title: format!("Try rule {}", rule.spec.id),
+            lines,
+            offset: 0,
+            accept: String::new(),
+            action: None,
+        });
         Ok(())
     }
 
@@ -305,7 +313,13 @@ impl Model<'_> {
         let kinds: Vec<(&str, &str)> = Kind::ALL.iter().map(|kind| (kind.as_str(), kind.label())).collect();
         let fields = vec![
             Field::choice("kind", "Kind", spec.kind.as_str(), KIND_HELP, &kinds),
-            Field::text("pattern", "Pattern", &spec.pattern, "The glob, regular expression or fingerprint.", rules::MAX_PATTERN_LENGTH),
+            Field::text(
+                "pattern",
+                "Pattern",
+                &spec.pattern,
+                "The glob, regular expression or fingerprint.",
+                rules::MAX_PATTERN_LENGTH,
+            ),
             Field::text("rule", "Only for rule", &spec.rule_id, ENTRY_RULE_HELP, rules::MAX_ID_LENGTH),
             Field::text("note", "Note", &spec.note, NOTE_HELP, allow::MAX_NOTE_LENGTH),
         ];
@@ -363,7 +377,10 @@ impl Model<'_> {
                 let saved = self.app.allowlists().set_enabled(entry.spec.id, !entry.spec.enabled);
                 if let Some(saved) = self.fail(saved) {
                     let state = if saved.spec.enabled { "on" } else { "off" };
-                    self.changed(format!("Allowlist entry {} is {state}. It applies from the next scan.", saved.spec.id));
+                    self.changed(format!(
+                        "Allowlist entry {} is {state}. It applies from the next scan.",
+                        saved.spec.id
+                    ));
                 }
             }
             (Key::Char('d'), Some(entry)) => self.ask(
@@ -419,7 +436,11 @@ impl Model<'_> {
                         "KIND" => entry.spec.kind.label().to_string(),
                         "PATTERN" => entry.spec.pattern.clone(),
                         "ONLY FOR RULE" => {
-                            if entry.spec.rule_id.is_empty() { "every rule".to_string() } else { entry.spec.rule_id.clone() }
+                            if entry.spec.rule_id.is_empty() {
+                                "every rule".to_string()
+                            } else {
+                                entry.spec.rule_id.clone()
+                            }
                         }
                         _ => {
                             let demo = if entry.demo { "(demo data) " } else { "" };

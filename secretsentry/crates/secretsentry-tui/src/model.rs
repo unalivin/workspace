@@ -2,11 +2,11 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 
 use app_core::error::{AppError, Result};
+use app_core::findings::{Overview, Query, Scope};
+use app_core::jobs::{Job, Report};
 use app_core::meta;
 use app_core::notifier::Autostart;
 use app_core::platform::Env;
-use app_core::findings::{Overview, Query, Scope};
-use app_core::jobs::{Job, Report};
 use app_core::scans::Scan;
 use app_core::service::{
     self, App, Link, MovePlan, NAV_ABOUT, NAV_ALLOWLISTS, NAV_EXPORTS, NAV_FINDINGS, NAV_HISTORY, NAV_NOTIFICATIONS,
@@ -634,7 +634,9 @@ impl<'a> Model<'a> {
     pub fn hints(&self) -> String {
         let common = ": menu · ? guide · q quit";
         match self.page_id() {
-            NAV_SCANS => format!("n new scan · x cancel the running scan · Enter details · f findings of the scan · {common}"),
+            NAV_SCANS => {
+                format!("n new scan · x cancel the running scan · Enter details · f findings of the scan · {common}")
+            }
             NAV_FINDINGS if self.find.searching => "Type to search · Enter keep · Esc clear".to_string(),
             NAV_FINDINGS if self.find.detail => {
                 format!("e decide · Up/Down next finding · PageDown scroll · Esc back to the list · {common}")

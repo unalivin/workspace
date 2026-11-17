@@ -241,7 +241,13 @@ pub fn row<T: AsRef<str>>(cells: &[T], widths: &[usize]) -> String {
     out
 }
 
-pub fn table(columns: &[(&str, usize, bool)], rows: &[Vec<String>], cursor: usize, room: usize, size: usize) -> Vec<Line> {
+pub fn table(
+    columns: &[(&str, usize, bool)],
+    rows: &[Vec<String>],
+    cursor: usize,
+    room: usize,
+    size: usize,
+) -> Vec<Line> {
     let shape: Vec<(usize, bool)> = columns.iter().map(|(_, column, flex)| (*column, *flex)).collect();
     let widths = layout(&shape, size.saturating_sub(2));
     let titles: Vec<&str> = columns.iter().map(|(title, _, _)| *title).collect();

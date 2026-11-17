@@ -9,7 +9,9 @@ use app_core::meta;
 use app_core::notifier::Autostart;
 use app_core::platform::{Env, Os};
 use app_core::records::{Input, Status};
-use app_core::service::{self, App, NAV_ABOUT, NAV_NOTIFICATIONS, NAV_OVERVIEW, NAV_RECORDS, NAV_SETTINGS, LEGACY_NAVIGATION};
+use app_core::service::{
+    self, App, LEGACY_NAVIGATION, NAV_ABOUT, NAV_NOTIFICATIONS, NAV_OVERVIEW, NAV_RECORDS, NAV_SETTINGS,
+};
 use app_core::settings;
 use app_core::testkit::{TempDir, fixed_time};
 use app_core::theme::Severity;

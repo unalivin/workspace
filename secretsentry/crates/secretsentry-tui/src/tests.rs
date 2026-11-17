@@ -191,10 +191,7 @@ fn a_directory_is_scanned_in_the_background_and_the_secret_stays_redacted() {
     assert_eq!((scan.status, scan.findings_seen, scan.findings_new), (scans::Status::Completed, 1, 1));
     model.handle(Key::Enter);
     let screen = model.screen();
-    expect(
-        &screen,
-        &[&format!("Scan {}: ", scan.id), "Findings seen 1 · New findings 1", "No problem was reported."],
-    );
+    expect(&screen, &[&format!("Scan {}: ", scan.id), "Findings seen 1 · New findings 1", "No problem was reported."]);
     press(&mut model, &[Key::Esc, Key::Char('f')]);
     assert_eq!(model.page_id(), NAV_FINDINGS);
     assert_eq!((model.find.query.scan_id, model.find.list.len()), (scan.id, 1));
@@ -450,7 +447,10 @@ fn the_git_history_is_listed_and_findings_are_exported() {
     model.handle(Key::Ctrl('s'));
     assert!(problem(&model).contains("already exists. Choose another name"), "{}", problem(&model));
     press(&mut model, &[Key::Tab, Key::Right, Key::Tab, Key::Tab, Key::Right, Key::Ctrl('s')]);
-    assert_eq!(message(&model), (Notice::Success, format!("Exported {attention} findings as JSON to {}", report.display())));
+    assert_eq!(
+        message(&model),
+        (Notice::Success, format!("Exported {attention} findings as JSON to {}", report.display()))
+    );
     assert!(fs::read_to_string(&report).unwrap().contains("secretsentry-findings"));
     model.handle(Key::Char('f'));
     assert_eq!(model.exp.scope, Scope::New);

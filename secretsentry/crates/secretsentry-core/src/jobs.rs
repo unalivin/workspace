@@ -281,7 +281,8 @@ mod tests {
         assert_eq!(app.scans().count().unwrap(), 2);
         assert!(job.poll().is_some_and(|outcome| outcome.is_err()));
 
-        let failing = Job::start(options(&home), Request::from_settings(&app, "/no/such/place", Source::Files).unwrap());
+        let failing =
+            Job::start(options(&home), Request::from_settings(&app, "/no/such/place", Source::Files).unwrap());
         failing.cancel();
         assert!(failing.cancelling());
         assert!(failing.wait(Duration::from_secs(60)).expect("the scan reports").is_err());

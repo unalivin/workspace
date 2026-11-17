@@ -19,9 +19,9 @@ step fmt cargo fmt --all
 step fuzz-fmt cargo fmt --all --manifest-path fuzz/Cargo.toml
 step clippy cargo clippy "${packages[@]}" --no-default-features --all-targets -- -D warnings
 step snapshot env UPDATE_SNAPSHOT=1 cargo test -p secretsentry-core schema_matches
-step test cargo test "${packages[@]}" --no-default-features
+step test cargo test "${packages[@]}" --no-default-features --no-fail-fast
 step clippy-gui cargo clippy -p secretsentry-gui --all-targets -- -D warnings
-step test-gui cargo test -p secretsentry-gui
+step test-gui cargo test -p secretsentry-gui --no-fail-fast
 step fuzz-check cargo check --manifest-path fuzz/Cargo.toml
 step notices make notices LOCKED=
 step docs make docs LOCKED=

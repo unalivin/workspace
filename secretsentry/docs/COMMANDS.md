@@ -15,42 +15,42 @@ One row per capability. "n/a" marks a capability that only makes sense on the co
 | Choose the database location | Settings, Data, Database location | Settings, Database location | `db move` |
 | Check database health | About, Diagnostics | About, Diagnostics | `db check` |
 | See what needs attention | Overview | Overview | `overview` |
-| Scan a directory, its Git history or both | n/a | n/a | `scan` |
-| See earlier scan runs | n/a | n/a | `scans list` |
-| Show one scan run | n/a | n/a | `scans show` |
-| List, search, filter and sort findings | n/a | n/a | `findings list` |
-| Show one finding with its reasons and places | n/a | n/a | `findings show` |
-| Record a decision and a note for a finding | n/a | n/a | `findings decide` |
-| Export findings as JSON or SARIF | n/a | n/a | `export` |
-| See findings by the commit that added them | n/a | n/a | `history list` |
-| Count new and baseline findings | n/a | n/a | `baseline status` |
-| Accept the current findings as the baseline | n/a | n/a | `baseline accept` |
-| Empty the baseline | n/a | n/a | `baseline reset` |
-| List detector rules | n/a | n/a | `rules list` |
-| Show one detector rule | n/a | n/a | `rules show` |
-| Add a custom rule | n/a | n/a | `rules add` |
-| Edit a custom rule | n/a | n/a | `rules edit` |
-| Enable a rule | n/a | n/a | `rules enable` |
-| Disable a rule | n/a | n/a | `rules disable` |
-| Return a built-in rule to its built-in state | n/a | n/a | `rules restore` |
-| Remove a custom rule | n/a | n/a | `rules remove` |
-| Try a rule on sample text | n/a | n/a | `rules try` |
-| List allowlist entries | n/a | n/a | `allowlist list` |
-| Add an allowlist entry | n/a | n/a | `allowlist add` |
-| Edit an allowlist entry | n/a | n/a | `allowlist edit` |
-| Enable an allowlist entry | n/a | n/a | `allowlist enable` |
-| Disable an allowlist entry | n/a | n/a | `allowlist disable` |
-| Remove an allowlist entry | n/a | n/a | `allowlist remove` |
-| List, search, filter and sort records | Records | Records | `records list` |
-| Choose the columns of the record table | Records, Columns | Records, c | `config set` |
-| Show one record | Records, row detail panel | Records, Enter | `records show` |
-| Add a record | Records, Add record | Records, n | `records add` |
-| Edit a record | Records, row detail panel, Edit | Records, e | `records edit` |
-| Enable a record | Records, row detail panel, Enable | Records, x | `records enable` |
-| Disable a record | Records, row detail panel, Disable | Records, x | `records disable` |
-| Remove a record | Records, row detail panel, Remove | Records, d | `records remove` |
-| Import records from CSV or JSON | Records, Import | Records, i | `records import` |
-| Export records to CSV or JSON | Records, Export | Records, o | `records export` |
+| Scan a directory, its Git history or both | n/a | Scans, n | `scan` |
+| See earlier scan runs | n/a | Scans | `scans list` |
+| Show one scan run | n/a | Scans, Enter | `scans show` |
+| List, search, filter and sort findings | n/a | Findings | `findings list` |
+| Show one finding with its reasons and places | n/a | Findings, Enter | `findings show` |
+| Record a decision and a note for a finding | n/a | Findings, e | `findings decide` |
+| Export findings as JSON or SARIF | n/a | Exports, o | `export` |
+| See findings by the commit that added them | n/a | Git History | `history list` |
+| Count new and baseline findings | n/a | Overview, In the baseline | `baseline status` |
+| Accept the current findings as the baseline | n/a | Findings, B | `baseline accept` |
+| Empty the baseline | n/a | Findings, R | `baseline reset` |
+| List detector rules | n/a | Rules | `rules list` |
+| Show one detector rule | n/a | Rules, Enter | `rules show` |
+| Add a custom rule | n/a | Rules, n | `rules add` |
+| Edit a custom rule | n/a | Rules, e | `rules edit` |
+| Enable a rule | n/a | Rules, x | `rules enable` |
+| Disable a rule | n/a | Rules, x | `rules disable` |
+| Return a built-in rule to its built-in state | n/a | Rules, u | `rules restore` |
+| Remove a custom rule | n/a | Rules, d | `rules remove` |
+| Try a rule on sample text | n/a | Rules, t | `rules try` |
+| List allowlist entries | n/a | Allowlists | `allowlist list` |
+| Add an allowlist entry | n/a | Allowlists, n | `allowlist add` |
+| Edit an allowlist entry | n/a | Allowlists, e | `allowlist edit` |
+| Enable an allowlist entry | n/a | Allowlists, x | `allowlist enable` |
+| Disable an allowlist entry | n/a | Allowlists, x | `allowlist disable` |
+| Remove an allowlist entry | n/a | Allowlists, d | `allowlist remove` |
+| List, search, filter and sort records | Records | n/a | `records list` |
+| Choose the columns of the record table | Records, Columns | n/a | `config set` |
+| Show one record | Records, row detail panel | n/a | `records show` |
+| Add a record | Records, Add record | n/a | `records add` |
+| Edit a record | Records, row detail panel, Edit | n/a | `records edit` |
+| Enable a record | Records, row detail panel, Enable | n/a | `records enable` |
+| Disable a record | Records, row detail panel, Disable | n/a | `records disable` |
+| Remove a record | Records, row detail panel, Remove | n/a | `records remove` |
+| Import records from CSV or JSON | Records, Import | n/a | `records import` |
+| Export records to CSV or JSON | Records, Export | n/a | `records export` |
 | Load labeled demo data | Overview, Load demo data | Overview, l | `demo load` |
 | Remove demo data | Settings, Data, Remove demo data | Settings, Remove demo data | `demo remove` |
 | List and filter notifications | Notifications | Notifications | `notifications list` |

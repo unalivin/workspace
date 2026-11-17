@@ -11,7 +11,8 @@ use crate::widgets::{Field, Form, Key, table};
 
 const PATH_LIMIT: usize = 1024;
 const ROOT_HELP: &str = "Path of the directory to scan. Its content is read on this computer only; nothing is sent anywhere and no secret value is stored.";
-const SOURCE_HELP: &str = "Git history reads every commit of the repository in the directory, including secrets that were removed later.";
+const SOURCE_HELP: &str =
+    "Git history reads every commit of the repository in the directory, including secrets that were removed later.";
 
 #[derive(Default)]
 pub(crate) struct ScansPage {
@@ -163,17 +164,15 @@ impl Model<'_> {
                 pad(&format!("Scan {}: {} of {}{demo}", scan.id, scan.kind.label(), scan.root), size),
                 Look::Heading,
             ));
-            lines.push(
-                Line::plain("Status ").with(scan.status.label(), Look::Level(scan.status.severity())).with(
-                    format!(
-                        " · {} in {} · Started {}",
-                        scan.scope_label(),
-                        scan.duration_label(),
-                        self.app.format_time(scan.started_at)
-                    ),
-                    Look::Plain,
+            lines.push(Line::plain("Status ").with(scan.status.label(), Look::Level(scan.status.severity())).with(
+                format!(
+                    " · {} in {} · Started {}",
+                    scan.scope_label(),
+                    scan.duration_label(),
+                    self.app.format_time(scan.started_at)
                 ),
-            );
+                Look::Plain,
+            ));
             lines.push(Line::plain(format!(
                 "Skipped files {} · Rules used {} · Findings seen {} · New findings {}",
                 scan.files_skipped, scan.rules_used, scan.findings_seen, scan.findings_new

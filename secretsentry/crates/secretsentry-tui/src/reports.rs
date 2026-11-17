@@ -135,7 +135,8 @@ impl Model<'_> {
                 self.load_exports();
             }
             Key::Char('o') | Key::Enter => {
-                let scopes: Vec<(&str, &str)> = Scope::ALL.iter().map(|scope| (scope.as_str(), scope.label())).collect();
+                let scopes: Vec<(&str, &str)> =
+                    Scope::ALL.iter().map(|scope| (scope.as_str(), scope.label())).collect();
                 let name = export::default_file_name(Format::Json, self.app.now());
                 let fields = vec![
                     Field::text("path", "File", &name, PATH_HELP, PATH_LIMIT),
@@ -170,7 +171,8 @@ impl Model<'_> {
             ..Query::default()
         };
         let items = export::collect(&self.app.findings(), &query)?;
-        let written = export::write(Path::new(&path), format, &items, self.app.now(), form.value("overwrite") == "true");
+        let written =
+            export::write(Path::new(&path), format, &items, self.app.now(), form.value("overwrite") == "true");
         match written {
             Ok(count) => {
                 let done = format!(
@@ -209,7 +211,11 @@ impl Model<'_> {
         lines.extend(wrapped("JSON         for scripts and for comparing two scans", size, Look::Plain));
         lines.extend(wrapped("SARIF 2.1.0  for code scanning views and CI systems", size, Look::Plain));
         lines.push(Line::new());
-        lines.extend(wrapped("Press o to choose the file and export. Press f to change which findings.", size, Look::Muted));
+        lines.extend(wrapped(
+            "Press o to choose the file and export. Press f to change which findings.",
+            size,
+            Look::Muted,
+        ));
         if !self.exp.last.is_empty() {
             lines.push(Line::new());
             lines.extend(wrapped(&format!("✔ {}", self.exp.last), size, Look::Success));
