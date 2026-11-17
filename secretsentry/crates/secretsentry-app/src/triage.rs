@@ -68,7 +68,9 @@ fn allowance_text(app: &App, finding: &findings::Finding) -> String {
         Allowed::No => "no".to_string(),
         Allowed::Marker => format!("yes, by the marker {} on the line", allow::LINE_MARKER),
         Allowed::Entry(id) => match app.allowlists().get(id) {
-            Ok(entry) => format!("yes, by entry {id} ({} {})", entry.spec.kind.label().to_lowercase(), entry.spec.pattern),
+            Ok(entry) => {
+                format!("yes, by entry {id} ({} {})", entry.spec.kind.label().to_lowercase(), entry.spec.pattern)
+            }
             Err(_) => format!("yes, by entry {id}, which was removed since"),
         },
     }
@@ -168,7 +170,12 @@ fn run_findings_decide(env: &mut Env<'_>, call: &Call, app: &mut App) -> Result<
     };
     let note = if call.given("note") { call.text("note") } else { current.note.as_str() };
     let decided = app.findings().decide(id, current.revision, status, note)?;
-    env.line(format!("Finding {} is {} (revision {})", decided.id, decided.status.label().to_lowercase(), decided.revision));
+    env.line(format!(
+        "Finding {} is {} (revision {})",
+        decided.id,
+        decided.status.label().to_lowercase(),
+        decided.revision
+    ));
     Ok(())
 }
 
@@ -265,7 +272,11 @@ fn run_rules_list(env: &mut Env<'_>, call: &Call, app: &mut App) -> Result<()> {
                 rule.spec.name.clone(),
                 format!("{} {}", rule.spec.severity.glyph(), rule.spec.severity.label()),
                 rule.spec.confidence.to_string(),
-                if rule.spec.entropy_tenths == 0 { "none".to_string() } else { entropy::show(rule.spec.entropy_tenths) },
+                if rule.spec.entropy_tenths == 0 {
+                    "none".to_string()
+                } else {
+                    entropy::show(rule.spec.entropy_tenths)
+                },
                 enabled_text(rule.spec.enabled).to_string(),
                 origin(rule).to_string(),
             ]
@@ -322,7 +333,11 @@ const RULE_FLAGS: [crate::cli::Flag; 8] = [
 ];
 
 fn parse_entropy(raw: &str) -> Result<u32> {
-    let problem = || usage(format!("\"{raw}\" is not an entropy threshold: use a number from 0 to 8 with one decimal, for example 3.5"));
+    let problem = || {
+        usage(format!(
+            "\"{raw}\" is not an entropy threshold: use a number from 0 to 8 with one decimal, for example 3.5"
+        ))
+    };
     let (whole, tenth) = raw.trim().split_once('.').unwrap_or((raw.trim(), "0"));
     if whole.is_empty() || tenth.len() != 1 || !whole.bytes().chain(tenth.bytes()).all(|byte| byte.is_ascii_digit()) {
         return Err(problem());
@@ -350,12 +365,18 @@ fn apply_rule_flags(call: &Call, spec: &mut RuleSpec) -> Result<bool> {
         changed = true;
     }
     if call.given("group") {
-        spec.secret_group = usize::try_from(call.number("group")).map_err(|_| usage("flag --group needs a number from 0"))?;
+        spec.secret_group =
+            usize::try_from(call.number("group")).map_err(|_| usage("flag --group needs a number from 0"))?;
         changed = true;
     }
     if call.given("keywords") {
-        spec.keywords =
-            call.text("keywords").split(',').map(str::trim).filter(|word| !word.is_empty()).map(str::to_string).collect();
+        spec.keywords = call
+            .text("keywords")
+            .split(',')
+            .map(str::trim)
+            .filter(|word| !word.is_empty())
+            .map(str::to_string)
+            .collect();
         changed = true;
     }
     if call.given("entropy") {
@@ -369,8 +390,8 @@ fn apply_rule_flags(call: &Call, spec: &mut RuleSpec) -> Result<bool> {
         changed = true;
     }
     if call.given("confidence") {
-        spec.confidence =
-            u8::try_from(call.number("confidence")).map_err(|_| usage("flag --confidence needs a number from 1 to 100"))?;
+        spec.confidence = u8::try_from(call.number("confidence"))
+            .map_err(|_| usage("flag --confidence needs a number from 1 to 100"))?;
         changed = true;
     }
     Ok(changed)
@@ -381,7 +402,8 @@ fn run_rules_add(env: &mut Env<'_>, call: &Call, app: &mut App) -> Result<()> {
     if !call.given("pattern") {
         return Err(usage("a pattern is required: add --pattern <regular expression>"));
     }
-    let mut spec = RuleSpec { id: id.to_string(), name: id.to_string(), enabled: !call.truth("disabled"), ..RuleSpec::default() };
+    let mut spec =
+        RuleSpec { id: id.to_string(), name: id.to_string(), enabled: !call.truth("disabled"), ..RuleSpec::default() };
     apply_rule_flags(call, &mut spec)?;
     let created = app.rulebook().create(&spec)?;
     env.line(format!("Added rule {}: {}", created.spec.id, created.spec.name));
@@ -421,10 +443,8 @@ fn run_rules_restore(env: &mut Env<'_>, call: &Call, app: &mut App) -> Result<()
 fn run_rules_remove(env: &mut Env<'_>, call: &Call, app: &mut App) -> Result<()> {
     let id = rule_identifier(call)?;
     let rule = app.rulebook().get(id)?;
-    let statement = format!(
-        "This removes the rule {} ({}) permanently. Findings it reported stay.",
-        rule.spec.id, rule.spec.name
-    );
+    let statement =
+        format!("This removes the rule {} ({}) permanently. Findings it reported stay.", rule.spec.id, rule.spec.name);
     if call.truth("dry-run") {
         env.line(format!("Dry run: {statement} Nothing was changed."));
         return Ok(());
@@ -615,7 +635,9 @@ fn apply_entry_flags(call: &Call, spec: &mut EntrySpec) -> Result<bool> {
 fn run_allowlist_add(env: &mut Env<'_>, call: &Call, app: &mut App) -> Result<()> {
     call.no_arguments()?;
     if !call.given("kind") || !call.given("pattern") {
-        return Err(usage("a kind and a pattern are required: add --kind <path|value|fingerprint> --pattern <pattern>"));
+        return Err(usage(
+            "a kind and a pattern are required: add --kind <path|value|fingerprint> --pattern <pattern>",
+        ));
     }
     let mut spec = EntrySpec { enabled: !call.truth("disabled"), ..EntrySpec::default() };
     apply_entry_flags(call, &mut spec)?;

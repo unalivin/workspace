@@ -35,6 +35,8 @@ const SQL_LIST: &str = "SELECT id, kind, root, status, started_at, finished_at, 
 const SQL_COUNT: &str = "SELECT count(*) FROM scans";
 const SQL_COUNT_DEMO: &str = "SELECT count(*) FROM scans WHERE is_demo = 1";
 const SQL_DELETE_DEMO: &str = "DELETE FROM scans WHERE is_demo = 1";
+const SQL_DELETE_DEMO_NOTIFICATIONS: &str =
+    "DELETE FROM notifications WHERE record_kind = ?1 AND record_id IN (SELECT id FROM scans WHERE is_demo = 1)";
 
 pub const HOT_QUERIES: &[(&str, &str, usize)] = &[("scan by identifier", SQL_GET, 1)];
 
@@ -357,6 +359,34 @@ pub fn finish(conn: &Connection, finish: &Finish<'_>) -> Result<()> {
     Ok(())
 }
 
+fn announce_demo(
+    conn: &Connection,
+    now: Timestamp,
+    zone: Zone,
+    scan_id: i64,
+    recorded: &Recorded,
+    place: &str,
+) -> Result<()> {
+    if recorded.new == 0 {
+        return Ok(());
+    }
+    let noun = if recorded.new == 1 { "new likely secret" } else { "new likely secrets" };
+    notify::publish_with(
+        conn,
+        now,
+        zone,
+        &Event {
+            event_type: notify::EVENT_SCAN_FINDING.to_string(),
+            severity: recorded.top_new_severity.unwrap_or(Severity::Medium),
+            title: format!("{} {noun} {place} {}", recorded.new, demo::ROOT),
+            record_kind: RECORD_KIND.to_string(),
+            record_id: scan_id,
+            dedup_key: format!("scan:{scan_id}"),
+        },
+    )?;
+    Ok(())
+}
+
 pub fn rule_labels(book: &Rulebook<'_>) -> Result<BTreeMap<String, RuleLabel>> {
     Ok(book
         .list()?
@@ -664,6 +694,7 @@ impl<'a> Scans<'a> {
             &sightings,
         )?;
         let mut loaded = recorded.seen;
+        announce_demo(&transaction, now, self.zone, tree_id, &recorded, "in")?;
         finish(
             &transaction,
             &Finish {
@@ -724,6 +755,7 @@ impl<'a> Scans<'a> {
             &sightings,
         )?;
         loaded += recorded.new;
+        announce_demo(&transaction, now, self.zone, history_id, &recorded, "in the history of")?;
         finish(
             &transaction,
             &Finish {
@@ -751,6 +783,7 @@ impl<'a> Scans<'a> {
         let transaction = self.begin()?;
         findings::remove_demo(&transaction)?;
         findings::remove_commits(&transaction, demo::ROOT)?;
+        transaction.execute(SQL_DELETE_DEMO_NOTIFICATIONS, [RECORD_KIND])?;
         transaction.execute(SQL_DELETE_DEMO, [])?;
         allowlists::remove_demo(&transaction)?;
         transaction.commit()?;
@@ -1521,7 +1554,9 @@ mod tests {
             vec![("Add the release script", 1), ("Add the deployment settings", 3)]
         );
         assert!(groups.iter().all(|group| group.author == "Demo Author" && group.root == demo::ROOT));
-        assert_eq!(fixture.notifications().len(), 1);
+        let announced = fixture.notifications();
+        assert_eq!(announced.len(), 3);
+        assert!(announced.iter().any(|notification| notification.title == "6 new likely secrets in Demo: sample-shop"));
         let entries = Allowlists::new(fixture.store.conn(), fixture.clock.clone()).list().unwrap();
         assert_eq!(entries.iter().filter(|entry| entry.demo).count(), 1);
 
@@ -1532,6 +1567,7 @@ mod tests {
         assert_eq!(scans.remove_demo(false).unwrap(), 0);
         assert_eq!(fixture.all().len(), 2);
         assert_eq!(scans.count().unwrap(), 1);
+        assert_eq!(fixture.notifications().len(), 1);
         assert!(fixture.findings().commits(10).unwrap().is_empty());
         assert_eq!(Allowlists::new(fixture.store.conn(), fixture.clock.clone()).count().unwrap(), 0);
         assert_eq!(scans.load_demo().unwrap(), 8);

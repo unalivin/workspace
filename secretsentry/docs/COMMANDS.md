@@ -15,6 +15,32 @@ One row per capability. "n/a" marks a capability that only makes sense on the co
 | Choose the database location | Settings, Data, Database location | Settings, Database location | `db move` |
 | Check database health | About, Diagnostics | About, Diagnostics | `db check` |
 | See what needs attention | Overview | Overview | `overview` |
+| Scan a directory, its Git history or both | n/a | n/a | `scan` |
+| See earlier scan runs | n/a | n/a | `scans list` |
+| Show one scan run | n/a | n/a | `scans show` |
+| List, search, filter and sort findings | n/a | n/a | `findings list` |
+| Show one finding with its reasons and places | n/a | n/a | `findings show` |
+| Record a decision and a note for a finding | n/a | n/a | `findings decide` |
+| Export findings as JSON or SARIF | n/a | n/a | `export` |
+| See findings by the commit that added them | n/a | n/a | `history list` |
+| Count new and baseline findings | n/a | n/a | `baseline status` |
+| Accept the current findings as the baseline | n/a | n/a | `baseline accept` |
+| Empty the baseline | n/a | n/a | `baseline reset` |
+| List detector rules | n/a | n/a | `rules list` |
+| Show one detector rule | n/a | n/a | `rules show` |
+| Add a custom rule | n/a | n/a | `rules add` |
+| Edit a custom rule | n/a | n/a | `rules edit` |
+| Enable a rule | n/a | n/a | `rules enable` |
+| Disable a rule | n/a | n/a | `rules disable` |
+| Return a built-in rule to its built-in state | n/a | n/a | `rules restore` |
+| Remove a custom rule | n/a | n/a | `rules remove` |
+| Try a rule on sample text | n/a | n/a | `rules try` |
+| List allowlist entries | n/a | n/a | `allowlist list` |
+| Add an allowlist entry | n/a | n/a | `allowlist add` |
+| Edit an allowlist entry | n/a | n/a | `allowlist edit` |
+| Enable an allowlist entry | n/a | n/a | `allowlist enable` |
+| Disable an allowlist entry | n/a | n/a | `allowlist disable` |
+| Remove an allowlist entry | n/a | n/a | `allowlist remove` |
 | List, search, filter and sort records | Records | Records | `records list` |
 | Choose the columns of the record table | Records, Columns | Records, c | `config set` |
 | Show one record | Records, row detail panel | Records, Enter | `records show` |
@@ -74,6 +100,32 @@ Exit codes: `0` success, `1` failure, `2` wrong usage.
 | Command | Arguments and flags | What it does |
 |---|---|---|
 | `secretsentry overview` | `--format` | Show what needs attention |
+| `secretsentry scan` | `<directory>` `--baseline` `--fail-on` `--force` `--format` `--max-commits` `--max-file-kib` `--output` `--source` `--write-baseline` | Scan a directory, its Git history or both for likely secrets |
+| `secretsentry scans list` | `--format` `--kind` `--limit` | List scan runs, newest first |
+| `secretsentry scans show` | `<id>` `--format` | Show one scan run |
+| `secretsentry findings list` | `--commit` `--confidence` `--format` `--limit` `--min-score` `--offset` `--order` `--path` `--root` `--rule` `--scan` `--scope` `--search` `--sort` `--status` | List, search, filter and sort findings |
+| `secretsentry findings show` | `<id>` `--format` | Show one finding with its reasons and places |
+| `secretsentry findings decide` | `<id>` `--note` `--status` | Record a decision and a note for a finding |
+| `secretsentry history list` | `--format` `--limit` | List commits that added findings, newest first |
+| `secretsentry baseline status` | `--root` | Count new and baseline findings |
+| `secretsentry baseline accept` | `--root` | Mark every current finding as known |
+| `secretsentry baseline reset` | `--dry-run` `--root` `--yes` | Empty the baseline so that every finding counts as new |
+| `secretsentry rules list` | `--format` | List built-in and custom rules |
+| `secretsentry rules show` | `<rule>` `--format` | Show one rule with its pattern |
+| `secretsentry rules add` | `<rule>` `--confidence` `--description` `--disabled` `--entropy` `--group` `--keywords` `--name` `--pattern` `--severity` | Add a custom rule |
+| `secretsentry rules edit` | `<rule>` `--confidence` `--description` `--entropy` `--group` `--keywords` `--name` `--pattern` `--severity` | Change fields of a custom rule |
+| `secretsentry rules enable` | `<rule>` | Enable a rule |
+| `secretsentry rules disable` | `<rule>` | Disable a rule |
+| `secretsentry rules restore` | `<rule>` | Return a built-in rule to its built-in state |
+| `secretsentry rules remove` | `<rule>` `--dry-run` `--yes` | Remove a custom rule |
+| `secretsentry rules try` | `[rule]` `--confidence` `--description` `--entropy` `--file` `--group` `--keywords` `--name` `--pattern` `--severity` `--text` | Try a rule on sample text without saving anything |
+| `secretsentry allowlist list` | `--format` | List allowlist entries |
+| `secretsentry allowlist add` | `--disabled` `--kind` `--note` `--pattern` `--rule` | Add an allowlist entry |
+| `secretsentry allowlist edit` | `<id>` `--kind` `--note` `--pattern` `--rule` | Change fields of an allowlist entry |
+| `secretsentry allowlist enable` | `<id>` | Enable an allowlist entry |
+| `secretsentry allowlist disable` | `<id>` | Disable an allowlist entry |
+| `secretsentry allowlist remove` | `<id>` `--dry-run` `--yes` | Remove an allowlist entry |
+| `secretsentry export` | `<file\|->` `--commit` `--confidence` `--force` `--format` `--min-score` `--path` `--root` `--rule` `--scan` `--scope` `--search` `--status` | Write findings as JSON or SARIF with redacted values |
 | `secretsentry records list` | `--all` `--desc` `--format` `--limit` `--search` `--severity` `--sort` `--status` | List, search, filter and sort records |
 | `secretsentry records show` | `<id>` `--format` | Show one record |
 | `secretsentry records add` | `--disabled` `--name` `--note` `--severity` `--status` | Add a record |
@@ -83,8 +135,8 @@ Exit codes: `0` success, `1` failure, `2` wrong usage.
 | `secretsentry records remove` | `<id>` `--dry-run` `--yes` | Remove a record |
 | `secretsentry records import` | `<file\|->` `--dry-run` `--format` | Import records from a CSV or JSON file, or from standard input with - |
 | `secretsentry records export` | `--force` `--format` `--output` | Export records as CSV or JSON |
-| `secretsentry demo load` | none | Add sample records labeled as demo data |
-| `secretsentry demo remove` | `--dry-run` `--yes` | Remove every demo record |
+| `secretsentry demo load` | none | Add an invented scan with findings labeled as demo data |
+| `secretsentry demo remove` | `--dry-run` `--yes` | Remove every demo scan, finding and allowlist entry |
 | `secretsentry notifications list` | `--event` `--format` `--limit` `--severity` `--unread` | List notifications, newest first |
 | `secretsentry notifications read` | `<id\|all>` | Mark one notification, or all of them, as read |
 | `secretsentry notifications rules list` | none | List the rule of every event type |

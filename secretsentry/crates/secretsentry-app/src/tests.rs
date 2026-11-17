@@ -9,7 +9,9 @@ use app_core::meta;
 use app_core::notifier::Autostart;
 use app_core::platform::{self, Os};
 use app_core::service::{self, App, Options};
-use app_core::testkit::{GitFixture, TempDir, fixed_time, sample_cloud_key, sample_hosting_token, sample_package_token};
+use app_core::testkit::{
+    GitFixture, TempDir, fixed_time, sample_cloud_key, sample_hosting_token, sample_package_token,
+};
 use app_core::{AppError, Result};
 
 use crate::cli::{self, Env, Hooks, Kind, number, parse_flags, switch, tabulate, text};
@@ -470,8 +472,7 @@ fn a_baseline_file_makes_known_findings_pass_and_new_ones_fail() {
     assert_eq!(code, EXIT_FINDINGS, "{output}\n{errors}");
     assert!(output.contains("3 need attention, 1 of them new"), "{output}");
     assert!(errors.contains("1 new finding with low confidence or higher"), "{errors}");
-    let (_, errors, code) =
-        other.run(&["scan", &directory, "--baseline", &baseline, "--write-baseline", &baseline]);
+    let (_, errors, code) = other.run(&["scan", &directory, "--baseline", &baseline, "--write-baseline", &baseline]);
     assert_eq!(code, EXIT_OK, "{errors}");
     assert_eq!(parsed(&std::fs::read_to_string(&baseline).unwrap())["entries"].as_array().map(Vec::len), Some(3));
     other.fails(&["scan", &directory, "--baseline", &other.path("none.json")], EXIT_FAILURE, "error:");
@@ -513,7 +514,8 @@ fn findings_are_filtered_shown_decided_and_exported() {
     assert!(first.contains("Showing 1 of 2 findings"), "{first}");
 
     let shown = harness.ok(&["findings", "show", &token]);
-    for expected in ["GitHub token (github-token)", "never stored", "Why this confidence", "Where it was seen", "files"] {
+    for expected in ["GitHub token (github-token)", "never stored", "Why this confidence", "Where it was seen", "files"]
+    {
         assert!(shown.contains(expected), "{expected}\n{shown}");
     }
     has_no_secret(&shown);
@@ -606,13 +608,25 @@ fn rules_are_listed_added_tried_changed_and_removed() {
     let rows = parsed(&harness.ok(&["rules", "list", "--format", "json"]));
     assert_eq!(rows.as_array().unwrap().len(), app_core::rules::builtin().len());
     let added = harness.ok(&[
-        "rules", "add", "acme-key", "--pattern", "ACME-[0-9]{8}", "--name", "Acme key", "--severity", "high",
-        "--keywords", "acme",
+        "rules",
+        "add",
+        "acme-key",
+        "--pattern",
+        "ACME-[0-9]{8}",
+        "--name",
+        "Acme key",
+        "--severity",
+        "high",
+        "--keywords",
+        "acme",
     ]);
     assert_eq!(added, "Added rule acme-key: Acme key\n");
     let shown = harness.ok(&["rules", "show", "acme-key"]);
     assert!(shown.contains("ACME-[0-9]{8}") && shown.contains("custom") && shown.contains("High"), "{shown}");
-    assert_eq!(parsed(&harness.ok(&["rules", "show", "acme-key", "--format", "json"]))["builtin"].as_bool(), Some(false));
+    assert_eq!(
+        parsed(&harness.ok(&["rules", "show", "acme-key", "--format", "json"]))["builtin"].as_bool(),
+        Some(false)
+    );
     let tried = harness.ok(&["rules", "try", "acme-key", "--text", "id = ACME-12345678"]);
     assert!(tried.starts_with("LINE  COLUMN") && !tried.contains("ACME-12345678"), "{tried}");
     let nothing = harness.ok(&["rules", "try", "--pattern", "ZZZ[0-9]{4}", "--text", "nothing here"]);
@@ -621,7 +635,10 @@ fn rules_are_listed_added_tried_changed_and_removed() {
     std::fs::write(&sample, "one\nkey ACME-00001111\n").unwrap();
     assert!(harness.ok(&["rules", "try", "acme-key", "--file", &sample]).starts_with("LINE  COLUMN"));
     assert!(harness.ok(&["rules", "edit", "acme-key", "--confidence", "80"]).starts_with("Updated rule acme-key"));
-    assert_eq!(parsed(&harness.ok(&["rules", "show", "acme-key", "--format", "json"]))["confidence"].as_i64(), Some(80));
+    assert_eq!(
+        parsed(&harness.ok(&["rules", "show", "acme-key", "--format", "json"]))["confidence"].as_i64(),
+        Some(80)
+    );
     assert_eq!(harness.ok(&["rules", "disable", "aws-access-key-id"]), "Rule aws-access-key-id is disabled\n");
     assert!(harness.ok(&["rules", "list"]).contains("built-in, changed"));
     let directory = project(&harness);
@@ -652,7 +669,8 @@ fn allowlist_entries_are_managed_and_apply_to_the_next_scan() {
     let harness = Harness::new("cli-allowlist");
     let directory = project(&harness);
     assert!(harness.ok(&["allowlist", "list"]).contains("No allowlist entries yet"));
-    let added = harness.ok(&["allowlist", "add", "--kind", "path", "--pattern", "deploy/**", "--note", "pipeline samples"]);
+    let added =
+        harness.ok(&["allowlist", "add", "--kind", "path", "--pattern", "deploy/**", "--note", "pipeline samples"]);
     assert!(added.starts_with("Added allowlist entry 1: path pattern deploy/**"), "{added}");
     let listed = harness.ok(&["allowlist", "list"]);
     assert!(listed.starts_with("ID  KIND") && listed.contains("every rule") && listed.contains("pipeline samples"));
@@ -667,9 +685,14 @@ fn allowlist_entries_are_managed_and_apply_to_the_next_scan() {
     assert!(output.contains("2 need attention"), "{output}");
     assert_eq!(harness.ok(&["allowlist", "enable", "1"]), "Allowlist entry 1 is enabled\n");
     assert!(harness.ok(&["allowlist", "edit", "1", "--rule", "github-token"]).starts_with("Updated allowlist entry 1"));
-    assert_eq!(parsed(&harness.ok(&["allowlist", "list", "--format", "json"]))[0]["rule_id"].as_str(), Some("github-token"));
+    assert_eq!(
+        parsed(&harness.ok(&["allowlist", "list", "--format", "json"]))[0]["rule_id"].as_str(),
+        Some("github-token")
+    );
     harness.fails(&["allowlist", "remove", "1"], EXIT_USAGE, "--yes");
-    assert!(harness.ok(&["allowlist", "remove", "1", "--dry-run"]).starts_with("Dry run: This removes allowlist entry 1"));
+    assert!(
+        harness.ok(&["allowlist", "remove", "1", "--dry-run"]).starts_with("Dry run: This removes allowlist entry 1")
+    );
     assert_eq!(harness.ok(&["allowlist", "remove", "1", "--yes"]), "Removed allowlist entry 1\n");
     harness.fails(&["allowlist", "remove", "1", "--yes"], EXIT_FAILURE, "error:");
     harness.fails(&["allowlist", "add", "--kind", "path"], EXIT_USAGE, "a kind and a pattern are required");

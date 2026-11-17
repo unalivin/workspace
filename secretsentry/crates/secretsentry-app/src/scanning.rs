@@ -27,10 +27,13 @@ pub(crate) fn findings_table(env: &mut Env<'_>, items: &[Item]) {
         .iter()
         .map(|item| {
             let finding = &item.finding;
-            let place = item
-                .occurrences
-                .first()
-                .map_or_else(String::new, |place| if place.commit_id.is_empty() { place.line.to_string() } else { format!("{} in {}", place.line, &place.commit_id[..place.commit_id.len().min(10)]) });
+            let place = item.occurrences.first().map_or_else(String::new, |place| {
+                if place.commit_id.is_empty() {
+                    place.line.to_string()
+                } else {
+                    format!("{} in {}", place.line, &place.commit_id[..place.commit_id.len().min(10)])
+                }
+            });
             vec![
                 finding.id.to_string(),
                 level_text(finding),
@@ -251,9 +254,9 @@ fn positive(call: &Call, flag: &str, fallback: i64) -> Result<i64> {
 fn threshold(raw: &str) -> Result<Option<Level>> {
     match raw {
         "never" => Ok(None),
-        other => Level::parse(other)
-            .map(Some)
-            .ok_or_else(|| usage(format!("unknown confidence \"{other}\" for --fail-on: use low, medium, high or never"))),
+        other => Level::parse(other).map(Some).ok_or_else(|| {
+            usage(format!("unknown confidence \"{other}\" for --fail-on: use low, medium, high or never"))
+        }),
     }
 }
 
@@ -310,7 +313,9 @@ fn run_scan(env: &mut Env<'_>, call: &Call, app: &mut App) -> Result<()> {
     };
     let report = match call.text("format") {
         "table" => None,
-        other => Some(Format::parse(other).map_err(|_| usage(format!("unknown format \"{other}\": use table, json or sarif")))?),
+        other => Some(
+            Format::parse(other).map_err(|_| usage(format!("unknown format \"{other}\": use table, json or sarif")))?,
+        ),
     };
     if report.is_none() && call.given("output") {
         return Err(usage("--output needs --format json or --format sarif"));
@@ -326,9 +331,7 @@ fn run_scan(env: &mut Env<'_>, call: &Call, app: &mut App) -> Result<()> {
     let known_path = call.text("baseline");
     let write_path = call.text("write-baseline");
     if !write_path.is_empty() && write_path != known_path && Path::new(write_path).exists() && !call.truth("force") {
-        return Err(usage(format!(
-            "{write_path} already exists: choose another name or add --force to overwrite it"
-        )));
+        return Err(usage(format!("{write_path} already exists: choose another name or add --force to overwrite it")));
     }
     let mut baseline = if !known_path.is_empty() {
         Some(Baseline::load(Path::new(known_path))?)
@@ -395,7 +398,10 @@ fn run_scan(env: &mut Env<'_>, call: &Call, app: &mut App) -> Result<()> {
             let attention = items.iter().filter(|item| item.finding.needs_attention()).count();
             let new = items.iter().filter(|item| item.finding.needs_attention() && !item.finding.baseline).count();
             if items.is_empty() {
-                env.line(format!("No likely secrets found in {}.", finished.first().map_or(directory.as_str(), |scan| scan.root.as_str())));
+                env.line(format!(
+                    "No likely secrets found in {}.",
+                    finished.first().map_or(directory.as_str(), |scan| scan.root.as_str())
+                ));
             } else {
                 env.line(format!(
                     "{} in {}: {} need attention, {} of them new\n",
@@ -437,7 +443,11 @@ pub(crate) fn scan_command() -> Command {
             text("format", "table", "table, json or sarif"),
             text("output", "", "file for the json or sarif report, by default standard output"),
             switch("force", "overwrite the report or baseline file if it exists"),
-            text("fail-on", "low", "lowest confidence of a new finding that gives exit code 3: low, medium, high or never"),
+            text(
+                "fail-on",
+                "low",
+                "lowest confidence of a new finding that gives exit code 3: low, medium, high or never",
+            ),
             number("max-file-kib", "0", "largest file to read in KiB, by default the setting scan.max_file_kib"),
             number("max-commits", "0", "largest number of commits to read, by default the setting scan.max_commits"),
         ])
@@ -447,10 +457,16 @@ fn scan_rows(app: &App, scan: &Scan) -> Vec<Vec<String>> {
     vec![
         vec!["ID".to_string(), scan.id.to_string()],
         vec!["Kind".to_string(), scan.kind.label().to_string()],
-        vec!["Scanned directory".to_string(), if scan.demo { format!("{} (demo data)", scan.root) } else { scan.root.clone() }],
+        vec![
+            "Scanned directory".to_string(),
+            if scan.demo { format!("{} (demo data)", scan.root) } else { scan.root.clone() },
+        ],
         vec!["Status".to_string(), scan.status.label().to_string()],
         vec!["Started".to_string(), app.format_time(scan.started_at)],
-        vec!["Finished".to_string(), scan.finished_at.map_or_else(|| "not finished".to_string(), |moment| app.format_time(moment))],
+        vec![
+            "Finished".to_string(),
+            scan.finished_at.map_or_else(|| "not finished".to_string(), |moment| app.format_time(moment)),
+        ],
         vec!["Duration".to_string(), scan.duration_label()],
         vec!["Scope".to_string(), scan.scope_label()],
         vec!["Skipped files".to_string(), scan.files_skipped.to_string()],
@@ -465,7 +481,9 @@ fn run_scans_list(env: &mut Env<'_>, call: &Call, app: &mut App) -> Result<()> {
     call.no_arguments()?;
     let kind = match call.text("kind") {
         "" => None,
-        other => Some(scans::Kind::parse(other).ok_or_else(|| usage(format!("unknown kind \"{other}\": use tree or history")))?),
+        other => Some(
+            scans::Kind::parse(other).ok_or_else(|| usage(format!("unknown kind \"{other}\": use tree or history")))?,
+        ),
     };
     let list = app.scans().list(kind, call.number("limit"))?;
     match call.text("format") {
@@ -588,10 +606,7 @@ fn run_history_list(env: &mut Env<'_>, call: &Call, app: &mut App) -> Result<()>
         })
         .collect();
     env.table(&["COMMIT", "AUTHORED", "AUTHOR", "FINDINGS", "NEED ATTENTION", "TOP SCORE", "SUBJECT"], &rows);
-    env.line(format!(
-        "\nList the findings of a commit with \"{} findings list --commit <commit>\".",
-        meta::SLUG
-    ));
+    env.line(format!("\nList the findings of a commit with \"{} findings list --commit <commit>\".", meta::SLUG));
     Ok(())
 }
 
@@ -599,10 +614,10 @@ pub(crate) fn history_command() -> Command {
     Command::group(
         "history",
         "See findings in Git history by the commit that added them",
-        vec![Command::leaf("list", "List commits that added findings, newest first", run_history_list).flags(&[
-            number("limit", "200", "largest number of rows"),
-            text("format", "table", "table or json"),
-        ])],
+        vec![
+            Command::leaf("list", "List commits that added findings, newest first", run_history_list)
+                .flags(&[number("limit", "200", "largest number of rows"), text("format", "table", "table or json")]),
+        ],
     )
 }
 
@@ -662,11 +677,13 @@ pub(crate) fn baseline_command() -> Command {
         vec![
             Command::leaf("status", "Count new and baseline findings", run_baseline_status).flags(&[root]),
             Command::leaf("accept", "Mark every current finding as known", run_baseline_accept).flags(&[root]),
-            Command::leaf("reset", "Empty the baseline so that every finding counts as new", run_baseline_reset).flags(&[
-                root,
-                switch("yes", "do not ask for confirmation"),
-                switch("dry-run", "show what would change without changing it"),
-            ]),
+            Command::leaf("reset", "Empty the baseline so that every finding counts as new", run_baseline_reset).flags(
+                &[
+                    root,
+                    switch("yes", "do not ask for confirmation"),
+                    switch("dry-run", "show what would change without changing it"),
+                ],
+            ),
         ],
     )
 }
@@ -687,7 +704,10 @@ pub(crate) const FILTER_FLAGS: [crate::cli::Flag; 10] = [
 pub(crate) fn query_from(call: &Call) -> Result<Query> {
     let level = match call.text("confidence") {
         "" => None,
-        other => Some(Level::parse(other).ok_or_else(|| usage(format!("unknown confidence \"{other}\": use low, medium or high")))?),
+        other => Some(
+            Level::parse(other)
+                .ok_or_else(|| usage(format!("unknown confidence \"{other}\": use low, medium or high")))?,
+        ),
     };
     let status = match call.text("status") {
         "" => None,
@@ -721,7 +741,12 @@ fn run_export(env: &mut Env<'_>, call: &Call, app: &mut App) -> Result<()> {
     let [target] = call.args.as_slice() else {
         return Err(usage("give one file to write, or - for standard output"));
     };
-    let query = Query { limit: app_core::findings::MAX_LIMIT, sort: "path".to_string(), descending: false, ..query_from(call)? };
+    let query = Query {
+        limit: app_core::findings::MAX_LIMIT,
+        sort: "path".to_string(),
+        descending: false,
+        ..query_from(call)?
+    };
     let items = export::collect(&app.findings(), &query)?;
     if target == "-" {
         let format = Format::parse(if call.given("format") { call.text("format") } else { "json" })?;
