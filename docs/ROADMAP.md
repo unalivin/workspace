@@ -7,14 +7,14 @@ This page states what exists in the workspace and what does not. The project tab
 - Workspace tooling: the registry, the scripts in `scripts/`, the repository checks, the generated workflows and the generated pull request templates, with tests. Checked by the workflow `Root checks`.
 - The Go template `templates/go`: a complete application with a dashboard, a terminal UI and commands over one service layer, its scripts, documentation and tests. Built, tested and packaged by the workflow `CI template-go` on Linux, macOS and Windows runners.
 - The Rust template `templates/rust`: the same application as a Cargo workspace, with the same scripts, documentation and tests. Built, tested and packaged by the workflow `CI template-rust` on Linux, macOS and Windows runners.
-- Workflow templates for Go and Rust projects: CI and tag-triggered release.
+- The C++ template `templates/cpp`: the same application in C++20 with CMake, with the same scripts, documentation and tests. Built, tested and packaged by the workflow `CI template-cpp` on Linux, macOS and Windows runners.
+- Workflow templates for Go, Rust and C++ projects: CI and tag-triggered release.
 - `certwatch`, the Go pilot, `In progress`. Its state is in `certwatch/docs/ROADMAP.md`. The pre-release `certwatch/v0.1.0-dev` was published by its release workflow.
 
 ## Not present
 
-- The C++ template `templates/cpp` and its workflow templates.
 - The other 24 projects. Their rows of the project table are `Not started`.
-- A release of a Rust project. The Rust release workflow template has never run, because no Rust project and no tag for one exists.
+- A release of a Rust or a C++ project. The Rust and C++ release workflow templates have never run, because no such project and no tag for one exists.
 - Any standalone repository. No project has been split or published to its destination yet.
 
 ## Not verified
@@ -62,9 +62,8 @@ This page states what exists in the workspace and what does not. The project tab
 
 One project at a time. A project is finished, or brought to a truthful `In progress` state, before the next one starts.
 
-1. The C++ template, with the same capabilities and checks as the Go and Rust templates.
-2. The remaining pilots: `secretsentry` (Rust) and `netgraph` (C++). `certwatch` (Go) is the first pilot and is in progress.
-3. The projects that go to the company, in this order: `logforge-siem`, `forensicflow`, `sigmalab`, `iac-sentinel`, `sbom-navigator`, `securebaseline`, `netauto`, `vulntrack`, `ipam-pro`, `netpulse`, `fleetops`, `incidentflow`, `cloudfence`, `secops-copilot`, `kubeguard`, `pipelineshield`.
-4. The personal projects, in this order: `threatatlas`, `certwatch` (finish it), `dns-sentinel`, `portwatch`, `phishlens`, `netconfig-auditor`, `routescope`.
+1. The remaining pilots: `secretsentry` (Rust) and `netgraph` (C++). `certwatch` (Go) is the first pilot and is in progress.
+2. The projects that go to the company, in this order: `logforge-siem`, `forensicflow`, `sigmalab`, `iac-sentinel`, `sbom-navigator`, `securebaseline`, `netauto`, `vulntrack`, `ipam-pro`, `netpulse`, `fleetops`, `incidentflow`, `cloudfence`, `secops-copilot`, `kubeguard`, `pipelineshield`.
+3. The personal projects, in this order: `threatatlas`, `certwatch` (finish it), `dns-sentinel`, `portwatch`, `phishlens`, `netconfig-auditor`, `routescope`.
 
 A project becomes `Complete` only when its CI is green on Linux, macOS and Windows and its documentation matches what is implemented.

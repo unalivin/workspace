@@ -1,0 +1,10 @@
+#pragma once
+
+namespace app::build_config {
+inline constexpr const char* version = "@PROJECT_FULL_VERSION@";
+inline constexpr const char* app_name = "@APP_NAME@";
+inline constexpr const char* slug = "@APP_SLUG@";
+inline constexpr const char* app_id = "@APP_ID@";
+inline constexpr const char* publisher = "@APP_PUBLISHER@";
+inline constexpr const char* compiler = "@CMAKE_CXX_COMPILER_ID@ @CMAKE_CXX_COMPILER_VERSION@";
+}

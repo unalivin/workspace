@@ -1,0 +1,6 @@
+file(READ "${SOURCE}" content HEX)
+string(LENGTH "${content}" doubled)
+math(EXPR size "${doubled} / 2")
+string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," bytes "${content}")
+string(REGEX REPLACE "((0x[0-9a-f][0-9a-f],)(0x[0-9a-f][0-9a-f],)?(0x[0-9a-f][0-9a-f],)?(0x[0-9a-f][0-9a-f],)?(0x[0-9a-f][0-9a-f],)?(0x[0-9a-f][0-9a-f],)?(0x[0-9a-f][0-9a-f],)?(0x[0-9a-f][0-9a-f],)?(0x[0-9a-f][0-9a-f],)?(0x[0-9a-f][0-9a-f],)?(0x[0-9a-f][0-9a-f],)?(0x[0-9a-f][0-9a-f],)?(0x[0-9a-f][0-9a-f],)?(0x[0-9a-f][0-9a-f],)?(0x[0-9a-f][0-9a-f],)?(0x[0-9a-f][0-9a-f],)?)" "\\1\n" bytes "${bytes}")
+file(WRITE "${OUTPUT}" "#include <cstddef>\nnamespace app::embedded {\nextern const unsigned char ${SYMBOL}_data[];\nextern const std::size_t ${SYMBOL}_size;\nconst unsigned char ${SYMBOL}_data[] = {\n${bytes}0x00};\nconst std::size_t ${SYMBOL}_size = ${size};\n}\n")

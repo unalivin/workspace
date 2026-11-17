@@ -13,6 +13,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Repository checks for required files, email addresses, source comments, generated workflows and the README project table.
 - Go application template (`templates/go`) with its CI and release workflow templates.
 - Rust application template (`templates/rust`) with its CI and release workflow templates.
+- C++ application template (`templates/cpp`) with its CI and release workflow templates.
 - Registry columns `destination` and `copyright_holder`: 17 projects go to the Sonix-Devs organization with the holder Sonix Devs, 8 stay personal with the holder Unalivin. The README, `docs/WORKSPACE.md` and `docs/ROADMAP.md` carry the generated destination table.
 - Repository checks `destinations`, `holders` and `pull-requests`.
 - A pull request template per project, generated copies in `.github/PULL_REQUEST_TEMPLATE/` and a root default that lists them.

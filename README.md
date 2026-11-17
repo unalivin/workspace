@@ -84,7 +84,8 @@ The projects are developed here and published later as separate repositories. So
 |---|---|
 | `scripts/` | Workspace tooling: project registry, checks, workflow generator, project creation, split and publish |
 | `templates/go` | Reusable Go application skeleton, copied into each Go project |
-| `templates/rust` | Reusable Rust application skeleton, copied into each Rust project. The C++ template is not written yet. |
+| `templates/rust` | Reusable Rust application skeleton, copied into each Rust project |
+| `templates/cpp` | Reusable C++ application skeleton, copied into each C++ project |
 | `templates/workflows/` | Workflow templates that `scripts/gen-workflows.sh` renders into `.github/workflows/` |
 | `templates/pull-request/` | Source of the root pull request template; each language template carries the project pull request template in its `.github/` |
 | `docs/` | Workspace documentation |
@@ -98,7 +99,7 @@ Each project and each template has a `Makefile` with the same targets: `fmt`, `f
 |---|---|---|---|---|
 | Go | Go 1.27.4, a C compiler for cgo | `make build` | `make build-nogui` | `make check` |
 | Rust | Pinned stable toolchain from `rust-toolchain.toml` | `make build` | `make build-nogui` | `make check` |
-| C++ | C++20 compiler, CMake, Ninja | `make build` | `make build-nogui` | `make check` |
+| C++ | C++20 compiler, CMake, Ninja; libraries pinned through vcpkg | `make build` | `make build-nogui` | `make check` |
 
 Details, system packages and tool versions are in [docs/LANGUAGES.md](docs/LANGUAGES.md).
 

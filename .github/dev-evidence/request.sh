@@ -1,51 +1,51 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-cd templates/rust
-rustup toolchain install 1.100.0 --profile minimal --component rustfmt --component clippy
-rustc --version
-cargo --version
-cargo fetch
-cargo fetch --manifest-path fuzz/Cargo.toml
-cargo fmt --all
-cargo fmt --all --manifest-path fuzz/Cargo.toml
-cargo check --workspace --all-targets --message-format short >"$EVIDENCE_DIR/check.short.log" 2>&1
-printf 'check exit status: %s\n' "$?"
-cargo check --workspace --all-targets >"$EVIDENCE_DIR/check.full.log" 2>&1
-cargo clippy --workspace --all-targets --message-format short -- -D warnings >"$EVIDENCE_DIR/clippy.short.log" 2>&1
-printf 'clippy exit status: %s\n' "$?"
-cargo clippy --workspace --all-targets -- -D warnings >"$EVIDENCE_DIR/clippy.full.log" 2>&1
-: >"$EVIDENCE_DIR/test.log"
-for package in templateapp-core templateapp-tui templateapp-gui templateapp-app; do
-  cargo test -p "$package" --no-fail-fast >>"$EVIDENCE_DIR/test.log" 2>&1
-  printf 'test %s exit status: %s\n' "$package" "$?"
+cd templates/cpp || exit 1
+step() {
+  local name="$1" status
+  shift
+  "$@" >"$EVIDENCE_DIR/$name.log" 2>&1
+  status="$?"
+  printf '%s exit status: %s\n' "$name" "$status"
+}
+step setup scripts/dev-setup.sh --install
+python_command="python3"
+command -v python3 >/dev/null 2>&1 || python_command="python"
+user_scripts="$("$python_command" -c 'import os, sysconfig; print(sysconfig.get_path("scripts", "%s_user" % ("nt" if os.name == "nt" else "posix")))')"
+if command -v cygpath >/dev/null 2>&1; then
+  user_scripts="$(cygpath -u "$user_scripts")"
+fi
+export PATH="$user_scripts:$HOME/.local/bin:$HOME/.local/npm/node_modules/.bin:$PATH"
+uname -a
+cmake --version
+step doctor scripts/dev-setup.sh
+step fmt make fmt-check
+step lint make lint
+step lint-gui make lint-gui
+step test make test
+step sanitize make race-or-sanitize
+step build make build
+step nogui make build-nogui test-nogui
+step generated make docs-check assets-check notices-check
+case "$(uname -s)" in
+  Linux*)
+    step vuln make vuln
+    step fuzz make fuzz
+    step shell make shell
+    ;;
+esac
+step screenshots make screenshots
+step package make package
+step demo scripts/demo.sh --ui none
+ls -la dist bin 2>&1
+mkdir -p "$EVIDENCE_DIR/screens" "$EVIDENCE_DIR/vcpkg"
+cp dist/screens/*.png "$EVIDENCE_DIR/screens/" 2>/dev/null || true
+for file in build/*/vcpkg-manifest-install.log; do
+  [ -f "$file" ] || continue
+  cp "$file" "$EVIDENCE_DIR/vcpkg/$(basename "$(dirname "$file")")-install.log"
 done
-cargo test -p templateapp-app --no-default-features >>"$EVIDENCE_DIR/test.log" 2>&1
-printf 'test without the dashboard exit status: %s\n' "$?"
-cargo run -q -p templateapp-gui --example screenshots -- -out "$EVIDENCE_DIR/screens" >"$EVIDENCE_DIR/screens.log" 2>&1
-printf 'screenshots exit status: %s\n' "$?"
-mkdir -p "$EVIDENCE_DIR/tree"
-cargo run -q -p templateapp-core --example genassets -- -out "$EVIDENCE_DIR/tree/assets"
-printf 'genassets exit status: %s\n' "$?"
-cargo run -q -p templateapp-app --no-default-features --example gendocs >"$EVIDENCE_DIR/generated.log" 2>&1
-printf 'gendocs exit status: %s\n' "$?"
-cargo run -q -p templateapp-app --no-default-features --example gennotices >>"$EVIDENCE_DIR/generated.log" 2>&1
-printf 'gennotices exit status: %s\n' "$?"
-for target in docs-check assets-check notices-check; do
-  make "$target" >>"$EVIDENCE_DIR/generated.log" 2>&1
-  printf 'make %s exit status: %s\n' "$target" "$?"
+find .tools/vcpkg/buildtrees -maxdepth 2 -name '*.log' -size -400k 2>/dev/null | while IFS= read -r file; do
+  cp "$file" "$EVIDENCE_DIR/vcpkg/$(basename "$(dirname "$file")")-$(basename "$file")"
 done
-cargo check --manifest-path fuzz/Cargo.toml >"$EVIDENCE_DIR/fuzz.log" 2>&1
-printf 'fuzz check exit status: %s\n' "$?"
-scripts/sanitize.sh >"$EVIDENCE_DIR/sanitize.log" 2>&1
-printf 'sanitize exit status: %s\n' "$?"
-mkdir -p "$EVIDENCE_DIR/tree/docs" "$EVIDENCE_DIR/tree/fuzz/fuzz_targets"
-cp docs/COMMANDS.md "$EVIDENCE_DIR/tree/docs/" || true
-cp THIRD_PARTY_NOTICES.md "$EVIDENCE_DIR/tree/" || true
-cp fuzz/Cargo.lock "$EVIDENCE_DIR/tree/fuzz/" || true
-cp fuzz/fuzz_targets/*.rs "$EVIDENCE_DIR/tree/fuzz/fuzz_targets/" || true
-cp Cargo.lock "$EVIDENCE_DIR/tree/" || true
-find crates -name '*.rs' -print0 | while IFS= read -r -d '' file; do
-  mkdir -p "$EVIDENCE_DIR/tree/$(dirname "$file")"
-  cp "$file" "$EVIDENCE_DIR/tree/$file"
-done
+exit 0

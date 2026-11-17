@@ -1,0 +1,87 @@
+name: Release __NAME__
+
+on:
+  push:
+    tags:
+      - '__TAG_PATTERN__'
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+    working-directory: __WORKDIR__
+
+env:
+  VCPKG_DISABLE_METRICS: '1'
+  CTEST_OUTPUT_ON_FAILURE: '1'
+
+jobs:
+  build:
+    name: build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset: __NAME__-linux-x64.tar.gz
+          - os: macos-latest
+            asset: __NAME__-macos-arm64.tar.gz
+          - os: windows-latest
+            asset: __NAME__-windows-x64.exe
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: |
+            __WORKDIR__/.tools/vcpkg-cache
+          key: __NAME__-vcpkg-${{ runner.os }}-${{ hashFiles('__WORKDIR__/vcpkg.json', '__WORKDIR__/scripts/lib.sh') }}
+      - name: Install prerequisites
+        run: scripts/ci-step.sh --command "install prerequisites" scripts/dev-setup.sh --install
+      - name: Test
+        run: scripts/ci-step.sh test
+      - name: Build and test without GUI
+        run: scripts/ci-step.sh build-nogui test-nogui
+      - name: Package
+        run: scripts/ci-step.sh package
+      - name: Verify asset
+        run: scripts/ci-step.sh --command "verify asset" test -s "dist/${{ matrix.asset }}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: ${{ matrix.asset }}
+          path: __WORKDIR__/dist/${{ matrix.asset }}
+          if-no-files-found: error
+          retention-days: 3
+
+  publish:
+    name: publish pre-release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          path: ${{ runner.temp }}/release
+          merge-multiple: true
+      - name: Verify tag, release and files
+        run: scripts/release-verify.sh --tag "$GITHUB_REF_NAME" --commit "$GITHUB_SHA" --directory "$RUNNER_TEMP/release" --notes-output "$RUNNER_TEMP/release-notes.md"
+      - name: Create pre-release
+        run: |
+          version="${GITHUB_REF_NAME##*/}"
+          gh release create "$GITHUB_REF_NAME" \
+            "$RUNNER_TEMP/release/__NAME__-linux-x64.tar.gz" \
+            "$RUNNER_TEMP/release/__NAME__-macos-arm64.tar.gz" \
+            "$RUNNER_TEMP/release/__NAME__-windows-x64.exe" \
+            --prerelease \
+            --title "__APP_NAME__ ${version} (dev beta)" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"

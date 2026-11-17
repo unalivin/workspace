@@ -6,7 +6,7 @@ Every project has one primary language. SQL and Bash are supporting languages in
 |---|---|---|---|
 | Go | 14 | `templates/go` | Present. Checked by the workflow `CI template-go` on Linux, macOS and Windows. |
 | Rust | 8 | `templates/rust` | Present. Checked by the workflow `CI template-rust` on Linux, macOS and Windows. |
-| C++ | 3 | `templates/cpp` | Not written yet |
+| C++ | 3 | `templates/cpp` | Present. Checked by the workflow `CI template-cpp` on Linux, macOS and Windows. |
 
 `scripts/new-project.sh` refuses a language whose template folder does not exist.
 
@@ -60,19 +60,28 @@ System packages:
 
 `templates/rust/scripts/dev-setup.sh` reports what is missing and `--install` installs it. The versions above are defined in `templates/rust/Cargo.toml`, `templates/rust/rust-toolchain.toml` and `templates/rust/scripts/lib.sh`; change them there.
 
-## C++ (planned profile)
+## C++
 
 | | |
 |---|---|
-| Toolchain | C++20, CMake with Ninja; GCC, Clang and MSVC |
-| Layout | `src/core`, `src/app`, `src/tui`, `src/gui`, `tests/`, `third_party/` |
-| Dashboard | Dear ImGui with GLFW and OpenGL 3 |
-| Terminal UI | FTXUI |
-| SQLite | the vendored amalgamation, compiled with FTS5 |
-| Build without dashboard | `-DPROJECT_GUI=OFF` |
-| Format and lint | `clang-format --dry-run --Werror`, `clang-tidy`, `cppcheck` |
-| Tests | Catch2 or doctest, libFuzzer, ASan and UBSan, TSan for concurrent code |
-| Supply chain | pinned dependencies, `osv-scanner`, license review |
-| Packaging | CPack |
+| Toolchain | C++20; CMake `3.25` or newer (`4.4.5` is installed by the setup script) with Ninja `1.13.2`; GCC and Clang on Linux, Apple Clang on macOS, MSVC on Windows |
+| Layout | `src/core`, `src/app`, `src/tui`, `src/gui`, `tests/`, `tools/`, `fuzz/`, `third_party/`, `cmake/`, `packaging/`, `migrations/`, `testdata/`, `scripts/` |
+| Dashboard | Dear ImGui `1.93.0` with GLFW `3.5.1` and OpenGL 3, with the toolkit look replaced by the template's design tokens |
+| Terminal UI | FTXUI `7.0.3` as the terminal back end of the template's own cell grid |
+| SQLite | the vendored amalgamation `3.54.1` in `third_party/sqlite`, compiled with FTS5 |
+| Other libraries | JSON for Modern C++ `3.12.0`; all pinned in `vcpkg.json` on one vcpkg baseline |
+| Build with dashboard | `make build` (preset `release`, `-DPROJECT_GUI=ON`) |
+| Build without dashboard | `make build-nogui` (preset `release-nogui`, `-DPROJECT_GUI=OFF`) |
+| Format and lint | `clang-format` `23.1.5` in check mode, `clang-tidy` `23.1.4`, `cppcheck` `2.22.0`, compiler warnings as errors; no suppression comments |
+| Tests | doctest `2.5.3`; AddressSanitizer with UndefinedBehaviorSanitizer and ThreadSanitizer through `make race-or-sanitize`; libFuzzer through `make fuzz`, and a replay of the fuzz targets in every test run |
+| Supply chain | `third_party/components.tsv` with license and upstream commit per component; `make vuln` checks licenses and pins and asks the OSV database; license review by `make notices` |
+| Packaging | CPack, wrapped by `scripts/package.sh` |
+| Scripts | `shellcheck` `0.11.0.1`, `shfmt` `4.2.0`, `bats` `1.13.0` |
 
-No version is recorded because the template does not exist yet.
+System packages:
+
+- Debian or Ubuntu: `build-essential pkg-config curl zip unzip tar git`, and for the dashboard `libxinerama-dev libxcursor-dev xorg-dev libglu1-mesa-dev`; `clang` for `make fuzz`
+- macOS: the Xcode command line tools
+- Windows: Build Tools for Visual Studio 2022 with the Windows SDK, and Git Bash for the scripts
+
+`templates/cpp/scripts/dev-setup.sh` reports what is missing and `--install` installs it, including vcpkg at the pinned commit in `.tools/vcpkg`. The versions above are defined in `templates/cpp/vcpkg.json`, `templates/cpp/third_party/components.tsv` and `templates/cpp/scripts/lib.sh`; change them there.

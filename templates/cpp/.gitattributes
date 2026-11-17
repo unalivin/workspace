@@ -1,0 +1,28 @@
+* text=auto eol=lf
+*.sh text eol=lf
+*.bats text eol=lf
+*.bash text eol=lf
+*.sql text eol=lf
+*.cpp text eol=lf
+*.hpp text eol=lf
+*.c text eol=lf
+*.h text eol=lf
+*.in text eol=lf
+*.cmake text eol=lf
+CMakeLists.txt text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.svg text eol=lf
+*.desktop text eol=lf
+*.snapshot text eol=lf
+*.csv text eol=lf
+*.json text eol=lf
+*.txt text eol=lf
+Makefile text eol=lf
+VERSION text eol=lf
+*.png binary
+*.ico binary
+*.icns binary
+*.ttf binary
+*.db binary
+fuzz/seeds/** -text

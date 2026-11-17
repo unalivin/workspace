@@ -1,0 +1,16 @@
+build/
+dist/
+.tools/
+vcpkg_installed/
+fuzz/corpus/
+fuzz/artifacts/
+compile_commands.json
+CMakeUserPresets.json
+*.db
+*.db-wal
+*.db-shm
+*.log
+*.profraw
+.env
+.DS_Store
+Thumbs.db

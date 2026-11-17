@@ -1,0 +1,52 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "templateapp",
+  "builtin-baseline": "0df93a05b9de080129e653ec4776d7e14a1b2e4f",
+  "dependencies": [
+    "ftxui",
+    "nlohmann-json"
+  ],
+  "features": {
+    "gui": {
+      "description": "The dashboard window",
+      "dependencies": [
+        "glfw3",
+        {
+          "name": "imgui",
+          "features": [
+            "glfw-binding",
+            "opengl3-binding"
+          ]
+        }
+      ]
+    },
+    "tests": {
+      "description": "The test program",
+      "dependencies": [
+        "doctest"
+      ]
+    }
+  },
+  "overrides": [
+    {
+      "name": "doctest",
+      "version": "2.5.3"
+    },
+    {
+      "name": "ftxui",
+      "version": "7.0.3"
+    },
+    {
+      "name": "glfw3",
+      "version": "3.5.1"
+    },
+    {
+      "name": "imgui",
+      "version": "1.93.0"
+    },
+    {
+      "name": "nlohmann-json",
+      "version": "3.12.0#2"
+    }
+  ]
+}

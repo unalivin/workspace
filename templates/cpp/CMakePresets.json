@@ -1,0 +1,172 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "dev",
+      "displayName": "Debug build with the dashboard and the tests",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PROJECT_GUI": "ON",
+        "PROJECT_TESTS": "ON"
+      }
+    },
+    {
+      "name": "nogui",
+      "displayName": "Debug build without the dashboard, with the tests",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PROJECT_GUI": "OFF",
+        "PROJECT_TESTS": "ON"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release build with the dashboard",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "PROJECT_GUI": "ON",
+        "PROJECT_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "release-nogui",
+      "displayName": "Release build without the dashboard",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "PROJECT_GUI": "OFF",
+        "PROJECT_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "asan",
+      "displayName": "Tests under AddressSanitizer and UndefinedBehaviorSanitizer",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PROJECT_GUI": "OFF",
+        "PROJECT_TESTS": "ON",
+        "PROJECT_SANITIZE": "address"
+      }
+    },
+    {
+      "name": "tsan",
+      "displayName": "Tests under ThreadSanitizer",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PROJECT_GUI": "OFF",
+        "PROJECT_TESTS": "ON",
+        "PROJECT_SANITIZE": "thread"
+      }
+    },
+    {
+      "name": "checked",
+      "displayName": "Optimized tests with assertions and checked containers (Windows)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "PROJECT_GUI": "OFF",
+        "PROJECT_TESTS": "ON",
+        "PROJECT_CHECKED": "ON"
+      }
+    },
+    {
+      "name": "fuzz",
+      "displayName": "libFuzzer targets, built with Clang",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "PROJECT_GUI": "OFF",
+        "PROJECT_TESTS": "OFF",
+        "PROJECT_FUZZ": "ON",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev"
+    },
+    {
+      "name": "nogui",
+      "configurePreset": "nogui"
+    },
+    {
+      "name": "release",
+      "configurePreset": "release"
+    },
+    {
+      "name": "release-nogui",
+      "configurePreset": "release-nogui"
+    },
+    {
+      "name": "asan",
+      "configurePreset": "asan"
+    },
+    {
+      "name": "tsan",
+      "configurePreset": "tsan"
+    },
+    {
+      "name": "checked",
+      "configurePreset": "checked"
+    },
+    {
+      "name": "fuzz",
+      "configurePreset": "fuzz"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "nogui",
+      "configurePreset": "nogui",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "asan",
+      "configurePreset": "asan",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "tsan",
+      "configurePreset": "tsan",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "checked",
+      "configurePreset": "checked",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+PREFIX ?= /usr/local
+USER_PREFIX ?= $(HOME)/.local
+
+.PHONY: install uninstall user-install user-uninstall
+
+install:
+	install -Dm755 usr/local/bin/@APP_SLUG@ "$(DESTDIR)$(PREFIX)/bin/@APP_SLUG@"
+	install -Dm644 usr/local/share/applications/@APP_ID@.desktop "$(DESTDIR)$(PREFIX)/share/applications/@APP_ID@.desktop"
+	install -Dm644 usr/local/share/pixmaps/@APP_ID@.png "$(DESTDIR)$(PREFIX)/share/pixmaps/@APP_ID@.png"
+
+uninstall:
+	rm -f "$(DESTDIR)$(PREFIX)/bin/@APP_SLUG@"
+	rm -f "$(DESTDIR)$(PREFIX)/share/applications/@APP_ID@.desktop"
+	rm -f "$(DESTDIR)$(PREFIX)/share/pixmaps/@APP_ID@.png"
+
+user-install:
+	install -Dm755 usr/local/bin/@APP_SLUG@ "$(USER_PREFIX)/bin/@APP_SLUG@"
+	install -Dm644 usr/local/share/applications/@APP_ID@.desktop "$(USER_PREFIX)/share/applications/@APP_ID@.desktop"
+	install -Dm644 usr/local/share/pixmaps/@APP_ID@.png "$(USER_PREFIX)/share/icons/@APP_ID@.png"
+	sed -i -e "s|^Exec=.*|Exec=$(USER_PREFIX)/bin/@APP_SLUG@|" -e "s|^Icon=.*|Icon=$(USER_PREFIX)/share/icons/@APP_ID@.png|" "$(USER_PREFIX)/share/applications/@APP_ID@.desktop"
+
+user-uninstall:
+	rm -f "$(USER_PREFIX)/bin/@APP_SLUG@"
+	rm -f "$(USER_PREFIX)/share/applications/@APP_ID@.desktop"
+	rm -f "$(USER_PREFIX)/share/icons/@APP_ID@.png"

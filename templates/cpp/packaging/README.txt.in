@@ -1,0 +1,12 @@
+@APP_NAME@ @PROJECT_FULL_VERSION@ (dev beta)
+
+@APP_START_TEXT@
+
+Run "@APP_SLUG@ --help" for the commands, or read USAGE.md.
+The same guide is inside the application: About, Usage guide.
+
+This is an early development build. It is not signed.
+Publisher: @APP_PUBLISHER@
+@APP_COPYRIGHT@
+License: MIT, see LICENSE. Third-party components: THIRD_PARTY_NOTICES.md.
+Source and bug reports: @APP_REPOSITORY_URL@

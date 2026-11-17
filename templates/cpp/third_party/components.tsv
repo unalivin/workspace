@@ -1,0 +1,15 @@
+name	version	license	source	part_of	use	license_file	port	commit
+Dear ImGui	1.93.0	MIT	https://github.com/ocornut/imgui		gui	imgui.txt	imgui	c1aaac65e896a45f81f47a4d68f9959e0f86c859
+FTXUI	7.0.3	MIT	https://github.com/ArthurSonzogni/FTXUI		app	ftxui.txt	ftxui	f921fad208912747c17d129a8ef75ec7624b6eec
+GLFW	3.5.1	Zlib	https://github.com/glfw/glfw		gui	glfw.txt	glfw3	d9d6f0f1f967807ffade6598ea9a631ebaf37a56
+JSON for Modern C++	3.12.0	MIT	https://github.com/nlohmann/json		app	nlohmann-json.txt	nlohmann-json	55f93686c01528224f448c19128836e7df245f72
+SQLite	3.54.1	Public domain	https://www.sqlite.org		app	sqlite.txt		57520227c95396ce39ba6ecaac8d475b78dd3964
+AHEasing	bundled copy	WTFPL	https://github.com/warrenm/AHEasing	FTXUI	app	aheasing.txt		
+Abseil (parts)	10cb35e	Apache-2.0	https://github.com/abseil/abseil-cpp	JSON for Modern C++	app	abseil.txt		
+Grisu2	bundled copy	MIT	https://florian.loitsch.com/publications	JSON for Modern C++	app	grisu2.txt		
+Hedley	15	CC0-1.0	https://nemequ.github.io/hedley	JSON for Modern C++	app			
+ProggyClean font	bundled copy	MIT	https://github.com/bluescan/proggyfonts	Dear ImGui	gui	proggy-clean.txt		
+ProggyForever font	bundled copy	MIT	https://github.com/ocornut/proggyforever	Dear ImGui	gui	proggy-forever.txt		
+UTF-8 decoder	bundled copy	MIT	https://bjoern.hoehrmann.de/utf-8/decoder/dfa	JSON for Modern C++	app	utf8-decoder.txt		
+stb_rect_pack, stb_textedit, stb_truetype	1.01, 1.14, 1.26	MIT OR Unlicense	https://github.com/nothings/stb	Dear ImGui	gui	stb.txt		
+doctest	2.5.3	MIT	https://github.com/doctest/doctest		tests	doctest.txt	doctest	2d0a9359a60c51affe2a9bebb1be1dca47868151
