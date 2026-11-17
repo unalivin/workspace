@@ -27,6 +27,7 @@ pub struct Candidate {
     pub length: usize,
     pub entropy_tenths: u32,
     pub fingerprint: String,
+    pub portable: String,
     pub value_digest: String,
     pub context: String,
     pub score: u8,
@@ -45,6 +46,7 @@ pub struct Detector {
     rules: Vec<Rule>,
     allowlist: Allowlist,
     key: Vec<u8>,
+    portable_key: Vec<u8>,
 }
 
 struct Hit {
@@ -93,7 +95,17 @@ impl Detector {
                 other => other,
             })?);
         }
-        Ok(Detector { rules: compiled, allowlist: Allowlist::compile(allowlist)?, key: key.to_vec() })
+        Ok(Detector {
+            rules: compiled,
+            allowlist: Allowlist::compile(allowlist)?,
+            key: key.to_vec(),
+            portable_key: Vec::new(),
+        })
+    }
+
+    pub fn with_portable_key(mut self, key: &[u8]) -> Detector {
+        self.portable_key = key.to_vec();
+        self
     }
 
     pub fn rule_count(&self) -> usize {
@@ -211,6 +223,11 @@ impl Detector {
                 length: redact::length(value),
                 entropy_tenths: hit.entropy_tenths,
                 fingerprint: print,
+                portable: if self.portable_key.is_empty() {
+                    String::new()
+                } else {
+                    fingerprint::finding(&self.portable_key, &rule.id, &path, value)
+                },
                 value_digest: fingerprint::value(&self.key, value),
                 context: Detector::context(content, &line, &hits, &hit.secret),
                 score: assessment.score,

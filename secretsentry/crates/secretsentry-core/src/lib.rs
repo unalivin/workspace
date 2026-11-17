@@ -1,11 +1,14 @@
 pub mod allow;
 pub mod allowlists;
+pub mod baseline;
 pub mod brand;
 pub mod clock;
 pub mod confidence;
 pub mod csv;
+pub mod demo;
 pub mod entropy;
 pub mod error;
+pub mod export;
 pub mod files;
 pub mod findings;
 pub mod fingerprint;

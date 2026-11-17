@@ -240,7 +240,8 @@ pub fn parse_commit(body: &[u8]) -> Result<Commit> {
             if parents.len() >= MAX_PARENTS {
                 return Err(damaged("a commit has too many parents"));
             }
-            parents.push(ObjectId::from_hex(rest.trim()).ok_or_else(|| damaged("a commit names an unreadable parent"))?);
+            parents
+                .push(ObjectId::from_hex(rest.trim()).ok_or_else(|| damaged("a commit names an unreadable parent"))?);
         } else if let Some(rest) = line.strip_prefix("author ") {
             author = person(rest);
         } else if let Some(rest) = line.strip_prefix("committer ") {
@@ -279,11 +280,8 @@ pub fn parse_tree(body: &[u8]) -> Result<Vec<TreeEntry>> {
     let mut entries = Vec::new();
     let mut rest = body;
     while !rest.is_empty() {
-        let space = rest
-            .iter()
-            .take(8)
-            .position(|byte| *byte == b' ')
-            .ok_or_else(|| damaged("a tree entry has no mode"))?;
+        let space =
+            rest.iter().take(8).position(|byte| *byte == b' ').ok_or_else(|| damaged("a tree entry has no mode"))?;
         let mode = std::str::from_utf8(&rest[..space])
             .ok()
             .filter(|digits| !digits.is_empty() && digits.bytes().all(|digit| digit.is_ascii_digit()))
@@ -547,7 +545,8 @@ fn read_entry(pack: &mut Pack, offset: u64, limit: u64) -> Faulty<Entry> {
 }
 
 fn read_loose(path: &Path, limit: u64) -> Faulty<(ObjectKind, Vec<u8>)> {
-    let file = File::open(path).map_err(|error| Fault::Broken(format!("the object file cannot be opened ({error})")))?;
+    let file =
+        File::open(path).map_err(|error| Fault::Broken(format!("the object file cannot be opened ({error})")))?;
     let ceiling = limit.saturating_add(64);
     let mut data = Vec::new();
     ZlibDecoder::new(BufReader::new(file))
@@ -700,7 +699,15 @@ impl Repository {
                 }
             }
         }
-        Ok(Repository { git_dir, common_dir, object_dirs, packs, skipped_packs, cache: HashMap::new(), cached_bytes: 0 })
+        Ok(Repository {
+            git_dir,
+            common_dir,
+            object_dirs,
+            packs,
+            skipped_packs,
+            cache: HashMap::new(),
+            cached_bytes: 0,
+        })
     }
 
     pub fn git_dir(&self) -> &Path {
@@ -809,7 +816,8 @@ impl Repository {
         let Ok(listing) = fs::read_dir(directory) else {
             return;
         };
-        let mut names: Vec<std::ffi::OsString> = listing.filter_map(|entry| entry.ok().map(|entry| entry.file_name())).collect();
+        let mut names: Vec<std::ffi::OsString> =
+            listing.filter_map(|entry| entry.ok().map(|entry| entry.file_name())).collect();
         names.sort();
         for file_name in names {
             let path = directory.join(&file_name);
@@ -908,7 +916,12 @@ fn collect_commits(
                     planned.push(Planned {
                         time: commit.commit_time,
                         tree: commit.tree,
-                        info: CommitInfo { id, author: commit.author, time: commit.author_time, subject: commit.subject },
+                        info: CommitInfo {
+                            id,
+                            author: commit.author,
+                            time: commit.author_time,
+                            subject: commit.subject,
+                        },
                     });
                 }
                 Err(_) => stats.unreadable += 1,
@@ -1090,7 +1103,9 @@ mod tests {
     fn loose_headers_are_checked() {
         assert_eq!(split_loose(b"blob 3\0abc").unwrap(), (ObjectKind::Blob, &b"abc"[..]));
         assert_eq!(split_loose(b"commit 0\0").unwrap(), (ObjectKind::Commit, &b""[..]));
-        for wrong in [&b"blob 3abc"[..], b"blob 4\0abc", b"blob\0abc", b"note 3\0abc", b"blob x\0abc", b"", b"\xff 3\0abc"] {
+        for wrong in
+            [&b"blob 3abc"[..], b"blob 4\0abc", b"blob\0abc", b"note 3\0abc", b"blob x\0abc", b"", b"\xff 3\0abc"]
+        {
             let problem = split_loose(wrong).unwrap_err().to_string();
             assert!(problem.starts_with("the Git data is damaged: "), "{problem}");
         }
@@ -1106,13 +1121,20 @@ mod tests {
         let commit = parse_commit(body.as_bytes()).unwrap();
         assert_eq!(commit.tree, id(&tree));
         assert_eq!(commit.parents, vec![id(&first), id(&second)]);
-        assert_eq!((commit.author.as_str(), commit.author_time, commit.commit_time), ("Ünï Coder", 1_700_000_100, 1_700_000_200));
+        assert_eq!(
+            (commit.author.as_str(), commit.author_time, commit.commit_time),
+            ("Ünï Coder", 1_700_000_100, 1_700_000_200)
+        );
         assert_eq!(commit.subject, "Add the parser");
 
         let bare = parse_commit(format!("tree {tree}").as_bytes()).unwrap();
         assert_eq!((bare.parents.len(), bare.author.as_str(), bare.subject.as_str(), bare.commit_time), (0, "", "", 0));
-        let odd = parse_commit(format!("tree {tree}\nauthor no bracket\ncommitter <x> soon\n\n\u{7}bell\n").as_bytes()).unwrap();
-        assert_eq!((odd.author.as_str(), odd.author_time, odd.commit_time, odd.subject.as_str()), ("no bracket", 0, 0, "bell"));
+        let odd = parse_commit(format!("tree {tree}\nauthor no bracket\ncommitter <x> soon\n\n\u{7}bell\n").as_bytes())
+            .unwrap();
+        assert_eq!(
+            (odd.author.as_str(), odd.author_time, odd.commit_time, odd.subject.as_str()),
+            ("no bracket", 0, 0, "bell")
+        );
 
         assert!(parse_commit(b"author nobody\n\nno tree\n").unwrap_err().to_string().ends_with("a commit has no tree"));
         assert!(parse_commit(b"tree xyz\n").unwrap_err().to_string().ends_with("a commit names an unreadable tree"));
@@ -1129,11 +1151,19 @@ mod tests {
     #[test]
     fn trees_are_parsed_and_damage_is_named() {
         let (file, folder, link) = ("a".repeat(40), "b".repeat(40), "c".repeat(40));
-        let body = GitFixture::tree_body(&[("100644", "read me.txt", &file), ("40000", "src", &folder), ("120000", "link", &link)]);
+        let body = GitFixture::tree_body(&[
+            ("100644", "read me.txt", &file),
+            ("40000", "src", &folder),
+            ("120000", "link", &link),
+        ]);
         let entries = parse_tree(&body).unwrap();
         assert_eq!(
             entries.iter().map(|entry| (entry.mode, entry.name.as_str(), entry.id)).collect::<Vec<_>>(),
-            vec![(0o120000, "link", id(&link)), (0o100644, "read me.txt", id(&file)), (MODE_DIRECTORY, "src", id(&folder))]
+            vec![
+                (0o120000, "link", id(&link)),
+                (0o100644, "read me.txt", id(&file)),
+                (MODE_DIRECTORY, "src", id(&folder))
+            ]
         );
         assert_eq!(parse_tree(b"").unwrap(), Vec::new());
         let mut latin = b"100644 caf\xe9\0".to_vec();
@@ -1182,7 +1212,11 @@ mod tests {
             (b"", vec![0, 5, 5, b'a'], "a delta ends inside an insert instruction"),
             (b"", vec![0, 5, 2, b'a', b'b'], "a delta produces less than it declares"),
             (b"", vec![0, 1, 2, b'a', b'b'], "a delta produces more than it declares"),
-            (b"", vec![0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01], "a delta has an unreadable size"),
+            (
+                b"",
+                vec![0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01],
+                "a delta has an unreadable size",
+            ),
         ];
         for (base, damaged, expected) in problems {
             let problem = apply_delta(base, &damaged, 1000).unwrap_err().to_string();
@@ -1223,7 +1257,8 @@ mod tests {
         let (old, new) = (b"shared start\nold end\n".to_vec(), b"shared start\nnew end\n".to_vec());
         let base = fixture.object("blob", &old);
         let target = git_object_id("blob", &new);
-        fixture.write_pack("pack-thin", &[(target.clone(), pack_entry_reference_delta(&base, &make_delta(&old, &new)))]);
+        fixture
+            .write_pack("pack-thin", &[(target.clone(), pack_entry_reference_delta(&base, &make_delta(&old, &new)))]);
         let mut repository = open(&directory);
         assert_eq!(found(&mut repository, &target, 100), (ObjectKind::Blob, new));
 
@@ -1303,7 +1338,9 @@ mod tests {
         let mut disordered = index.clone();
         disordered[8 + 0x60 * 4 + 3] = 0;
         assert!(problem(disordered).ends_with("a pack index has a fan-out table that is out of order"));
-        assert!(problem(index[..INDEX_HEADER_BYTES + 10].to_vec()).ends_with("a pack index is shorter than its tables"));
+        assert!(
+            problem(index[..INDEX_HEADER_BYTES + 10].to_vec()).ends_with("a pack index is shorter than its tables")
+        );
         let empty = PackIndex::parse([&[0xff, b't', b'O', b'c', 0, 0, 0, 2][..], &[0u8; 1024]].concat()).ok().unwrap();
         assert!(empty.is_empty());
         assert_eq!(empty.find(&ObjectId(name)), None);
@@ -1325,7 +1362,8 @@ mod tests {
         );
         fs::write(fixture.git_dir().join("packed-refs"), packed).unwrap();
         let listed = open(&directory).references();
-        let shown: Vec<(&str, String)> = listed.iter().map(|reference| (reference.name.as_str(), reference.id.to_hex())).collect();
+        let shown: Vec<(&str, String)> =
+            listed.iter().map(|reference| (reference.name.as_str(), reference.id.to_hex())).collect();
         assert_eq!(
             shown,
             vec![
@@ -1360,7 +1398,8 @@ mod tests {
         let nested = fixture.blob("nested\n");
         let binary = fixture.object("blob", b"bin\0ary");
         let big = fixture.blob(&"x".repeat(200));
-        let folder = fixture.tree(&[("100644", "s.txt", &nested), ("100644", "data.bin", &binary), ("100755", "big.txt", &big)]);
+        let folder =
+            fixture.tree(&[("100644", "s.txt", &nested), ("100644", "data.bin", &binary), ("100755", "big.txt", &big)]);
         let tree_one = fixture.tree(&[("100644", "a.txt", &alpha_one)]);
         let tree_two = fixture.tree(&[
             ("100644", "a.txt", &alpha_two),
@@ -1369,7 +1408,8 @@ mod tests {
             ("120000", "link", &beta),
             ("160000", "sub", &"9".repeat(40)),
         ]);
-        let tree_three = fixture.tree(&[("100644", "a.txt", &alpha_one), ("100644", "b.txt", &beta), ("40000", "dir", &folder)]);
+        let tree_three =
+            fixture.tree(&[("100644", "a.txt", &alpha_one), ("100644", "b.txt", &beta), ("40000", "dir", &folder)]);
         let tree_side = fixture.tree(&[("100644", "a.txt", &alpha_one), ("100644", "c.txt", &gamma)]);
         let first = fixture.commit(&tree_one, &[], 100, "one");
         let second = fixture.commit(&tree_two, &[&first], 200, "two");
@@ -1387,9 +1427,14 @@ mod tests {
 
     fn visits(history: &History, options: &HistoryOptions) -> (Vec<(String, String, String)>, HistoryStats) {
         let mut seen = Vec::new();
-        let stats = walk_history(&mut open(&history.directory), options, &AtomicBool::new(false), &mut |commit, path, content| {
-            seen.push((commit.subject.clone(), path.to_string(), content.to_string()));
-        });
+        let stats = walk_history(
+            &mut open(&history.directory),
+            options,
+            &AtomicBool::new(false),
+            &mut |commit, path, content| {
+                seen.push((commit.subject.clone(), path.to_string(), content.to_string()));
+            },
+        );
         (seen, stats)
     }
 
@@ -1419,7 +1464,15 @@ mod tests {
         walk_history(&mut open(&history.directory), &options, &AtomicBool::new(false), &mut |commit, _, _| {
             details.push(commit.clone());
         });
-        assert_eq!(details[0], CommitInfo { id: id(&history.first), author: "Sample Author".to_string(), time: 100, subject: "one".to_string() });
+        assert_eq!(
+            details[0],
+            CommitInfo {
+                id: id(&history.first),
+                author: "Sample Author".to_string(),
+                time: 100,
+                subject: "one".to_string()
+            }
+        );
     }
 
     #[test]
@@ -1432,10 +1485,11 @@ mod tests {
 
         let cancel = AtomicBool::new(false);
         let mut count = 0;
-        let stopped = walk_history(&mut open(&history.directory), &HistoryOptions::default(), &cancel, &mut |_, _, _| {
-            count += 1;
-            cancel.store(true, Ordering::Relaxed);
-        });
+        let stopped =
+            walk_history(&mut open(&history.directory), &HistoryOptions::default(), &cancel, &mut |_, _, _| {
+                count += 1;
+                cancel.store(true, Ordering::Relaxed);
+            });
         assert_eq!(count, 1);
         assert!(stopped.cancelled);
 
@@ -1525,7 +1579,10 @@ mod tests {
         fs::create_dir_all(&worktree).unwrap();
         fs::write(worktree.join(".git"), format!("gitdir: {}\n", worktree_data.display())).unwrap();
         let mut second = Repository::open(&worktree).unwrap();
-        assert_eq!(second.references().iter().map(|reference| reference.name.as_str()).collect::<Vec<_>>(), vec!["HEAD", "refs/heads/main"]);
+        assert_eq!(
+            second.references().iter().map(|reference| reference.name.as_str()).collect::<Vec<_>>(),
+            vec!["HEAD", "refs/heads/main"]
+        );
         assert_eq!(found(&mut second, &blob, 100).1, b"content\n");
 
         let borrower = directory.path().join("borrower");

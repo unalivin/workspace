@@ -100,13 +100,18 @@ fn compare(root: &Path, shape: &str) {
     let mut seen_commits = BTreeSet::new();
     let mut visits = 0;
     let mut token_commit = String::new();
-    let stats = git::walk_history(&mut repository, &HistoryOptions::default(), &AtomicBool::new(false), &mut |commit, path, content| {
-        seen_commits.insert(commit.id.to_hex());
-        visits += 1;
-        if path == "config.env" && content.contains(&sample_hosting_token()) {
-            token_commit = commit.subject.clone();
-        }
-    });
+    let stats = git::walk_history(
+        &mut repository,
+        &HistoryOptions::default(),
+        &AtomicBool::new(false),
+        &mut |commit, path, content| {
+            seen_commits.insert(commit.id.to_hex());
+            visits += 1;
+            if path == "config.env" && content.contains(&sample_hosting_token()) {
+                token_commit = commit.subject.clone();
+            }
+        },
+    );
     assert_eq!(stats.commits_scanned as usize, commits.len(), "{shape}");
     assert!(seen_commits.is_subset(&commits), "{shape}");
     assert_eq!(visits, expected_files.len(), "{shape}");
@@ -140,7 +145,11 @@ fn a_repository_written_by_git_is_read_the_same_way_git_reads_it() {
     assert!(packed.packed_object_count() > 50);
     compare(root, "one pack with offset deltas");
 
-    run(root, START, &["-c", "repack.useDeltaBaseOffset=false", "repack", "-q", "-a", "-d", "-f", "--depth=20", "--window=20"]);
+    run(
+        root,
+        START,
+        &["-c", "repack.useDeltaBaseOffset=false", "repack", "-q", "-a", "-d", "-f", "--depth=20", "--window=20"],
+    );
     compare(root, "one pack with reference deltas");
 
     fs::write(root.join("notes.txt"), notes(300)).unwrap();

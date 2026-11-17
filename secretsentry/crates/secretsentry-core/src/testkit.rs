@@ -83,8 +83,7 @@ pub fn sha1(data: &[u8]) -> [u8; 20] {
                 2 => ((b & c) | (b & d) | (c & d), 0x8f1b_bcdc),
                 _ => (b ^ c ^ d, 0xca62_c1d6),
             };
-            let next =
-                a.rotate_left(5).wrapping_add(mixed).wrapping_add(e).wrapping_add(constant).wrapping_add(*word);
+            let next = a.rotate_left(5).wrapping_add(mixed).wrapping_add(e).wrapping_add(constant).wrapping_add(*word);
             e = d;
             d = c;
             c = b.rotate_left(30);
@@ -312,8 +311,9 @@ impl GitFixture {
     }
 
     pub fn tag(&self, target: &str, name: &str) -> String {
-        let body =
-            format!("object {target}\ntype commit\ntag {name}\ntagger Sample Tagger <tagger> 1700000000 +0000\n\n{name}\n");
+        let body = format!(
+            "object {target}\ntype commit\ntag {name}\ntagger Sample Tagger <tagger> 1700000000 +0000\n\n{name}\n"
+        );
         self.object("tag", body.as_bytes())
     }
 

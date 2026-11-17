@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use rusqlite::{Connection, OptionalExtension, Row, Transaction, TransactionBehavior};
 
@@ -28,6 +28,8 @@ WHERE (?1 = '' OR instr(lower(path), ?1) > 0 OR instr(lower(rule_name), ?1) > 0 
   AND (?5 = '' OR root = ?5)
   AND (?6 = '' OR path = ?6)
   AND score >= ?12
+  AND (?13 = 0 OR last_scan_id = ?13)
+  AND (?14 = '' OR id IN (SELECT finding_id FROM finding_origins WHERE commit_id = ?14))
   AND (?7 = 'all'
     OR (?7 = 'attention' AND id IN (SELECT id FROM attention_findings))
     OR (?7 = 'new' AND id IN (SELECT id FROM attention_findings WHERE baseline = 0))
@@ -51,7 +53,19 @@ ORDER BY
   id ASC
 LIMIT ?10 OFFSET ?11";
 const SQL_FIND: &str = "SELECT id, baseline FROM findings WHERE root = ?1 AND fingerprint = ?2";
-const SQL_INSERT: &str = "INSERT INTO findings (root, fingerprint, value_digest, rule_id, rule_name, severity, path, preview, value_length, entropy_tenths, score, confidence, reasons, allow_kind, allow_entry_id, in_tree, in_history, is_demo, last_scan_id, first_seen_at, last_seen_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?20, ?20)";
+const SQL_INSERT: &str = "INSERT INTO findings (root, fingerprint, value_digest, rule_id, rule_name, severity, path, preview, value_length, entropy_tenths, score, confidence, reasons, allow_kind, allow_entry_id, in_tree, in_history, is_demo, last_scan_id, first_seen_at, last_seen_at, updated_at, baseline) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?20, ?20, ?21)";
+const SQL_MARK_BASELINE: &str = "UPDATE findings SET baseline = 1 WHERE id = ?1 AND baseline = 0";
+const SQL_DELETE_DEMO: &str = "DELETE FROM findings WHERE is_demo = 1";
+const SQL_COUNT_DEMO: &str = "SELECT count(*) FROM findings WHERE is_demo = 1";
+const SQL_DELETE_COMMITS: &str = "DELETE FROM commits WHERE root = ?1";
+const SQL_COMMITS: &str = "SELECT f.root, o.commit_id, coalesce(c.author, ''), coalesce(c.authored_at, ''), coalesce(c.subject, ''), count(*), max(f.score), sum(f.allow_kind = '' AND f.status IN ('open', 'confirmed'))
+FROM findings f
+JOIN finding_origins o ON o.finding_id = f.id
+LEFT JOIN commits c ON c.root = f.root AND c.id = o.commit_id
+WHERE f.in_history = 1
+GROUP BY f.root, o.commit_id
+ORDER BY coalesce(c.authored_at, '') DESC, o.commit_id, f.root
+LIMIT ?1";
 const SQL_REFRESH: &str = "UPDATE findings SET rule_name = ?1, severity = ?2, preview = ?3, value_length = ?4, entropy_tenths = ?5, score = ?6, confidence = ?7, reasons = ?8, allow_kind = ?9, allow_entry_id = ?10, in_tree = max(in_tree, ?11), in_history = max(in_history, ?12), last_scan_id = ?13, last_seen_at = ?14, updated_at = ?14 WHERE id = ?15";
 const SQL_DROP_TREE_OCCURRENCES: &str = "DELETE FROM occurrences WHERE finding_id = ?1 AND commit_id = ''";
 const SQL_DROP_HISTORY_OCCURRENCES: &str = "DELETE FROM occurrences WHERE finding_id = ?1 AND commit_id <> ''";
@@ -271,6 +285,24 @@ pub fn record_commits(conn: &Connection, root: &str, commits: &[CommitRecord]) -
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommitGroup {
+    pub root: String,
+    pub commit_id: String,
+    pub author: String,
+    pub authored_at: Option<Timestamp>,
+    pub subject: String,
+    pub findings: i64,
+    pub top_score: u8,
+    pub attention: i64,
+}
+
+impl CommitGroup {
+    pub fn short_id(&self) -> &str {
+        self.commit_id.get(..10).unwrap_or(&self.commit_id)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Query {
     pub search: String,
     pub rule_id: String,
@@ -280,6 +312,8 @@ pub struct Query {
     pub root: String,
     pub path: String,
     pub min_score: u8,
+    pub scan_id: i64,
+    pub commit_id: String,
     pub sort: String,
     pub descending: bool,
     pub limit: i64,
@@ -297,6 +331,8 @@ impl Default for Query {
             root: String::new(),
             path: String::new(),
             min_score: 0,
+            scan_id: 0,
+            commit_id: String::new(),
             sort: "score".to_string(),
             descending: true,
             limit: DEFAULT_LIMIT,
@@ -520,6 +556,19 @@ pub struct Recording<'a> {
     pub demo: bool,
     pub complete: bool,
     pub now: Timestamp,
+    pub known: Option<&'a BTreeSet<String>>,
+}
+
+pub fn remove_demo(conn: &Connection) -> Result<usize> {
+    Ok(conn.execute(SQL_DELETE_DEMO, [])?)
+}
+
+pub fn demo_count(conn: &Connection) -> Result<i64> {
+    Ok(conn.query_row(SQL_COUNT_DEMO, [], |row| row.get(0))?)
+}
+
+pub fn remove_commits(conn: &Connection, root: &str) -> Result<usize> {
+    Ok(conn.execute(SQL_DELETE_COMMITS, [root])?)
 }
 
 pub fn record(
@@ -548,6 +597,9 @@ pub fn record(
         let (allow_kind, allow_entry) = allowed_parts(allowed);
         let reasons = confidence::reasons_to_json(&best.reasons);
         let level = Level::of(best.score).as_str();
+        let known = recording
+            .known
+            .is_some_and(|known| group.iter().any(|sighting| known.contains(&sighting.candidate.portable)));
         let existing: Option<(i64, i64)> =
             conn.query_row(SQL_FIND, (recording.root, print), |row| Ok((row.get(0)?, row.get(1)?))).optional()?;
         let id = match existing {
@@ -572,6 +624,9 @@ pub fn record(
                         id,
                     ),
                 )?;
+                if known {
+                    conn.execute(SQL_MARK_BASELINE, [id])?;
+                }
                 id
             }
             None => {
@@ -598,9 +653,10 @@ pub fn record(
                         i64::from(recording.demo),
                         recording.scan_id,
                         now,
+                        i64::from(known),
                     ],
                 )?;
-                if allowed == Allowed::No {
+                if allowed == Allowed::No && !known {
                     recorded.new += 1;
                     recorded.top_new_severity = recorded.top_new_severity.max(Some(severity));
                 }
@@ -681,6 +737,8 @@ impl<'a> Findings<'a> {
                 query.limit.clamp(1, MAX_LIMIT),
                 query.offset.max(0),
                 i64::from(query.min_score),
+                query.scan_id.max(0),
+                query.commit_id.trim(),
             ],
             scan,
         )?;
@@ -762,6 +820,27 @@ impl<'a> Findings<'a> {
 
     pub fn reset_baseline(&self, root: &str) -> Result<usize> {
         Ok(self.conn.execute(SQL_RESET_BASELINE, (self.clock.now().to_rfc3339(), root))?)
+    }
+
+    pub fn commits(&self, limit: i64) -> Result<Vec<CommitGroup>> {
+        let mut statement = self.conn.prepare(SQL_COMMITS)?;
+        let rows = statement.query_map([limit.clamp(1, MAX_LIMIT)], |row| {
+            Ok(CommitGroup {
+                root: row.get(0)?,
+                commit_id: row.get(1)?,
+                author: row.get(2)?,
+                authored_at: Timestamp::parse(&row.get::<_, String>(3)?),
+                subject: row.get(4)?,
+                findings: row.get(5)?,
+                top_score: u8::try_from(row.get::<_, i64>(6)?).unwrap_or(100),
+                attention: row.get(7)?,
+            })
+        })?;
+        let mut groups = Vec::new();
+        for row in rows {
+            groups.push(row?);
+        }
+        Ok(groups)
     }
 
     pub fn roots(&self) -> Result<Vec<String>> {

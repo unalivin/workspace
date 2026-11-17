@@ -1,18 +1,21 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::time::Instant;
 
 use rusqlite::{Connection, OptionalExtension, Row, Transaction, TransactionBehavior};
 
-use crate::allowlists::Allowlists;
+use crate::allowlists::{self, Allowlists};
+use crate::baseline::Baseline;
 use crate::clock::{Clock, Timestamp, Zone};
+use crate::demo;
 use crate::error::{AppError, Result};
 use crate::findings::{self, CommitRecord, Recorded, Recording, RuleLabel, Sighting, Source};
 use crate::git;
 use crate::notify::{self, Event};
 use crate::rulebook::{self, Rulebook};
-use crate::scanner::{Candidate, Detector};
+use crate::rules;
+use crate::scanner::{Allowed, Candidate, Detector};
 use crate::theme::Severity;
 use crate::tree;
 
@@ -30,6 +33,8 @@ const SQL_FINISH: &str = "UPDATE scans SET status = ?1, finished_at = ?2, durati
 const SQL_GET: &str = "SELECT id, kind, root, status, started_at, finished_at, duration_ms, files_scanned, files_skipped, bytes_scanned, commits_scanned, rules_used, findings_seen, findings_new, problem, is_demo FROM scans WHERE id = ?1";
 const SQL_LIST: &str = "SELECT id, kind, root, status, started_at, finished_at, duration_ms, files_scanned, files_skipped, bytes_scanned, commits_scanned, rules_used, findings_seen, findings_new, problem, is_demo FROM scans WHERE (?1 = '' OR kind = ?1) ORDER BY id DESC LIMIT ?2";
 const SQL_COUNT: &str = "SELECT count(*) FROM scans";
+const SQL_COUNT_DEMO: &str = "SELECT count(*) FROM scans WHERE is_demo = 1";
+const SQL_DELETE_DEMO: &str = "DELETE FROM scans WHERE is_demo = 1";
 
 pub const HOT_QUERIES: &[(&str, &str, usize)] = &[("scan by identifier", SQL_GET, 1)];
 
@@ -167,6 +172,7 @@ pub struct Outcome {
     pub scan: Scan,
     pub recorded: Recorded,
     pub stats: tree::Stats,
+    pub portable: BTreeSet<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -174,6 +180,15 @@ pub struct HistoryOutcome {
     pub scan: Scan,
     pub recorded: Recorded,
     pub stats: git::HistoryStats,
+    pub portable: BTreeSet<String>,
+}
+
+fn portable_prints(sightings: &[Sighting<'_>]) -> BTreeSet<String> {
+    sightings
+        .iter()
+        .filter(|sighting| sighting.candidate.allowed == Allowed::No && !sighting.candidate.portable.is_empty())
+        .map(|sighting| sighting.candidate.portable.clone())
+        .collect()
 }
 
 struct Harvest<'a> {
@@ -354,11 +369,25 @@ pub struct Scans<'a> {
     conn: &'a Connection,
     clock: Clock,
     zone: Zone,
+    baseline: Option<&'a Baseline>,
 }
 
 impl<'a> Scans<'a> {
     pub fn new(conn: &'a Connection, clock: Clock, zone: Zone) -> Self {
-        Scans { conn, clock, zone }
+        Scans { conn, clock, zone, baseline: None }
+    }
+
+    pub fn with_baseline(mut self, baseline: &'a Baseline) -> Self {
+        self.baseline = Some(baseline);
+        self
+    }
+
+    fn scan_detector(&self) -> Result<Detector> {
+        let detector = self.detector()?;
+        Ok(match self.baseline {
+            Some(baseline) => detector.with_portable_key(baseline.key()),
+            None => detector,
+        })
     }
 
     fn begin(&self) -> Result<Transaction<'a>> {
@@ -432,7 +461,7 @@ impl<'a> Scans<'a> {
 
     pub fn scan_tree(&self, root: &Path, options: &tree::Options, cancel: &AtomicBool) -> Result<Outcome> {
         let name = root_name(root)?;
-        let detector = self.detector()?;
+        let detector = self.scan_detector()?;
         let started = Instant::now();
         let id = start(
             self.conn,
@@ -483,7 +512,9 @@ impl<'a> Scans<'a> {
             problem,
         };
         match self.store(id, &name, started, &harvest) {
-            Ok(recorded) => Ok(Outcome { scan: self.get(id)?, recorded, stats }),
+            Ok(recorded) => {
+                Ok(Outcome { scan: self.get(id)?, recorded, stats, portable: portable_prints(&harvest.sightings) })
+            }
             Err(error) => {
                 self.fail(id, &name, started, &error)?;
                 Err(error)
@@ -491,14 +522,25 @@ impl<'a> Scans<'a> {
         }
     }
 
-    pub fn scan_history(&self, root: &Path, options: &git::HistoryOptions, cancel: &AtomicBool) -> Result<HistoryOutcome> {
+    pub fn scan_history(
+        &self,
+        root: &Path,
+        options: &git::HistoryOptions,
+        cancel: &AtomicBool,
+    ) -> Result<HistoryOutcome> {
         let name = root_name(root)?;
         let mut repository = git::Repository::open(Path::new(&name))?;
-        let detector = self.detector()?;
+        let detector = self.scan_detector()?;
         let started = Instant::now();
         let id = start(
             self.conn,
-            &Start { kind: Kind::History, root: &name, rules_used: detector.rule_count(), demo: false, now: self.clock.now() },
+            &Start {
+                kind: Kind::History,
+                root: &name,
+                rules_used: detector.rule_count(),
+                demo: false,
+                now: self.clock.now(),
+            },
         )?;
         let mut kept: Vec<(Candidate, String)> = Vec::new();
         let mut per_finding: HashMap<String, usize> = HashMap::new();
@@ -560,12 +602,159 @@ impl<'a> Scans<'a> {
             problem: notes.join(" "),
         };
         match self.store(id, &name, started, &harvest) {
-            Ok(recorded) => Ok(HistoryOutcome { scan: self.get(id)?, recorded, stats }),
+            Ok(recorded) => Ok(HistoryOutcome {
+                scan: self.get(id)?,
+                recorded,
+                stats,
+                portable: portable_prints(&harvest.sightings),
+            }),
             Err(error) => {
                 self.fail(id, &name, started, &error)?;
                 Err(error)
             }
         }
+    }
+
+    pub fn demo_count(&self) -> Result<i64> {
+        let scans: i64 = self.conn.query_row(SQL_COUNT_DEMO, [], |row| row.get(0))?;
+        Ok(scans + findings::demo_count(self.conn)?)
+    }
+
+    pub fn load_demo(&self) -> Result<usize> {
+        if self.demo_count()? > 0 {
+            return Ok(0);
+        }
+        let key = rulebook::fingerprint_key(self.conn, self.clock.now())?;
+        let builtin = rules::builtin();
+        let labels: BTreeMap<String, RuleLabel> = builtin
+            .iter()
+            .map(|rule| (rule.id.clone(), RuleLabel { name: rule.name.clone(), severity: rule.severity }))
+            .collect();
+        let transaction = self.begin()?;
+        let now = self.clock.now();
+        let entry = demo::allowlist_entry();
+        let entry_id = allowlists::insert(&transaction, now, &entry, true)?;
+        let detector = Detector::new(&builtin, &[crate::allow::EntrySpec { id: entry_id, ..entry }], &key)?;
+
+        let files = demo::tree();
+        let mut candidates: Vec<Candidate> = Vec::new();
+        let mut bytes = 0u64;
+        for file in &files {
+            bytes += file.content.len() as u64;
+            candidates.extend(detector.scan_text(file.path, &file.content).candidates);
+        }
+        let tree_id = start(
+            &transaction,
+            &Start { kind: Kind::Tree, root: demo::ROOT, rules_used: detector.rule_count(), demo: true, now },
+        )?;
+        let sightings: Vec<Sighting<'_>> =
+            candidates.iter().map(|candidate| Sighting { candidate, commit_id: "" }).collect();
+        let recorded = findings::record(
+            &transaction,
+            &Recording {
+                scan_id: tree_id,
+                root: demo::ROOT,
+                source: Source::Tree,
+                demo: true,
+                complete: true,
+                now,
+                known: None,
+            },
+            &labels,
+            &sightings,
+        )?;
+        let mut loaded = recorded.seen;
+        finish(
+            &transaction,
+            &Finish {
+                id: tree_id,
+                status: Status::Completed,
+                now,
+                duration_ms: demo::TREE_DURATION_MS,
+                files_scanned: files.len() as u64,
+                files_skipped: demo::TREE_FILES_SKIPPED,
+                bytes_scanned: bytes,
+                commits_scanned: 0,
+                recorded,
+                problem: "",
+            },
+        )?;
+
+        let commits = demo::history();
+        let mut kept: Vec<(Candidate, &str)> = Vec::new();
+        let mut versions = 0u64;
+        let mut history_bytes = 0u64;
+        for commit in &commits {
+            for file in &commit.files {
+                versions += 1;
+                history_bytes += file.content.len() as u64;
+                for candidate in detector.scan_text(file.path, &file.content).candidates {
+                    kept.push((candidate, commit.id.as_str()));
+                }
+            }
+        }
+        let records: Vec<CommitRecord> = commits
+            .iter()
+            .map(|commit| CommitRecord {
+                id: commit.id.clone(),
+                author: demo::AUTHOR.to_string(),
+                authored_at: now.plus_seconds(-commit.days_ago * 86_400),
+                subject: commit.subject.to_string(),
+            })
+            .collect();
+        findings::record_commits(&transaction, demo::ROOT, &records)?;
+        let history_id = start(
+            &transaction,
+            &Start { kind: Kind::History, root: demo::ROOT, rules_used: detector.rule_count(), demo: true, now },
+        )?;
+        let sightings: Vec<Sighting<'_>> =
+            kept.iter().map(|(candidate, commit_id)| Sighting { candidate, commit_id }).collect();
+        let recorded = findings::record(
+            &transaction,
+            &Recording {
+                scan_id: history_id,
+                root: demo::ROOT,
+                source: Source::History,
+                demo: true,
+                complete: true,
+                now,
+                known: None,
+            },
+            &labels,
+            &sightings,
+        )?;
+        loaded += recorded.new;
+        finish(
+            &transaction,
+            &Finish {
+                id: history_id,
+                status: Status::Completed,
+                now,
+                duration_ms: demo::HISTORY_DURATION_MS,
+                files_scanned: versions,
+                files_skipped: 0,
+                bytes_scanned: history_bytes,
+                commits_scanned: commits.len() as u64,
+                recorded,
+                problem: "",
+            },
+        )?;
+        transaction.commit()?;
+        Ok(loaded)
+    }
+
+    pub fn remove_demo(&self, dry_run: bool) -> Result<i64> {
+        let count = findings::demo_count(self.conn)?;
+        if dry_run {
+            return Ok(count);
+        }
+        let transaction = self.begin()?;
+        findings::remove_demo(&transaction)?;
+        findings::remove_commits(&transaction, demo::ROOT)?;
+        transaction.execute(SQL_DELETE_DEMO, [])?;
+        allowlists::remove_demo(&transaction)?;
+        transaction.commit()?;
+        Ok(count)
     }
 
     fn store(&self, id: i64, root: &str, started: Instant, harvest: &Harvest<'_>) -> Result<Recorded> {
@@ -575,7 +764,15 @@ impl<'a> Scans<'a> {
         findings::record_commits(&transaction, root, &harvest.commits)?;
         let recorded = findings::record(
             &transaction,
-            &Recording { scan_id: id, root, source: harvest.source, demo: false, complete: harvest.complete, now },
+            &Recording {
+                scan_id: id,
+                root,
+                source: harvest.source,
+                demo: false,
+                complete: harvest.complete,
+                now,
+                known: self.baseline.map(Baseline::entries),
+            },
             &labels,
             &harvest.sightings,
         )?;
@@ -632,7 +829,6 @@ mod tests {
     use crate::confidence::Level;
     use crate::findings::{Findings, Query, Scope, Status as Decision};
     use crate::notify::{Filter, Notifications};
-    use crate::scanner::Allowed;
     use crate::store::Store;
     use crate::testkit::{
         GitFixture, TempDir, fixed_time, sample_cloud_key, sample_hosting_token, sample_package_token,
@@ -1052,8 +1248,11 @@ mod tests {
         let deploy = git.blob(&format!("export AWS_KEY=\"{}\"\n", sample_cloud_key()));
         let tree_one = git.tree(&[("100644", "app.py", &app), ("100644", "config.env", &secret)]);
         let tree_two = git.tree(&[("100644", "app.py", &app), ("100644", "config.env", &cleaned)]);
-        let tree_three =
-            git.tree(&[("100644", "app.py", &app), ("100644", "config.env", &cleaned), ("100755", "deploy.sh", &deploy)]);
+        let tree_three = git.tree(&[
+            ("100644", "app.py", &app),
+            ("100644", "config.env", &cleaned),
+            ("100755", "deploy.sh", &deploy),
+        ]);
         let first = git.commit(&tree_one, &[], 1_700_000_000, "add configuration");
         let second = git.commit(&tree_two, &[&first], 1_700_000_100, &format!("remove {}", sample_hosting_token()));
         let third = git.commit(&tree_three, &[&second], 1_700_000_200, "add the deploy script");
@@ -1086,7 +1285,10 @@ mod tests {
         assert!(outcome.stats.complete());
 
         let all = repo.fixture.all();
-        assert_eq!(all.iter().map(|finding| finding.path.as_str()).collect::<Vec<_>>(), vec!["config.env", "deploy.sh"]);
+        assert_eq!(
+            all.iter().map(|finding| finding.path.as_str()).collect::<Vec<_>>(),
+            vec!["config.env", "deploy.sh"]
+        );
         let removed = &all[0];
         assert_eq!(removed.rule_id, "github-token");
         assert!(removed.in_history && !removed.in_tree);
@@ -1116,7 +1318,11 @@ mod tests {
             if path.is_file() {
                 checked += 1;
                 let bytes = fs::read(&path).unwrap();
-                assert!(!String::from_utf8_lossy(&bytes).contains(&sample_hosting_token()), "{} holds a secret", path.display());
+                assert!(
+                    !String::from_utf8_lossy(&bytes).contains(&sample_hosting_token()),
+                    "{} holds a secret",
+                    path.display()
+                );
             }
         }
         assert!(checked >= 1);
@@ -1171,7 +1377,11 @@ mod tests {
                 &AtomicBool::new(false),
             )
             .unwrap();
-        assert!(limited.scan.problem.starts_with("Stopped at the limit of 1 commits or 5000000 objects"), "{}", limited.scan.problem);
+        assert!(
+            limited.scan.problem.starts_with("Stopped at the limit of 1 commits or 5000000 objects"),
+            "{}",
+            limited.scan.problem
+        );
         assert!(repo.fixture.all().iter().all(|finding| finding.in_history));
 
         let cancelled = repo
@@ -1181,6 +1391,137 @@ mod tests {
             .unwrap();
         assert_eq!(cancelled.scan.status, Status::Cancelled);
         assert!(repo.fixture.all().iter().all(|finding| finding.in_history));
+    }
+
+    #[test]
+    fn history_findings_are_grouped_by_the_commit_that_added_them() {
+        let repo = repo("scans-commits");
+        repo.scan();
+        let groups = repo.fixture.findings().commits(50).unwrap();
+        assert_eq!(groups.iter().map(|group| group.subject.as_str()).collect::<Vec<_>>(), vec!["add the deploy script", "add configuration"]);
+        assert_eq!(groups[1].commit_id, repo.first);
+        assert_eq!(groups[1].short_id(), &repo.first[..10]);
+        assert_eq!((groups[1].findings, groups[1].attention, groups[1].author.as_str()), (1, 1, "Sample Author"));
+        assert_eq!(groups[1].authored_at, Some(Timestamp::from_unix(1_700_000_000)));
+        assert_eq!(groups[1].top_score, repo.fixture.all()[0].score);
+        for group in &groups {
+            let query = Query { commit_id: group.commit_id.clone(), scope: Scope::History, ..Query::default() };
+            assert_eq!(repo.fixture.findings().total(&query).unwrap(), group.findings);
+        }
+        let first = repo.fixture.all()[0].clone();
+        repo.fixture.findings().decide(first.id, first.revision, Decision::FalsePositive, "").unwrap();
+        assert_eq!(repo.fixture.findings().commits(50).unwrap()[1].attention, 0);
+        assert_eq!(repo.fixture.findings().commits(1).unwrap().len(), 1);
+        let by_scan = Query { scan_id: repo.fixture.scans().latest().unwrap().unwrap().id, ..Query::default() };
+        assert_eq!(repo.fixture.findings().total(&by_scan).unwrap(), 2);
+        assert_eq!(repo.fixture.findings().total(&Query { scan_id: 999, ..Query::default() }).unwrap(), 0);
+    }
+
+    #[test]
+    fn a_baseline_file_carries_known_findings_to_another_database() {
+        let first = seeded("scans-baseline-writer");
+        let mut baseline = Baseline::with_key(&[9u8; 32]);
+        first.hands.advance(60);
+        let written = first
+            .scans()
+            .with_baseline(&baseline)
+            .scan_tree(&first.root(), &tree::Options::default(), &AtomicBool::new(false))
+            .unwrap();
+        assert_eq!((written.scan.findings_new, written.portable.len()), (2, 2));
+        assert!(first.all().iter().all(|finding| !finding.baseline));
+        baseline.replace_entries(written.portable.iter().cloned()).unwrap();
+        let file = first.directory.path().join("baseline.json");
+        baseline.save(&file, false).unwrap();
+        let stored = fs::read_to_string(&file).unwrap();
+        assert!(!stored.contains(&sample_cloud_key()) && !stored.contains(&sample_hosting_token()));
+
+        let second = seeded("scans-baseline-reader");
+        second.write("package/.npmrc", &format!("//registry/:_authToken={}\n", sample_package_token()));
+        let loaded = Baseline::load(&file).unwrap();
+        second.hands.advance(60);
+        let outcome = second
+            .scans()
+            .with_baseline(&loaded)
+            .scan_tree(&second.root(), &tree::Options::default(), &AtomicBool::new(false))
+            .unwrap();
+        assert_eq!((outcome.scan.findings_seen, outcome.scan.findings_new), (3, 1));
+        assert_eq!(outcome.recorded.top_new_severity, Some(Severity::High));
+        assert_eq!(outcome.portable.len(), 3);
+        let all = second.all();
+        assert_eq!(
+            all.iter().map(|finding| (finding.path.as_str(), finding.baseline)).collect::<Vec<_>>(),
+            vec![("deploy/ci.yaml", true), ("package/.npmrc", false), ("src/config.py", true)]
+        );
+        assert_eq!(second.findings().total(&Query { scope: Scope::New, ..Query::default() }).unwrap(), 1);
+        assert_eq!(second.notifications()[0].title, "1 new likely secret in project");
+        assert_ne!(first.all()[0].fingerprint, all[0].fingerprint);
+
+        let third = seeded("scans-baseline-later");
+        third.scan();
+        assert!(third.all().iter().all(|finding| !finding.baseline));
+        third.hands.advance(60);
+        third.scans().with_baseline(&loaded).scan_tree(&third.root(), &tree::Options::default(), &AtomicBool::new(false)).unwrap();
+        assert!(third.all().iter().all(|finding| finding.baseline));
+        let plain = third.scan();
+        assert!(plain.portable.is_empty());
+        assert!(third.all().iter().all(|finding| finding.baseline));
+    }
+
+    #[test]
+    fn demo_data_is_labelled_loaded_once_and_removed_alone() {
+        let fixture = seeded("scans-demo");
+        fixture.scan();
+        let scans = fixture.scans();
+        assert_eq!(scans.demo_count().unwrap(), 0);
+        assert_eq!(scans.load_demo().unwrap(), 8);
+        assert_eq!(scans.load_demo().unwrap(), 0);
+        let demo: Vec<findings::Finding> = fixture.all().into_iter().filter(|finding| finding.demo).collect();
+        let mut pairs: Vec<(&str, &str)> =
+            demo.iter().map(|finding| (finding.path.as_str(), finding.rule_id.as_str())).collect();
+        pairs.sort_unstable();
+        assert_eq!(
+            pairs,
+            vec![
+                (".env", "npm-token"),
+                (".npmrc", "npm-token"),
+                ("config/settings.py", "aws-access-key-id"),
+                ("config/settings.py", "aws-secret-access-key"),
+                ("demo-fixtures/payment_test.py", "stripe-secret-key"),
+                ("deploy/release.sh", "github-token"),
+                ("docs/setup.md", "password-in-url"),
+                ("src/notify.py", "slack-webhook-url"),
+            ]
+        );
+        let by_path = |path: &str| demo.iter().find(|finding| finding.path == path).unwrap();
+        assert!(demo.iter().all(|finding| finding.root == demo::ROOT));
+        assert!(by_path(".env").in_history && !by_path(".env").in_tree);
+        assert!(by_path("config/settings.py").in_history && by_path("config/settings.py").in_tree);
+        assert!(by_path("deploy/release.sh").in_history && by_path("deploy/release.sh").in_tree);
+        assert!(!by_path(".npmrc").in_history);
+        assert!(matches!(by_path("demo-fixtures/payment_test.py").allowed, Allowed::Entry(_)));
+        assert!(by_path("docs/setup.md").score < by_path(".npmrc").score);
+        assert_eq!(by_path(".npmrc").level(), Level::High);
+        let listed = scans.list(None, 10).unwrap();
+        assert_eq!(listed.iter().filter(|scan| scan.demo).map(|scan| scan.kind).collect::<Vec<_>>(), vec![Kind::History, Kind::Tree]);
+        assert_eq!(listed[0].scope_label(), "3 commits, 4 file versions");
+        assert_eq!((listed[1].files_scanned, listed[1].findings_seen, listed[1].findings_new), (7, 7, 6));
+        let groups = fixture.findings().commits(10).unwrap();
+        assert_eq!(groups.iter().map(|group| (group.subject.as_str(), group.findings)).collect::<Vec<_>>(), vec![("Add the release script", 1), ("Add the deployment settings", 3)]);
+        assert!(groups.iter().all(|group| group.author == "Demo Author" && group.root == demo::ROOT));
+        assert_eq!(fixture.notifications().len(), 1);
+        let entries = Allowlists::new(fixture.store.conn(), fixture.clock.clone()).list().unwrap();
+        assert_eq!(entries.iter().filter(|entry| entry.demo).count(), 1);
+
+        assert_eq!(scans.remove_demo(true).unwrap(), 8);
+        assert_eq!(scans.demo_count().unwrap(), 10);
+        assert_eq!(scans.remove_demo(false).unwrap(), 8);
+        assert_eq!(scans.demo_count().unwrap(), 0);
+        assert_eq!(scans.remove_demo(false).unwrap(), 0);
+        assert_eq!(fixture.all().len(), 2);
+        assert_eq!(scans.count().unwrap(), 1);
+        assert!(fixture.findings().commits(10).unwrap().is_empty());
+        assert_eq!(Allowlists::new(fixture.store.conn(), fixture.clock.clone()).count().unwrap(), 0);
+        assert_eq!(scans.load_demo().unwrap(), 8);
     }
 
     #[test]

@@ -122,6 +122,12 @@ CREATE INDEX occurrences_finding ON occurrences (finding_id, commit_id, line);
 CREATE INDEX occurrences_scan ON occurrences (scan_id);
 CREATE INDEX occurrences_commit ON occurrences (commit_id) WHERE commit_id <> '';
 
+CREATE VIEW finding_origins AS
+SELECT finding_id, commit_id, min(id) AS occurrence_id
+FROM occurrences
+WHERE commit_id <> ''
+GROUP BY finding_id;
+
 CREATE VIEW attention_findings AS
 SELECT id, root, rule_id, rule_name, severity, path, score, confidence, status, baseline, in_tree, in_history, is_demo
 FROM findings
