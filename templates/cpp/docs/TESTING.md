@@ -14,6 +14,7 @@ make shell             # shellcheck, shfmt and the bats tests of scripts/
 make docs-check assets-check notices-check   # generated files are current
 make vuln              # licenses, pinned versions, known vulnerabilities
 make screenshots       # render the dashboard screens into dist/screens
+make window-check      # Linux: open the real window on a virtual display (needs xvfb)
 ```
 
 The tests are one program, `templateapp_tests`, written with doctest. `make test` runs it through CTest together with a replay of every fuzz target. A single test, by its name:

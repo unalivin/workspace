@@ -123,6 +123,17 @@ copy_build_files() {
   [[ "$output" == *"failed:  0"* ]]
 }
 
+@test "window-check --dry-run builds the dashboard and starts it on a virtual display" {
+  copy_build_files "$SANDBOX/project"
+  run "$SANDBOX/project/scripts/window-check.sh" --dry-run --seconds 3
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"dry-run: cmake --preset release"* ]]
+  [[ "$output" == *"dry-run: xvfb-run --auto-servernum "*"scripts/window-check.sh --inside --seconds 3"* ]]
+  run "$REAL_PROJECT/scripts/window-check.sh" --dry-run --seconds soon
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"--seconds must be a whole number above zero"* ]]
+}
+
 @test "fuzz --list names every fuzz target" {
   run "$REAL_PROJECT/scripts/fuzz.sh" --list
   [ "$status" -eq 0 ]

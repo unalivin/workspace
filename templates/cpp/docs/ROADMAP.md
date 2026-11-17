@@ -17,7 +17,7 @@ Template App is at `0.1.0-dev`. This page lists what does not exist yet. Nothing
 
 ## Not verified
 
-- The dashboard on a real display, with a screen reader, and on high-DPI screens.
+- The dashboard on a real display, with a screen reader, and on high-DPI screens. On Linux an automated check opens the real window on a virtual display; on macOS and Windows no check has opened it.
 - Display of system notifications, start at sign-in at a real sign-in, and opening a terminal window on each operating system.
 - Quit from the application menu on macOS (Cmd+Q): whether the window size is saved on that path.
 - The terminal UI in a real terminal emulator. The tests drive its model and check the painted screen in memory.

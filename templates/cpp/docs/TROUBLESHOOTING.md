@@ -23,7 +23,7 @@ Set `NO_COLOR=1`, or turn on Monochrome terminal in Settings. The terminal UI wo
 The builds are not signed. See "Open an unsigned build" in [INSTALLATION.md](INSTALLATION.md).
 
 **"The window could not be opened".**
-The session has a display but the window or its OpenGL context could not be created; the message names the reason. The dashboard uses X11 on Linux, so a Wayland session needs XWayland, and the graphics driver must offer OpenGL 3.0 or newer. Use `templateapp --ui tui` meanwhile.
+The session has a display but the window or its OpenGL context could not be created; the message names the reason. The dashboard uses X11 on Linux, so a Wayland session needs XWayland, and the graphics driver must offer OpenGL 3.0 or newer. On Windows a virtual machine or a remote desktop session often has no such driver. Use `templateapp --ui tui` meanwhile.
 
 **On Windows, a console window appears for a moment.**
 The executable is a console application, so that commands and the terminal UI work in a console. Started by double-click, Windows gives it a console window, and the application lets it go as soon as the dashboard opens. This has not been verified on a real desktop, see [PLATFORM_SUPPORT.md](PLATFORM_SUPPORT.md).

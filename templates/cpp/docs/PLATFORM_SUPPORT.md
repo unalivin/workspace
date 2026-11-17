@@ -19,7 +19,7 @@ Other platforms with a C++20 compiler, OpenGL 3 and GLFW support may work when b
 
 ## What the automated checks cover
 
-On every push, CI runs on each of the three runners: `clang-format` in check mode, `cppcheck` on every file, the tests of the dashboard build and of the no-GUI build, the sanitizer run (`make race-or-sanitize`), both release builds, the checks of generated files, a headless rendering of the dashboard screens and the packaging step. `clang-tidy` runs on Linux and macOS. The supply chain checks (`make vuln`), the libFuzzer run and the shell script checks run on Linux. Every compiler runs with its warnings as errors.
+On every push, CI runs on each of the three runners: `clang-format` in check mode, `cppcheck` on every file, the tests of the dashboard build and of the no-GUI build, the sanitizer run (`make race-or-sanitize`), both release builds, the checks of generated files, a headless rendering of the dashboard screens and the packaging step. `clang-tidy` runs on Linux and macOS. The supply chain checks (`make vuln`), the libFuzzer run, the shell script checks and the start of the real window on a virtual display (`make window-check`) run on Linux. Every compiler runs with its warnings as errors.
 
 The sanitizer run uses AddressSanitizer with UndefinedBehaviorSanitizer and then ThreadSanitizer on Linux and macOS. On Windows it runs the tests as an optimized build with assertions and checked containers instead; [TESTING.md](TESTING.md) explains the difference.
 
@@ -29,7 +29,7 @@ A platform counts as verified for a commit only when the CI run of that commit i
 |---|---|---|
 | Service layer, database, commands | Unit and integration tests on all three runners | |
 | Terminal UI | Tests drive the model with key presses and compare the rendered screen | A real terminal emulator; mouse input is not used |
-| Dashboard | Tests feed pointer and key events to the real interface code without a window and render every main screen with a software renderer that is part of the project | A real window on a real display, the graphics driver, real pointer and keyboard input, high-DPI scaling, screen readers |
+| Dashboard | Tests feed pointer and key events to the real interface code without a window and render every main screen with a software renderer that is part of the project | A real display and graphics driver (on Linux the window is started on a virtual display, see below), real pointer and keyboard input, high-DPI scaling, screen readers |
 | Launcher decision | Table-driven tests for desktop, terminal, headless, CI and piped sessions on each operating system | The native chooser on a real desktop |
 | Paths and permissions | Tests with injected environments for Linux, macOS and Windows; real file modes on the runner | |
 | Start at sign-in | Install, uninstall and status against a temporary home directory for all three layouts | That the operating system starts the entry at a real sign-in |
@@ -40,7 +40,8 @@ A platform counts as verified for a commit only when the CI run of that commit i
 
 ## Known differences and limits
 
-- **The real window has not been opened by an automated check on any platform.** The dashboard tests and the screenshots use a software renderer; the window host, the event loop and the graphics backend run only when a person starts the application.
+- **The real window is opened by an automated check on Linux only.** The dashboard tests and the screenshots use a software renderer. `make window-check` starts the real window on a virtual X display with Mesa's software OpenGL driver and requires that it stays open; CI runs it on the Linux runner. It proves that the window host, the OpenGL backend and the event loop start. It does not look at what is drawn and sends no input.
+- **On macOS and Windows the real window has not been opened by any check.** The GitHub runners for both systems offer no OpenGL 3 context. Started there with `--ui gui`, the application printed "The window could not be opened" with the reason of the system and ended with exit status 1, which is the intended behavior without a usable graphics driver. The same happens on a Windows virtual machine or remote session whose graphics driver has no OpenGL 3.
 - **Window position** is not saved or restored on any platform. Size and sidebar state are saved.
 - **Animations**: the fade of the notice bar is the only one; the reduced motion setting turns it off.
 - **Windows console**: the executable is a console application, so commands print to the console they were started from. Started by double-click, Windows opens a console window, and the application lets it go when the dashboard opens and no other program shares it. How long the console is visible on a real desktop has not been verified.

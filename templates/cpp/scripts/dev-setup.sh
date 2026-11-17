@@ -4,6 +4,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 linux_packages=(build-essential pkg-config curl zip unzip tar git libxinerama-dev libxcursor-dev xorg-dev libglu1-mesa-dev)
+linux_window_packages=(xvfb libgl1-mesa-dri)
 shellcheck_package="shellcheck-py==0.11.0.1"
 shfmt_package="shfmt-py==4.2.0"
 bats_package="bats@1.13.0"
@@ -24,6 +25,7 @@ Checks the prerequisites for building $APP_NAME and reports what is missing.
     Windows: Build Tools for Visual Studio with the Windows SDK
   clang-format $CLANG_FORMAT_VERSION, clang-tidy $CLANG_TIDY_VERSION and cppcheck $CPPCHECK_VERSION (pip)
   Clang with libFuzzer for the fuzz targets (Linux)
+  A virtual display for make window-check (Linux): ${linux_window_packages[*]}
   shellcheck, shfmt and bats for the scripts, curl for the supply chain check
 
 Without options nothing is changed; the exit status is 1 when a required tool
@@ -141,11 +143,11 @@ vcpkg_program() {
 
 install_system_packages() {
   [ "$(host_os)" = "linux" ] || return 0
-  if [ "$DRY_RUN" != "1" ] && have c++ && gui_ready; then
+  if [ "$DRY_RUN" != "1" ] && have c++ && gui_ready && have xvfb-run; then
     return 0
   fi
   if ! have apt-get && [ "$DRY_RUN" != "1" ]; then
-    note "apt-get was not found: install the equivalents of: ${linux_packages[*]}"
+    note "apt-get was not found: install the equivalents of: ${linux_packages[*]} ${linux_window_packages[*]}"
     return 0
   fi
   local sudo_command=()
@@ -153,7 +155,7 @@ install_system_packages() {
     sudo_command=(sudo)
   fi
   run "${sudo_command[@]}" apt-get update
-  run "${sudo_command[@]}" apt-get install -y --no-install-recommends "${linux_packages[@]}"
+  run "${sudo_command[@]}" apt-get install -y --no-install-recommends "${linux_packages[@]}" "${linux_window_packages[@]}"
 }
 
 install_build_tools() {
@@ -311,6 +313,12 @@ if [ "$(host_os)" = "linux" ]; then
     report "ok" "clang++" "$(clang++ --version | head -n 1)"
   else
     report "missing" "clang++" "needed only for make fuzz"
+    missing_optional=1
+  fi
+  if have xvfb-run; then
+    report "ok" "xvfb-run" "$(command -v xvfb-run)"
+  else
+    report "missing" "xvfb-run" "needed only for make window-check"
     missing_optional=1
   fi
 fi

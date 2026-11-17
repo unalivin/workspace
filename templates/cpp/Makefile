@@ -11,7 +11,7 @@ FUZZTIME ?= 5s
 SHELL_SOURCES := $(wildcard scripts/*.sh) $(wildcard scripts/tests/*.bats) $(wildcard scripts/tests/*.bash)
 
 .PHONY: help setup fmt fmt-check lint lint-gui test test-nogui race-or-sanitize fuzz build build-nogui \
-	vuln shell docs docs-check assets assets-check notices notices-check screenshots package demo run check clean
+	vuln shell docs docs-check assets assets-check notices notices-check screenshots window-check package demo run check clean
 
 help:
 	@printf '%s\n' \
@@ -33,6 +33,7 @@ help:
 	  'make assets            regenerate the icon files in assets/' \
 	  'make notices           regenerate THIRD_PARTY_NOTICES.md' \
 	  'make screenshots       render the dashboard screens headlessly into dist/screens' \
+	  'make window-check      open the dashboard window on a virtual display (Linux)' \
 	  'make package           build the release file for this operating system' \
 	  'make demo              load demo data into a scratch database and open the application' \
 	  'make run               build without the dashboard and open the terminal UI' \
@@ -101,6 +102,9 @@ notices-check:
 
 screenshots:
 	scripts/build.sh dev --target screenshots --run screenshots -out "$(SCREENS)"
+
+window-check:
+	scripts/window-check.sh
 
 package:
 	scripts/package.sh

@@ -64,6 +64,9 @@ jobs:
       - name: Build dashboard
         if: ${{ !cancelled() }}
         run: scripts/ci-step.sh build
+      - name: Open the dashboard window
+        if: ${{ !cancelled() && runner.os == 'Linux' }}
+        run: scripts/ci-step.sh window-check
       - name: Build and test without GUI
         if: ${{ !cancelled() }}
         run: scripts/ci-step.sh build-nogui test-nogui

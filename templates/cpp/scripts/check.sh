@@ -13,7 +13,8 @@ Runs the full local quality suite and prints a summary:
   dashboard, generated documents (command tables, icons, notices), the
   release build without the dashboard, shell script checks, the supply chain
   checks, and the dashboard build with its tests and analysis when the
-  window system headers are installed.
+  window system headers are installed, followed on Linux by a start of the
+  real window on a virtual display.
 
 A check whose tool is not installed is reported as skipped with the reason.
 The exit status is 1 when a check fails.
@@ -93,6 +94,11 @@ if gui_ready; then
   step lint-gui
   step test
   step build
+  if [ "$(host_os)" = "linux" ] && { have xvfb-run || [ "$DRY_RUN" = "1" ]; }; then
+    step window-check
+  else
+    skip window-check "it needs Linux with xvfb-run"
+  fi
 elif [ "$require_gui" = "1" ]; then
   failed+=("dashboard build (the window system headers are missing)")
 else
