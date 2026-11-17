@@ -1,14 +1,18 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use crate::allowlists::Allowlists;
 use crate::clock::{Clock, Timestamp, Zone};
 use crate::error::{AppError, Result};
 use crate::files;
+use crate::findings::Findings;
 use crate::guide::{self, Guide};
 use crate::meta::{self, BuildInfo};
 use crate::notify::Notifications;
 use crate::platform::{self, Env, Os};
 use crate::records::{Query, Records};
+use crate::rulebook::Rulebook;
+use crate::scans::Scans;
 use crate::settings::{self, Settings};
 use crate::store::{Options as StoreOptions, Store};
 use crate::theme::{self, Tokens};
@@ -146,6 +150,22 @@ impl App {
 
     pub fn records(&self) -> Records<'_> {
         Records::new(self.store.conn(), self.options.clock.clone(), self.options.zone)
+    }
+
+    pub fn rulebook(&self) -> Rulebook<'_> {
+        Rulebook::new(self.store.conn(), self.options.clock.clone())
+    }
+
+    pub fn allowlists(&self) -> Allowlists<'_> {
+        Allowlists::new(self.store.conn(), self.options.clock.clone())
+    }
+
+    pub fn findings(&self) -> Findings<'_> {
+        Findings::new(self.store.conn(), self.options.clock.clone())
+    }
+
+    pub fn scans(&self) -> Scans<'_> {
+        Scans::new(self.store.conn(), self.options.clock.clone(), self.options.zone)
     }
 
     pub fn notifications(&self) -> Notifications<'_> {
@@ -943,7 +963,7 @@ mod tests {
         let app = App::open(options(&directory, &[(variable.as_str(), "compact")])).unwrap();
         app.settings().set(settings::KEY_THEME, "amber").unwrap();
         let report = app.diagnostics(true);
-        assert_eq!((report.schema_version, report.integrity.as_str(), report.records), (1, "ok", 0));
+        assert_eq!((report.schema_version, report.integrity.as_str(), report.records), (2, "ok", 0));
         assert!(report.foreign_keys && report.full_text_search && report.build.dashboard);
         assert_eq!(report.changed, vec![settings::KEY_THEME.to_string()]);
         assert_eq!(report.overridden, vec![settings::KEY_DENSITY.to_string()]);

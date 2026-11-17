@@ -15,8 +15,10 @@ const SQL_SCHEMA_SNAPSHOT: &str = "SELECT type, name, coalesce(sql, '') FROM sql
 const SQL_COMPILE_OPTIONS: &str = "PRAGMA compile_options";
 const SQL_FOREIGN_KEY_CHECK: &str = "PRAGMA foreign_key_check";
 
-pub const EMBEDDED_MIGRATIONS: &[(&str, &str)] =
-    &[("0001_init.sql", include_str!("../../../migrations/0001_init.sql"))];
+pub const EMBEDDED_MIGRATIONS: &[(&str, &str)] = &[
+    ("0001_init.sql", include_str!("../../../migrations/0001_init.sql")),
+    ("0002_scanning.sql", include_str!("../../../migrations/0002_scanning.sql")),
+];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Migration {
@@ -312,9 +314,9 @@ mod tests {
         let path = directory.path().join("nested").join("app.db");
         let store = Store::open(&path, Options::default()).unwrap();
         assert_eq!(store.schema_version().unwrap(), 0);
-        assert_eq!(store.migrate(&embedded_migrations().unwrap()).unwrap(), 1);
+        assert_eq!(store.migrate(&embedded_migrations().unwrap()).unwrap(), EMBEDDED_MIGRATIONS.len());
         assert_eq!(store.migrate(&embedded_migrations().unwrap()).unwrap(), 0);
-        assert_eq!(store.schema_version().unwrap(), 1);
+        assert_eq!(store.schema_version().unwrap(), EMBEDDED_MIGRATIONS.len() as i64);
         assert_eq!(store.journal_mode().unwrap().to_lowercase(), "wal");
         assert!(store.foreign_keys_enabled().unwrap());
         assert_eq!(store.busy_timeout().unwrap(), DEFAULT_BUSY_TIMEOUT);
@@ -378,15 +380,16 @@ mod tests {
         let directory = TempDir::new("store-rollback");
         let store = ready(&directory);
         let mut migrations = embedded_migrations().unwrap();
+        let current = migrations.len() as i64;
         migrations.push(Migration {
-            number: 2,
-            name: "0002_broken.sql".to_string(),
-            sql: "CREATE TABLE half_done (id INTEGER PRIMARY KEY); INSERT INTO missing_table VALUES (1); PRAGMA user_version = 2;"
+            number: current + 1,
+            name: "9999_broken.sql".to_string(),
+            sql: "CREATE TABLE half_done (id INTEGER PRIMARY KEY); INSERT INTO missing_table VALUES (1); PRAGMA user_version = 99;"
                 .to_string(),
         });
         let error = store.migrate(&migrations).unwrap_err();
-        assert!(error.to_string().contains("0002_broken.sql failed and was rolled back"), "{error}");
-        assert_eq!(store.schema_version().unwrap(), 1);
+        assert!(error.to_string().contains("9999_broken.sql failed and was rolled back"), "{error}");
+        assert_eq!(store.schema_version().unwrap(), current);
         assert!(!store.schema_snapshot().unwrap().contains("half_done"));
     }
 

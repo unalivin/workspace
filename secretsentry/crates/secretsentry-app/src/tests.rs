@@ -506,7 +506,7 @@ fn the_database_is_created_located_moved_and_checked() {
     assert!(harness.ok(&["db", "init"]).starts_with("The database already exists at"));
     assert_eq!(
         harness.ok(&["db", "check"]),
-        "Database is healthy: integrity check ok, foreign keys ok, schema version 1\n"
+        "Database is healthy: integrity check ok, foreign keys ok, schema version 2\n"
     );
     harness.ok(&["records", "add", "--name", "Travels"]);
     let target = harness.path("moved/copy.db");

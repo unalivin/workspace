@@ -38,6 +38,22 @@ pub fn fixed_time() -> Timestamp {
     Timestamp::from_civil(2026, 3, 2, 9, 30, 0).expect("a valid fixed time")
 }
 
+pub fn sample_letters(length: usize) -> String {
+    "q7Zp2LmX9vKc4RtB8nWd3FgH6jS1uYeOaIxNhTbVcMzQrPl5".chars().cycle().take(length).collect()
+}
+
+pub fn sample_cloud_key() -> String {
+    ["AK", "IA", "Q4WZ7PLM2K6XTR3N"].concat()
+}
+
+pub fn sample_hosting_token() -> String {
+    ["gh", "p_", &sample_letters(36)].concat()
+}
+
+pub fn sample_package_token() -> String {
+    ["np", "m_", &sample_letters(36)].concat()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -53,5 +69,7 @@ mod tests {
         assert!(!kept.exists());
         assert!(second.path().is_dir());
         assert_eq!(fixed_time().to_rfc3339(), "2026-03-02T09:30:00Z");
+        assert_eq!(sample_letters(50).len(), 50);
+        assert_eq!((sample_cloud_key().len(), sample_hosting_token().len(), sample_package_token().len()), (20, 40, 40));
     }
 }

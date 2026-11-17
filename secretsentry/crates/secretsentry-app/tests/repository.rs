@@ -410,6 +410,10 @@ const STORAGE_MODULES: &[&str] = &[
     "crates/secretsentry-core/src/settings.rs",
     "crates/secretsentry-core/src/records.rs",
     "crates/secretsentry-core/src/notify.rs",
+    "crates/secretsentry-core/src/rulebook.rs",
+    "crates/secretsentry-core/src/allowlists.rs",
+    "crates/secretsentry-core/src/findings.rs",
+    "crates/secretsentry-core/src/scans.rs",
 ];
 const DATABASE_USERS: &[&str] =
     &["crates/secretsentry-core/src/error.rs", "fuzz/fuzz_targets/records_search_expression.rs"];

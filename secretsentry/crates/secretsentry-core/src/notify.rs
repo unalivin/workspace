@@ -6,6 +6,8 @@ use crate::theme::Severity;
 
 pub const EVENT_RECORD_URGENT: &str = "record.urgent";
 pub const EVENT_RECORD_COMPLETED: &str = "record.completed";
+pub const EVENT_SCAN_FINDING: &str = "scan.finding";
+pub const EVENT_SCAN_FAILED: &str = "scan.failed";
 pub const MAX_TITLE_LENGTH: usize = 120;
 
 const SQL_SELECT_RULE: &str =
@@ -43,6 +45,12 @@ pub const EVENT_TYPES: &[EventType] = &[
         description: "An open record has high or critical severity.",
     },
     EventType { id: EVENT_RECORD_COMPLETED, label: "Record completed", description: "A record was marked as done." },
+    EventType {
+        id: EVENT_SCAN_FINDING,
+        label: "New secret found",
+        description: "A scan found a likely secret that is not allowlisted and was not known before.",
+    },
+    EventType { id: EVENT_SCAN_FAILED, label: "Scan failed", description: "A scan stopped with an error." },
 ];
 
 pub fn event_type(id: &str) -> Option<&'static EventType> {

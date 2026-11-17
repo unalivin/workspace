@@ -403,7 +403,10 @@ mod tests {
         assert_eq!(found.score, 100);
 
         let escaped = body.replace('\n', "\\n");
-        let inline = format!("\"private_key\": \"{}\\n{escaped}{}\\n\"\n", "-----BEGIN PRIV", "ATE KEY-----");
+        let inline = format!(
+            "\"private_key\": \"{}{}\\n{escaped}{}{}\\n\"\n",
+            "-----BEGIN PRIV", "ATE KEY-----", "-----END PRIV", "ATE KEY-----"
+        );
         let report = scan(&inline);
         assert_eq!(report.candidates.len(), 1, "{:?}", report.candidates);
         assert_eq!(report.candidates[0].rule_id, "private-key");
@@ -495,7 +498,7 @@ mod tests {
             pattern: "(".to_string(),
             ..RuleSpec::default()
         };
-        let message = Detector::new(&[broken.clone()], &[], &KEY).unwrap_err().to_string();
+        let message = Detector::new(std::slice::from_ref(&broken), &[], &KEY).unwrap_err().to_string();
         assert!(message.starts_with("rule broken, pattern: the pattern is not valid"), "{message}");
         assert!(Detector::new(&[RuleSpec { enabled: false, ..broken }], &[], &KEY).is_ok());
     }
