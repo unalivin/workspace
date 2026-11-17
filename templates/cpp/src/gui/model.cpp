@@ -137,8 +137,8 @@ Dashboard::Dashboard(service::App& app, Options options)
     app_->dismiss_welcome();
     confirm = Confirm(
         text::concat("Welcome to ", meta::app_name),
-        text::concat("A new database was created at ", files::shown(app_->location().path),
-                     ".\n\nEverything stays in this one file on your computer. You can move it later in Settings, "
+        text::concat("A new database was created at:\n", files::shown(app_->location().path),
+                     "\n\nEverything stays in this one file on your computer. You can move it later in Settings, "
                      "Data, Database location.\n\nLoad demo data to look around with labeled sample records, or "
                      "cancel to start with an empty database."),
         "Load demo data", Action{LoadDemo{}});

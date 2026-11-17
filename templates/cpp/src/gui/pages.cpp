@@ -1,5 +1,10 @@
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <span>
+#include <string>
+#include <string_view>
+#include <vector>
 
 #include "core/text.hpp"
 #include "gui/table.hpp"
@@ -28,6 +33,26 @@ table::Spec column_spec(const Ui& ui, std::string_view column) {
     return table::fixed(ui.u(152.0F));
   }
   return table::fixed(ui.u(80.0F));
+}
+
+std::vector<std::string_view> fitting_columns(const Ui& ui, std::span<const std::string> chosen, float room, float gap,
+                                              bool detail_open) {
+  std::vector<std::string_view> columns(chosen.begin(), chosen.end());
+  if (!detail_open) {
+    return columns;
+  }
+  const std::array<std::string_view, 3> in_detail = {"updated", "state", "id"};
+  for (const std::string_view column : in_detail) {
+    std::vector<table::Spec> specs;
+    for (const std::string_view shown : columns) {
+      specs.push_back(column_spec(ui, shown));
+    }
+    if (table::needed(specs, gap) <= room) {
+      break;
+    }
+    std::erase(columns, column);
+  }
+  return columns;
 }
 
 }
@@ -157,13 +182,15 @@ void View::record_table() {
     return;
   }
   const float gap = tokens_.spacing.s;
+  const ImVec2 room = ImGui::GetContentRegionAvail();
+  const std::vector<std::string_view> columns =
+      fitting_columns(ui_, page.columns, room.x, gap, board_->selected_record() != nullptr);
   std::vector<table::Spec> specs;
   std::vector<std::string_view> titles;
-  for (const std::string& column : page.columns) {
+  for (const std::string_view column : columns) {
     specs.push_back(column_spec(ui_, column));
     titles.push_back(records::column_label(column));
   }
-  const ImVec2 room = ImGui::GetContentRegionAvail();
   const float footer = ImGui::GetTextLineHeight() + ImGui::GetStyle().ItemSpacing.y;
   const float width = std::max(room.x, table::needed(specs, gap));
   table_width_ = width;
@@ -180,7 +207,7 @@ void View::record_table() {
         for (int index = clipper.DisplayStart; index < clipper.DisplayEnd; ++index) {
           const records::Record& record = page.list[static_cast<std::size_t>(index)];
           std::vector<table::Cell> cells;
-          for (const std::string& column : page.columns) {
+          for (const std::string_view column : columns) {
             if (column == "id") {
               cells.push_back(table::Cell::muted(std::to_string(record.id)));
             } else if (column == "name") {

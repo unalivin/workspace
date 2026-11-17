@@ -144,6 +144,7 @@ else
       [ -n "$id" ] || continue
       if is_ignored "$id"; then
         note "accepted $id for $name $version ($ignored)"
+        found=1
       else
         problem "$name $version: $id (https://osv.dev/vulnerability/$id)"
         found=1

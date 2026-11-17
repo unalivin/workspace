@@ -295,6 +295,31 @@ TEST_CASE("keys reach the dashboard through the window") {
   CHECK(board.page_id() == service::nav_records);
 }
 
+TEST_CASE("the record table leaves out columns the detail panel shows before it scrolls") {
+  const TempDir home("gui-fit");
+  service::App app = open_app(home);
+  Dashboard board = started(app, options(home));
+  board.load_demo();
+  board.show(service::nav_records);
+  REQUIRE(!board.rec.list.empty());
+  Window window(board, 1180.0F, 760.0F);
+  static_cast<void>(window.paint(2));
+  CHECK(window.all("Updated").size() == 1);
+  CHECK(window.all("ID").size() == 1);
+  board.rec.selected = board.rec.list.front().id;
+  static_cast<void>(window.paint(2));
+  CHECK_MESSAGE(window.view().table_width() <= window.view().table_room(),
+                "the table scrolls: ", window.view().table_width(), " in ", window.view().table_room());
+  CHECK(window.all("Updated").empty());
+  CHECK(window.all("ID").size() == 1);
+  CHECK(window.all("Name").size() == 1);
+  CHECK(window.all("Severity").size() == 1);
+  CHECK(text::contains(window.text(), "Updated: "));
+  board.rec.selected.reset();
+  static_cast<void>(window.paint(2));
+  CHECK(window.all("Updated").size() == 1);
+}
+
 TEST_CASE("a record table wider than its space scrolls sideways") {
   const TempDir home("gui-scroll");
   service::App app = open_app(home);

@@ -92,8 +92,7 @@ void View::setting_control(const settings::Value& value) {
         canvas->AddRect(from, to, color(tokens_.palette.border), tokens_.radius);
         ImGui::SameLine();
       }
-      const Edited edited = ui_.input("draft", tinted ? "#RRGGBB, empty for the theme accent" : "", draft, 200,
-                                      ui_.u(control_width - 60.0F));
+      const Edited edited = ui_.input("draft", tinted ? "#RRGGBB" : "", draft, 200, ui_.u(control_width - 60.0F));
       const bool dirty = draft != saved;
       if (edited.changed) {
         if (dirty) {
