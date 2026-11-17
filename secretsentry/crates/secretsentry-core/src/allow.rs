@@ -85,7 +85,11 @@ pub struct Allowlist {
 pub fn glob_to_pattern(glob: &str) -> Result<String> {
     let trimmed = glob.trim();
     if trimmed.is_empty() {
-        return Err(AppError::invalid("pattern", "the path pattern is empty", "Enter a pattern such as tests/** or *.pem"));
+        return Err(AppError::invalid(
+            "pattern",
+            "the path pattern is empty",
+            "Enter a pattern such as tests/** or *.pem",
+        ));
     }
     if trimmed.chars().count() > MAX_GLOB_LENGTH {
         return Err(AppError::invalid(
@@ -105,7 +109,11 @@ pub fn glob_to_pattern(glob: &str) -> Result<String> {
     let anchored = trimmed.trim_start_matches("./").trim_start_matches('/');
     let body = anchored.trim_end_matches('/');
     if body.is_empty() {
-        return Err(AppError::invalid("pattern", "the path pattern names no file or directory", "Enter a pattern such as tests/**"));
+        return Err(AppError::invalid(
+            "pattern",
+            "the path pattern names no file or directory",
+            "Enter a pattern such as tests/**",
+        ));
     }
     let any_directory = !rooted && !body.contains('/') && !anchored.ends_with('/');
     let letters: Vec<char> = body.chars().collect();
@@ -146,7 +154,11 @@ fn compile_entry(spec: &EntrySpec) -> Result<Entry> {
         Kind::Path => {
             let pattern = glob_to_pattern(&spec.pattern)?;
             Matcher::Path(Regex::new(&pattern).map_err(|error| {
-                AppError::invalid("pattern", format!("the path pattern cannot be used: {error}"), "Simplify the pattern")
+                AppError::invalid(
+                    "pattern",
+                    format!("the path pattern cannot be used: {error}"),
+                    "Simplify the pattern",
+                )
             })?)
         }
         Kind::Value => Matcher::Value(rules::compile_pattern("pattern", spec.pattern.trim())?),
@@ -178,7 +190,12 @@ pub fn validate(spec: &EntrySpec) -> Result<EntrySpec> {
         Kind::Fingerprint => spec.pattern.trim().to_lowercase(),
         Kind::Path | Kind::Value => spec.pattern.trim().to_string(),
     };
-    Ok(EntrySpec { pattern, rule_id: spec.rule_id.trim().to_string(), note: spec.note.trim().to_string(), ..spec.clone() })
+    Ok(EntrySpec {
+        pattern,
+        rule_id: spec.rule_id.trim().to_string(),
+        note: spec.note.trim().to_string(),
+        ..spec.clone()
+    })
 }
 
 pub fn normalize_path(path: &str) -> String {

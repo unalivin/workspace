@@ -537,7 +537,8 @@ mod tests {
             let token = sample("github-token");
             let report = scan(&format!("{before} {token} {after}"));
             prop_assert!(report.candidates.iter().any(|candidate| candidate.rule_id == "github-token"));
-            prop_assert!(!format!("{report:?}").contains(&token));
+            let shown = format!("{report:?}");
+            prop_assert!(!shown.contains(&token));
         }
 
         #[test]

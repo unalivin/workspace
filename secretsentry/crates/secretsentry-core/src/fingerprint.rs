@@ -64,8 +64,9 @@ pub fn key_from_hex(text: &str) -> Option<Vec<u8>> {
     if !is_fingerprint(text) {
         return None;
     }
-    let digits: Vec<u8> = text.bytes().map(|byte| if byte.is_ascii_digit() { byte - b'0' } else { byte - b'a' + 10 }).collect();
-    Some(digits.chunks_exact(2).map(|pair| pair[0] * 16 + pair[1]).collect())
+    let digits: Vec<u8> =
+        text.bytes().map(|byte| if byte.is_ascii_digit() { byte - b'0' } else { byte - b'a' + 10 }).collect();
+    Some(digits.as_chunks::<2>().0.iter().map(|pair| pair[0] * 16 + pair[1]).collect())
 }
 
 #[cfg(test)]

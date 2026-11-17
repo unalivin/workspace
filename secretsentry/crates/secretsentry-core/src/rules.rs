@@ -93,7 +93,11 @@ pub fn compile_pattern(field: &str, pattern: &str) -> Result<Regex> {
         ));
     }
     let matcher = RegexBuilder::new(pattern).size_limit(COMPILED_SIZE_LIMIT).build().map_err(|error| {
-        AppError::invalid(field, pattern_problem(&error), "Correct the pattern; it uses the syntax of the Rust regex crate")
+        AppError::invalid(
+            field,
+            pattern_problem(&error),
+            "Correct the pattern; it uses the syntax of the Rust regex crate",
+        )
     })?;
     if matcher.is_match("") {
         return Err(AppError::invalid(
@@ -125,7 +129,9 @@ fn normalize_keywords(keywords: &[String]) -> Result<Vec<String>> {
             return Err(AppError::invalid(
                 "keywords",
                 format!("the keyword \"{}\" is not usable", word.escape_default()),
-                format!("Use keywords of {MIN_KEYWORD_LENGTH} to {MAX_KEYWORD_LENGTH} characters without control characters"),
+                format!(
+                    "Use keywords of {MIN_KEYWORD_LENGTH} to {MAX_KEYWORD_LENGTH} characters without control characters"
+                ),
             ));
         }
         if !cleaned.contains(&word) {
@@ -153,7 +159,9 @@ impl Rule {
             return Err(AppError::invalid(
                 "id",
                 "the identifier is not usable",
-                format!("Use 1 to {MAX_ID_LENGTH} lower-case letters, digits and hyphens, for example internal-api-token"),
+                format!(
+                    "Use 1 to {MAX_ID_LENGTH} lower-case letters, digits and hyphens, for example internal-api-token"
+                ),
             ));
         }
         let name = spec.name.trim().to_string();
@@ -211,7 +219,8 @@ impl Rule {
     }
 
     pub fn may_match(&self, lowered_content: &str) -> bool {
-        self.spec.keywords.is_empty() || self.spec.keywords.iter().any(|keyword| lowered_content.contains(keyword.as_str()))
+        self.spec.keywords.is_empty()
+            || self.spec.keywords.iter().any(|keyword| lowered_content.contains(keyword.as_str()))
     }
 }
 
@@ -431,7 +440,12 @@ mod tests {
     use proptest::prelude::*;
 
     fn custom(pattern: &str) -> RuleSpec {
-        RuleSpec { id: "custom".to_string(), name: "Custom".to_string(), pattern: pattern.to_string(), ..RuleSpec::default() }
+        RuleSpec {
+            id: "custom".to_string(),
+            name: "Custom".to_string(),
+            pattern: pattern.to_string(),
+            ..RuleSpec::default()
+        }
     }
 
     fn problem(spec: &RuleSpec) -> String {
@@ -468,7 +482,10 @@ mod tests {
             (custom("a*"), "pattern: the pattern matches empty text"),
             (custom("(abc"), "pattern: the pattern is not valid at character 1: unclosed group"),
             (custom("ab[c"), "pattern: the pattern is not valid at character 3: unclosed character class"),
-            (RuleSpec { secret_group: 2, ..custom("(a)b") }, "secret group: the pattern has 1 capture groups and group 2"),
+            (
+                RuleSpec { secret_group: 2, ..custom("(a)b") },
+                "secret group: the pattern has 1 capture groups and group 2",
+            ),
             (RuleSpec { entropy_tenths: 81, ..custom("a+") }, "entropy: "),
             (RuleSpec { confidence: 0, ..custom("a+") }, "confidence: "),
             (RuleSpec { confidence: 101, ..custom("a+") }, "confidence: "),

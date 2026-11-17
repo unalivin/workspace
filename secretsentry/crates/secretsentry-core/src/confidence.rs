@@ -190,10 +190,8 @@ pub fn assess(evidence: &Evidence<'_>) -> Assessment {
         });
     }
     if let Some(word) = credential_word(evidence.surroundings) {
-        reasons.push(Reason {
-            effect: CREDENTIAL_WORD_EFFECT,
-            text: format!("The line names a credential (\"{word}\")"),
-        });
+        reasons
+            .push(Reason { effect: CREDENTIAL_WORD_EFFECT, text: format!("The line names a credential (\"{word}\")") });
     }
     if looks_like_placeholder(evidence.value) {
         reasons.push(Reason {
@@ -263,7 +261,10 @@ mod tests {
         let base = score(&plain, random, "value = ", "src/main.rs");
         assert_eq!(base.score, 60);
         assert_eq!(base.reasons.len(), 1);
-        assert_eq!(base.reasons[0], Reason { effect: 60, text: "The text matches the rule \"Sample rule\"".to_string() });
+        assert_eq!(
+            base.reasons[0],
+            Reason { effect: 60, text: "The text matches the rule \"Sample rule\"".to_string() }
+        );
 
         let named = score(&plain, random, "API_TOKEN = ", "src/main.rs");
         assert_eq!(named.score, 70);
