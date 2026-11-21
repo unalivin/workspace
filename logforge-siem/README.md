@@ -10,7 +10,7 @@ The core owns all data access; the desktop GUI, terminal UI, and CLI call the sa
 
 ## Install
 
-Download the `0.1.0-dev` pre-release for your platform from GitHub Releases, or build from source with Rust `1.83.0`:
+Download the `0.1.0-dev` pre-release for your platform from GitHub Releases, or build from source with Rust `1.88.0`:
 
 ```bash
 cargo build --release -p logforge-app

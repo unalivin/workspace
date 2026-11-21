@@ -16,7 +16,7 @@ jobs:
         working-directory: logforge-siem
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.83.0
+      - uses: dtolnay/rust-toolchain@1.88.0
       - name: Install Linux GUI dependencies
         run: |
           sudo apt-get update
@@ -37,7 +37,7 @@ jobs:
         working-directory: logforge-siem
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.83.0
+      - uses: dtolnay/rust-toolchain@1.88.0
       - name: Run tests
         run: cargo test --workspace
       - name: Package macOS arm64
@@ -54,7 +54,7 @@ jobs:
         working-directory: logforge-siem
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.83.0
+      - uses: dtolnay/rust-toolchain@1.88.0
       - name: Run tests
         run: cargo test --workspace
       - name: Package Windows x64

@@ -10,7 +10,7 @@ Download the archive for your platform from the GitHub Releases page:
 
 ## Build from source
 
-Requires Rust `1.83.0`:
+Requires Rust `1.88.0`:
 
 ```bash
 cargo build --release -p logforge-app
