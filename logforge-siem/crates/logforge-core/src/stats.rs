@@ -1,10 +1,41 @@
 use crate::db::{Database, DbError};
+use serde::Serialize;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SourceCount {
     pub name: String,
     pub kind: String,
     pub event_count: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SeverityCount {
+    pub severity: String,
+    pub event_count: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct IngestionStats {
+    pub received: i64,
+    pub deduplicated: i64,
+    pub dropped: i64,
+    pub malformed: i64,
+    pub accepted: i64,
+    pub duplicate_rate_percent: f64,
+    pub malformed_rate_percent: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SourceHealth {
+    pub source_id: i64,
+    pub name: String,
+    pub kind: String,
+    pub enabled: bool,
+    pub total_events: i64,
+    pub last_event_at: Option<String>,
+    pub last_received_at: Option<String>,
+    pub critical_events: i64,
+    pub error_events: i64,
 }
 
 pub fn top_sources(db: &Database) -> Result<Vec<SourceCount>, DbError> {
@@ -19,4 +50,93 @@ pub fn top_sources(db: &Database) -> Result<Vec<SourceCount>, DbError> {
         })
     })?;
     rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
+}
+
+/// Returns event volume by normalized severity, including zero-volume levels.
+pub fn events_by_severity(db: &Database) -> Result<Vec<SeverityCount>, DbError> {
+    let mut statement = db.conn().prepare(
+        "SELECT severity, COUNT(e.id) FROM (\
+            SELECT 'debug' AS severity, 0 AS position UNION ALL\
+            SELECT 'info', 1 UNION ALL SELECT 'warn', 2 UNION ALL\
+            SELECT 'error', 3 UNION ALL SELECT 'critical', 4\
+        ) levels LEFT JOIN events e ON e.severity = levels.severity\
+        GROUP BY levels.severity, levels.position ORDER BY levels.position",
+    )?;
+    let rows = statement.query_map([], |row| {
+        Ok(SeverityCount {
+            severity: row.get(0)?,
+            event_count: row.get(1)?,
+        })
+    })?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
+}
+
+/// Provides a snapshot of source activity without exposing raw event content.
+pub fn source_health(db: &Database) -> Result<Vec<SourceHealth>, DbError> {
+    let mut statement = db.conn().prepare(
+        "SELECT s.id, s.name, s.kind, s.enabled, COUNT(e.id),\
+            MAX(e.timestamp_utc), MAX(e.received_at),\
+            SUM(CASE WHEN e.severity = 'critical' THEN 1 ELSE 0 END),\
+            SUM(CASE WHEN e.severity = 'error' THEN 1 ELSE 0 END)\
+         FROM sources s LEFT JOIN events e ON e.source_id = s.id\
+         GROUP BY s.id ORDER BY s.name COLLATE NOCASE, s.id",
+    )?;
+    let rows = statement.query_map([], |row| {
+        Ok(SourceHealth {
+            source_id: row.get(0)?,
+            name: row.get(1)?,
+            kind: row.get(2)?,
+            enabled: row.get::<_, i64>(3)? != 0,
+            total_events: row.get(4)?,
+            last_event_at: row.get(5)?,
+            last_received_at: row.get(6)?,
+            critical_events: row.get::<_, Option<i64>>(7)?.unwrap_or(0),
+            error_events: row.get::<_, Option<i64>>(8)?.unwrap_or(0),
+        })
+    })?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
+}
+
+/// Computes ingestion ratios defensively for empty or partially initialized databases.
+pub fn ingestion_stats(db: &Database) -> Result<IngestionStats, DbError> {
+    let (received, deduplicated, dropped, malformed): (i64, i64, i64, i64) = db.conn().query_row(
+        "SELECT received, deduplicated, dropped, malformed FROM ingestion_stats WHERE id = 1",
+        [],
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+    )?;
+    let denominator = received.max(0);
+    let rate = |part: i64| {
+        if denominator == 0 {
+            0.0
+        } else {
+            part.max(0) as f64 * 100.0 / denominator as f64
+        }
+    };
+    Ok(IngestionStats {
+        received,
+        deduplicated,
+        dropped,
+        malformed,
+        accepted: (received - deduplicated - dropped - malformed).max(0),
+        duplicate_rate_percent: rate(deduplicated),
+        malformed_rate_percent: rate(malformed),
+    })
+}
+
+/// Counts events received during a half-open RFC3339 time range [start, end).
+pub fn count_events_in_range(db: &Database, start_utc: &str, end_utc: &str) -> Result<i64, DbError> {
+    let start = chrono::DateTime::parse_from_rfc3339(start_utc)
+        .map_err(|_| DbError::Sqlite(rusqlite::Error::InvalidQuery))?;
+    let end = chrono::DateTime::parse_from_rfc3339(end_utc)
+        .map_err(|_| DbError::Sqlite(rusqlite::Error::InvalidQuery))?;
+    if start >= end {
+        return Err(DbError::Sqlite(rusqlite::Error::InvalidQuery));
+    }
+    db.conn()
+        .query_row(
+            "SELECT COUNT(*) FROM events WHERE timestamp_utc >= ?1 AND timestamp_utc < ?2",
+            rusqlite::params![start.with_timezone(&chrono::Utc).to_rfc3339(), end.with_timezone(&chrono::Utc).to_rfc3339()],
+            |row| row.get(0),
+        )
+        .map_err(DbError::from)
 }
