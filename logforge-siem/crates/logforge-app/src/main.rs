@@ -287,6 +287,9 @@ fn main() {
                 let stats = serde_json::json!({
                     "ingestion": logforge_core::stats::ingestion_stats(service.db()).expect("ingestion stats"),
                     "sources": logforge_core::stats::source_health(service.db()).expect("source health"),
+                    "source_liveness": logforge_core::stats::source_liveness(
+                        service.db(), &chrono::Utc::now().to_rfc3339(), 300
+                    ).expect("source liveness"),
                     "event_severity": logforge_core::stats::events_by_severity(service.db()).expect("event severity"),
                     "alert_status": logforge_core::stats::alert_status_counts(service.db()).expect("alert status"),
                     "alert_severity": logforge_core::stats::alert_severity_matrix(service.db()).expect("alert severity"),

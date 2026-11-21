@@ -228,3 +228,86 @@ pub fn count_alerts_in_range(
         )
         .map_err(DbError::from)
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SourceState {
+    Active,
+    Stale,
+    NeverSeen,
+    Disabled,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SourceLiveness {
+    pub source_id: i64,
+    pub name: String,
+    pub state: SourceState,
+    pub events: i64,
+    pub last_received_at: Option<String>,
+    pub seconds_since_last_event: Option<i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SourceLivenessReport {
+    pub checked_at: String,
+    pub stale_after_seconds: i64,
+    pub active: usize,
+    pub stale: usize,
+    pub never_seen: usize,
+    pub disabled: usize,
+    pub sources: Vec<SourceLiveness>,
+}
+
+/// Evaluates source freshness using ingestion time, not event time, so delayed
+/// backfills do not make a source appear live. Disabled and never-seen sources
+/// remain separate from stale sources for clearer operator follow-up.
+pub fn source_liveness(
+    db: &Database,
+    checked_at_utc: &str,
+    stale_after_seconds: i64,
+) -> Result<SourceLivenessReport, DbError> {
+    let checked = chrono::DateTime::parse_from_rfc3339(checked_at_utc)
+        .map_err(|_| DbError::Sqlite(rusqlite::Error::InvalidQuery))?
+        .with_timezone(&chrono::Utc);
+    if !(1..=31_536_000).contains(&stale_after_seconds) {
+        return Err(DbError::Sqlite(rusqlite::Error::InvalidQuery));
+    }
+    let mut sources = Vec::new();
+    for source in source_health(db)? {
+        let (state, age) = if !source.enabled {
+            (SourceState::Disabled, None)
+        } else if let Some(received) = &source.last_received_at {
+            let received = chrono::DateTime::parse_from_rfc3339(received)
+                .map_err(|_| DbError::Sqlite(rusqlite::Error::InvalidQuery))?
+                .with_timezone(&chrono::Utc);
+            let seconds = checked.signed_duration_since(received).num_seconds().max(0);
+            let state = if seconds >= stale_after_seconds {
+                SourceState::Stale
+            } else {
+                SourceState::Active
+            };
+            (state, Some(seconds))
+        } else {
+            (SourceState::NeverSeen, None)
+        };
+        sources.push(SourceLiveness {
+            source_id: source.source_id,
+            name: source.name,
+            state,
+            events: source.total_events,
+            last_received_at: source.last_received_at,
+            seconds_since_last_event: age,
+        });
+    }
+    let count = |state| sources.iter().filter(|source| source.state == state).count();
+    Ok(SourceLivenessReport {
+        checked_at: checked.to_rfc3339(),
+        stale_after_seconds,
+        active: count(SourceState::Active),
+        stale: count(SourceState::Stale),
+        never_seen: count(SourceState::NeverSeen),
+        disabled: count(SourceState::Disabled),
+        sources,
+    })
+}
