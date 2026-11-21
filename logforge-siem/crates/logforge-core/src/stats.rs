@@ -147,3 +147,80 @@ pub fn count_events_in_range(
         )
         .map_err(DbError::from)
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct AlertStatusCount {
+    pub status: String,
+    pub alert_count: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct AlertSeverityCount {
+    pub severity: String,
+    pub open_count: i64,
+    pub acknowledged_count: i64,
+    pub resolved_count: i64,
+}
+
+/// Returns all alert workflow states, including states with no matching alerts.
+pub fn alert_status_counts(db: &Database) -> Result<Vec<AlertStatusCount>, DbError> {
+    let mut statement = db.conn().prepare(
+        "SELECT states.status, COUNT(a.id) FROM (\
+            SELECT 'open' AS status, 0 AS position UNION ALL\
+            SELECT 'acknowledged', 1 UNION ALL SELECT 'resolved', 2\
+        ) states LEFT JOIN alerts a ON a.status = states.status\
+        GROUP BY states.status, states.position ORDER BY states.position",
+    )?;
+    let rows = statement.query_map([], |row| {
+        Ok(AlertStatusCount {
+            status: row.get(0)?,
+            alert_count: row.get(1)?,
+        })
+    })?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
+}
+
+/// Produces a severity-by-workflow matrix in stable severity order.
+pub fn alert_severity_matrix(db: &Database) -> Result<Vec<AlertSeverityCount>, DbError> {
+    let mut statement = db.conn().prepare(
+        "SELECT levels.severity,\
+            SUM(CASE WHEN a.status = 'open' THEN 1 ELSE 0 END),\
+            SUM(CASE WHEN a.status = 'acknowledged' THEN 1 ELSE 0 END),\
+            SUM(CASE WHEN a.status = 'resolved' THEN 1 ELSE 0 END)\
+         FROM (SELECT 'debug' AS severity, 0 AS position UNION ALL\
+            SELECT 'info', 1 UNION ALL SELECT 'warn', 2 UNION ALL\
+            SELECT 'error', 3 UNION ALL SELECT 'critical', 4) levels\
+         LEFT JOIN alerts a ON a.severity = levels.severity\
+         GROUP BY levels.severity, levels.position ORDER BY levels.position",
+    )?;
+    let rows = statement.query_map([], |row| {
+        Ok(AlertSeverityCount {
+            severity: row.get(0)?,
+            open_count: row.get::<_, Option<i64>>(1)?.unwrap_or(0),
+            acknowledged_count: row.get::<_, Option<i64>>(2)?.unwrap_or(0),
+            resolved_count: row.get::<_, Option<i64>>(3)?.unwrap_or(0),
+        })
+    })?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
+}
+
+/// Counts alerts opened in the half-open UTC interval [start, end).
+pub fn count_alerts_in_range(db: &Database, start_utc: &str, end_utc: &str) -> Result<i64, DbError> {
+    let start = chrono::DateTime::parse_from_rfc3339(start_utc)
+        .map_err(|_| DbError::Sqlite(rusqlite::Error::InvalidQuery))?;
+    let end = chrono::DateTime::parse_from_rfc3339(end_utc)
+        .map_err(|_| DbError::Sqlite(rusqlite::Error::InvalidQuery))?;
+    if start >= end {
+        return Err(DbError::Sqlite(rusqlite::Error::InvalidQuery));
+    }
+    db.conn()
+        .query_row(
+            "SELECT COUNT(*) FROM alerts WHERE created_at >= ?1 AND created_at < ?2",
+            rusqlite::params![
+                start.with_timezone(&chrono::Utc).to_rfc3339(),
+                end.with_timezone(&chrono::Utc).to_rfc3339()
+            ],
+            |row| row.get(0),
+        )
+        .map_err(DbError::from)
+}
