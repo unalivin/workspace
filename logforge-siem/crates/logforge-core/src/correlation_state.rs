@@ -16,6 +16,13 @@ pub struct CorrelationResult {
     pub emitted: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SequenceSpec<'a> {
+    pub first_action: &'a str,
+    pub second_action: &'a str,
+    pub window_seconds: i64,
+}
+
 fn load(
     db: &Database,
     rule: &str,
@@ -120,12 +127,15 @@ pub fn evaluate_sequence(
     db: &Database,
     rule: &str,
     key: &str,
-    first_action: &str,
-    second_action: &str,
-    window_seconds: i64,
+    spec: SequenceSpec<'_>,
     incoming: &[PendingEvent],
     now: &str,
 ) -> Result<CorrelationResult, DbError> {
+    let SequenceSpec {
+        first_action,
+        second_action,
+        window_seconds,
+    } = spec;
     if window_seconds <= 0 {
         return Ok(CorrelationResult {
             event_ids: Vec::new(),

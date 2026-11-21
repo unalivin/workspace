@@ -1,4 +1,4 @@
-use logforge_core::correlation_state::{evaluate_sequence, evaluate_threshold, PendingEvent};
+use logforge_core::correlation_state::{evaluate_sequence, evaluate_threshold, PendingEvent, SequenceSpec};
 use logforge_core::Database;
 
 #[test]
@@ -54,9 +54,11 @@ fn persisted_sequence_matches_only_ordered_steps_inside_window() {
         &db,
         "sequence-1",
         "host-a",
-        "failure",
-        "success",
-        600,
+        SequenceSpec {
+            first_action: "failure",
+            second_action: "success",
+            window_seconds: 600,
+        },
         &[failure],
         "2026-11-21T12:01:00Z",
     )
@@ -71,9 +73,11 @@ fn persisted_sequence_matches_only_ordered_steps_inside_window() {
         &db,
         "sequence-1",
         "host-a",
-        "failure",
-        "success",
-        600,
+        SequenceSpec {
+            first_action: "failure",
+            second_action: "success",
+            window_seconds: 600,
+        },
         &[success],
         "2026-11-21T12:05:00Z",
     )
