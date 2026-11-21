@@ -157,8 +157,8 @@ pub fn claim_due_notifications(
     drop(statement);
     for notification in &rows {
         tx.execute(
-            "UPDATE notification_outbox SET state = 'claimed', attempt_count = attempt_count + 1 WHERE id = ?1 AND state = 'queued'",
-            params![notification.id],
+            "UPDATE notification_outbox SET state = 'claimed', attempt_count = attempt_count + 1, next_attempt_at = ?2 WHERE id = ?1 AND state = 'queued'",
+            params![notification.id, now_utc],
         )?;
     }
     tx.commit()?;
@@ -220,4 +220,64 @@ pub fn outbox_counts(db: &Database) -> Result<OutboxCounts, DbError> {
             dead: row.get::<_, Option<i64>>(3)?.unwrap_or(0),
         }),
     ).map_err(DbError::from)
+}
+
+/// Recovers claims abandoned by a crashed worker. A row is eligible once its
+/// recorded claim time is older than `stale_before_utc`; exhausted messages
+/// become dead letters rather than being retried forever.
+pub fn recover_stale_claims(
+    db: &Database,
+    stale_before_utc: &str,
+    now_utc: &str,
+    limit: usize,
+) -> Result<usize, DbError> {
+    if limit == 0
+        || chrono::DateTime::parse_from_rfc3339(stale_before_utc).is_err()
+        || chrono::DateTime::parse_from_rfc3339(now_utc).is_err()
+    {
+        return Err(DbError::Sqlite(rusqlite::Error::InvalidQuery));
+    }
+    let tx = db.conn().unchecked_transaction()?;
+    let affected = tx.execute(
+        "UPDATE notification_outbox \
+         SET state = CASE WHEN attempt_count >= 8 THEN 'dead' ELSE 'queued' END, \
+             next_attempt_at = ?1, last_error = 'claim expired' \
+         WHERE state = 'claimed' AND next_attempt_at <= ?2 \
+           AND id IN (SELECT id FROM notification_outbox WHERE state = 'claimed' AND next_attempt_at <= ?2 ORDER BY id LIMIT ?3)",
+        params![now_utc, stale_before_utc, limit.min(1000) as i64],
+    )?;
+    tx.commit()?;
+    Ok(affected)
+}
+
+/// Manually requeues selected dead-letter notifications after operator review.
+/// Attempts are reset only for explicitly selected ids, and payloads are kept.
+pub fn retry_dead_notifications(
+    db: &Database,
+    ids: &[i64],
+    now_utc: &str,
+) -> Result<usize, DbError> {
+    if chrono::DateTime::parse_from_rfc3339(now_utc).is_err()
+        || ids.iter().any(|id| *id <= 0)
+    {
+        return Err(DbError::Sqlite(rusqlite::Error::InvalidQuery));
+    }
+    if ids.is_empty() {
+        return Ok(0);
+    }
+    let mut conditions = Vec::with_capacity(ids.len());
+    let mut values = Vec::with_capacity(ids.len() + 1);
+    values.push(rusqlite::types::Value::Text(now_utc.to_string()));
+    for id in ids {
+        values.push(rusqlite::types::Value::Integer(*id));
+        conditions.push(format!("?{}", values.len()));
+    }
+    let sql = format!(
+        "UPDATE notification_outbox SET state = 'queued', attempt_count = 0, \
+         next_attempt_at = ?1, last_error = '' WHERE state = 'dead' AND id IN ({})",
+        conditions.join(", ")
+    );
+    db.conn()
+        .execute(&sql, rusqlite::params_from_iter(values.iter()))
+        .map_err(DbError::from)
 }

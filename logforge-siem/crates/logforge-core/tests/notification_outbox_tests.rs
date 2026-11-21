@@ -84,3 +84,42 @@ fn duplicate_outbox_messages_are_suppressed_and_severity_threshold_is_respected(
     .unwrap());
     assert_eq!(outbox_counts(service.db()).unwrap().queued, 1);
 }
+
+#[test]
+fn abandoned_claims_recover_and_dead_letters_can_be_manually_retried() {
+    use logforge_core::notifier::{recover_stale_claims, retry_dead_notifications};
+
+    let db = Database::open_in_memory().expect("database");
+    let service = SiemService::new(db);
+    let source = service.add_source("recover", "file", "memory").expect("source");
+    service.add_rule("failure", "error", "failed").expect("rule");
+    upsert_notification_rule(service.db(), "alert.created", "warn", true, 0, 0)
+        .expect("notification rule");
+    service
+        .ingest_lines(source, &["2026-11-21T10:00:00Z host app: failed request"])
+        .expect("ingest");
+    let now = chrono::Utc::now();
+    let now_text = now.to_rfc3339();
+    let claimed = claim_due_notifications(service.db(), &now_text, 5).expect("claim");
+    assert_eq!(claimed.len(), 1);
+    let stale_before = (now + chrono::Duration::minutes(5)).to_rfc3339();
+    let recovered = recover_stale_claims(service.db(), &stale_before, &now_text, 10)
+        .expect("recover stale claim");
+    assert_eq!(recovered, 1);
+    assert_eq!(outbox_counts(service.db()).expect("counts").queued, 1);
+
+    service
+        .db()
+        .conn()
+        .execute(
+            "UPDATE notification_outbox SET state = 'dead' WHERE id = ?1",
+            rusqlite::params![claimed[0].id],
+        )
+        .expect("simulate dead letter");
+    assert_eq!(
+        retry_dead_notifications(service.db(), &[claimed[0].id], &now_text)
+            .expect("manual retry"),
+        1
+    );
+    assert_eq!(outbox_counts(service.db()).expect("counts").queued, 1);
+}
