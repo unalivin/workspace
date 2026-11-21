@@ -222,3 +222,110 @@ fn map_case(row: &rusqlite::Row<'_>) -> rusqlite::Result<CaseRecord> {
         alert_count: row.get(9)?,
     })
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct CaseQueueMetrics {
+    pub open_cases: i64,
+    pub in_progress_cases: i64,
+    pub closed_cases: i64,
+    pub unassigned_active: i64,
+    pub critical_active: i64,
+    pub overdue_active: i64,
+    pub oldest_active_at: Option<String>,
+    pub average_active_age_hours: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct AssigneeWorkload {
+    pub assignee: String,
+    pub active_cases: i64,
+    pub critical_cases: i64,
+    pub oldest_case_at: Option<String>,
+}
+
+/// Summarizes the current case queue against a configurable age target. The
+/// `as_of_utc` parameter makes dashboards and tests deterministic.
+pub fn case_queue_metrics(
+    db: &Database,
+    as_of_utc: &str,
+    overdue_after_hours: i64,
+) -> Result<CaseQueueMetrics, Box<dyn std::error::Error>> {
+    if !(0..=24 * 365).contains(&overdue_after_hours) {
+        return Err(Box::new(CaseError::InvalidStatus));
+    }
+    let as_of = chrono::DateTime::parse_from_rfc3339(as_of_utc)?.with_timezone(&Utc);
+    let (open_cases, in_progress_cases, closed_cases, unassigned_active, critical_active): (
+        i64,
+        i64,
+        i64,
+        i64,
+        i64,
+    ) = db.conn().query_row(
+        "SELECT \
+            SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END), \
+            SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END), \
+            SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END), \
+            SUM(CASE WHEN status <> 'closed' AND trim(assignee) = '' THEN 1 ELSE 0 END), \
+            SUM(CASE WHEN status <> 'closed' AND priority = 'critical' THEN 1 ELSE 0 END) \
+         FROM cases",
+        [],
+        |row| Ok((
+            row.get::<_, Option<i64>>(0)?.unwrap_or(0),
+            row.get::<_, Option<i64>>(1)?.unwrap_or(0),
+            row.get::<_, Option<i64>>(2)?.unwrap_or(0),
+            row.get::<_, Option<i64>>(3)?.unwrap_or(0),
+            row.get::<_, Option<i64>>(4)?.unwrap_or(0),
+        )),
+    )?;
+    let mut statement = db.conn().prepare(
+        "SELECT created_at FROM cases WHERE status <> 'closed' ORDER BY created_at ASC",
+    )?;
+    let rows = statement.query_map([], |row| row.get::<_, String>(0))?;
+    let mut active_ages = Vec::new();
+    let mut overdue_active = 0;
+    for row in rows {
+        let created = chrono::DateTime::parse_from_rfc3339(&row?)?.with_timezone(&Utc);
+        let hours = as_of.signed_duration_since(created).num_hours().max(0);
+        if hours >= overdue_after_hours {
+            overdue_active += 1;
+        }
+        active_ages.push((created, hours));
+    }
+    let oldest_active_at = active_ages.first().map(|(created, _)| created.to_rfc3339());
+    let average_active_age_hours = if active_ages.is_empty() {
+        0
+    } else {
+        active_ages.iter().map(|(_, age)| age).sum::<i64>() / active_ages.len() as i64
+    };
+    Ok(CaseQueueMetrics {
+        open_cases,
+        in_progress_cases,
+        closed_cases,
+        unassigned_active,
+        critical_active,
+        overdue_active,
+        oldest_active_at,
+        average_active_age_hours,
+    })
+}
+
+/// Returns assignment load sorted by active workload, with unassigned work
+/// represented explicitly instead of omitted by SQL's NULL grouping behavior.
+pub fn case_workload_by_assignee(db: &Database) -> Result<Vec<AssigneeWorkload>, DbError> {
+    let mut statement = db.conn().prepare(
+        "SELECT CASE WHEN trim(assignee) = '' THEN '(unassigned)' ELSE assignee END, \
+            COUNT(*), SUM(CASE WHEN priority = 'critical' THEN 1 ELSE 0 END), MIN(created_at) \
+         FROM cases WHERE status <> 'closed' \
+         GROUP BY CASE WHEN trim(assignee) = '' THEN '(unassigned)' ELSE assignee END \
+         ORDER BY COUNT(*) DESC, 1 COLLATE NOCASE",
+    )?;
+    let rows = statement.query_map([], |row| {
+        Ok(AssigneeWorkload {
+            assignee: row.get(0)?,
+            active_cases: row.get(1)?,
+            critical_cases: row.get::<_, Option<i64>>(2)?.unwrap_or(0),
+            oldest_case_at: row.get(3)?,
+        })
+    })?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
+}
