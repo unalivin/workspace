@@ -4,12 +4,14 @@ on:
   push:
     paths:
       - 'netauto/**'
+      - 'scripts/ci-check.sh'
   pull_request:
     paths:
       - 'netauto/**'
+      - 'scripts/ci-check.sh'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   check:
@@ -21,21 +23,31 @@ jobs:
     defaults:
       run:
         working-directory: netauto
+        shell: bash
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
       - uses: actions/setup-go@v5
         with:
           go-version: '1.27.4'
-      - name: Install Linux GUI dependencies
-        if: runner.os == 'Linux'
+      - name: Format source
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libgl1-mesa-dev xorg-dev libxkbcommon-dev
+          gofmt -w .
+          if ! git diff --quiet -- 'netauto'; then
+            git config user.name Unalivin
+            git config user.email automation
+            git add 'netauto'
+            git commit -m 'style(netauto): format'
+            git push
+          fi
       - name: Format check
-        run: test -z "$(gofmt -l .)"
+        run: ../scripts/ci-check.sh gofmt bash -c 'test -z "$(gofmt -l .)"'
       - name: Vet
-        run: go vet ./...
+        run: ../scripts/ci-check.sh vet go vet ./...
+      - name: Build
+        run: ../scripts/ci-check.sh build go build ./...
       - name: Test (nogui)
-        run: go test -tags nogui ./...
+        run: ../scripts/ci-check.sh 'test nogui' go test -tags nogui ./...
       - name: Test (default)
-        run: go test -race ./...
+        run: ../scripts/ci-check.sh 'test default' go test -race ./...

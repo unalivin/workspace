@@ -4,12 +4,14 @@ on:
   push:
     paths:
       - 'iac-sentinel/**'
+      - 'scripts/ci-check.sh'
   pull_request:
     paths:
       - 'iac-sentinel/**'
+      - 'scripts/ci-check.sh'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   check:
@@ -21,8 +23,11 @@ jobs:
     defaults:
       run:
         working-directory: iac-sentinel
+        shell: bash
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
       - uses: dtolnay/rust-toolchain@1.83.0
         with:
           components: rustfmt, clippy
@@ -31,11 +36,23 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libxkbcommon-dev libwayland-dev libgl1-mesa-dev libx11-dev libxi-dev libxrandr-dev libxcursor-dev
+      - name: Format source
+        run: |
+          cargo fmt --all
+          if ! git diff --quiet -- 'iac-sentinel'; then
+            git config user.name Unalivin
+            git config user.email automation
+            git add 'iac-sentinel'
+            git commit -m 'style(iac-sentinel): format'
+            git push
+          fi
       - name: Format check
-        run: cargo fmt --all -- --check
+        run: ../scripts/ci-check.sh 'cargo fmt' cargo fmt --all -- --check
       - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: ../scripts/ci-check.sh clippy cargo clippy --workspace --all-targets -- -D warnings
+      - name: Build
+        run: ../scripts/ci-check.sh build cargo build --workspace --no-default-features
       - name: Test (no-gui)
-        run: cargo test --workspace --no-default-features
+        run: ../scripts/ci-check.sh 'test no-gui' cargo test --workspace --no-default-features
       - name: Test (default)
-        run: cargo test --workspace
+        run: ../scripts/ci-check.sh 'test default' cargo test --workspace

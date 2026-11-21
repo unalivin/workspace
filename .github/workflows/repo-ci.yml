@@ -25,4 +25,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify repository invariants
-        run: ./scripts/verify-repo.sh
+        shell: bash
+        run: ./scripts/ci-check.sh 'repository invariants' ./scripts/verify-repo.sh

@@ -4,9 +4,11 @@ on:
   push:
     paths:
       - '{{PROJECT}}/**'
+      - 'scripts/ci-check.sh'
   pull_request:
     paths:
       - '{{PROJECT}}/**'
+      - 'scripts/ci-check.sh'
 
 permissions:
   contents: read
@@ -21,6 +23,7 @@ jobs:
     defaults:
       run:
         working-directory: {{PROJECT}}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Linux dependencies
@@ -28,13 +31,15 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build libgl1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
-      - name: Configure and test (nogui)
-        run: |
-          cmake -B build-nogui -G Ninja -DPROJECT_GUI=OFF
-          cmake --build build-nogui
-          ctest --test-dir build-nogui --output-on-failure
-      - name: Configure and test (default)
-        run: |
-          cmake -B build -G Ninja
-          cmake --build build
-          ctest --test-dir build --output-on-failure
+      - name: Configure (no-gui)
+        run: ../scripts/ci-check.sh 'configure no-gui' cmake -B build-nogui -G Ninja -DPROJECT_GUI=OFF
+      - name: Build (no-gui)
+        run: ../scripts/ci-check.sh 'build no-gui' cmake --build build-nogui
+      - name: Test (no-gui)
+        run: ../scripts/ci-check.sh 'test no-gui' ctest --test-dir build-nogui --output-on-failure
+      - name: Configure (default)
+        run: ../scripts/ci-check.sh 'configure default' cmake -B build -G Ninja
+      - name: Build (default)
+        run: ../scripts/ci-check.sh 'build default' cmake --build build
+      - name: Test (default)
+        run: ../scripts/ci-check.sh 'test default' ctest --test-dir build --output-on-failure
