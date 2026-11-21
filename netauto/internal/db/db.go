@@ -8,8 +8,11 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-//go:embed ../../migrations/0001_initial.sql
+//go:embed migrations/0001_initial.sql
 var initialMigration string
+
+//go:embed migrations/0002_operations.sql
+var operationsMigration string
 
 type Database struct {
 	Conn *sql.DB
@@ -49,6 +52,13 @@ func Open(path string) (*Database, error) {
 			conn.Close()
 			return nil, fmt.Errorf("commit migration: %w", err)
 		}
+	}
+	if version < 2 {
+		tx, err := conn.Begin()
+		if err != nil { conn.Close(); return nil, fmt.Errorf("begin migration 2: %w", err) }
+		if _, err := tx.Exec(operationsMigration); err != nil { tx.Rollback(); conn.Close(); return nil, fmt.Errorf("apply migration 2: %w", err) }
+		if _, err := tx.Exec("PRAGMA user_version = 2"); err != nil { tx.Rollback(); conn.Close(); return nil, fmt.Errorf("set user_version 2: %w", err) }
+		if err := tx.Commit(); err != nil { conn.Close(); return nil, fmt.Errorf("commit migration 2: %w", err) }
 	}
 	return &Database{Conn: conn}, nil
 }

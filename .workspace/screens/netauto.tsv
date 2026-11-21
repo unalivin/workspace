@@ -1,0 +1,11 @@
+category	gui_symbol	tui_symbol
+inventory	InventoryScreen	InventoryView
+jobs	JobsScreen	JobsView
+runs	RunsScreen	RunsView
+approvals	ApprovalsScreen	ApprovalsView
+backups	BackupsScreen	BackupsView
+schedules	SchedulesScreen	SchedulesView
+settings	SettingsScreen	SettingsView
+audit	AuditScreen	AuditView
+health	HealthScreen	HealthView
+help	HelpScreen	HelpView
