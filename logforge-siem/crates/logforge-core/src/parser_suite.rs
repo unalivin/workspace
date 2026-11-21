@@ -40,7 +40,9 @@ pub fn parse_with_format(raw: &str, format: LogFormat) -> Result<NormalizedEvent
         LogFormat::Json => parse_line(raw),
         LogFormat::Rfc3164 => crate::access_log::parse_rfc3164(raw, chrono::Utc::now().year(), 0),
         LogFormat::Rfc5424 => crate::syslog_rfc5424::parse_rfc5424(raw),
-        LogFormat::Nginx | LogFormat::Apache => crate::access_log::parse_combined_access(raw, "unknown"),
+        LogFormat::Nginx | LogFormat::Apache => {
+            crate::access_log::parse_combined_access(raw, "unknown")
+        }
         LogFormat::Cef => crate::cef_parser::parse_cef_line(raw),
         LogFormat::Leef => crate::leef_parser::parse_leef_line(raw),
     }

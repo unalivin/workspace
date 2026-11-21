@@ -19,14 +19,29 @@ fn malformed_and_truncated_payloads_never_unwind_any_parser() {
         let value = String::from_utf8_lossy(&bytes).into_owned();
         for parser in [0u8, 1, 2, 3, 4, 5] {
             let result = std::panic::catch_unwind(AssertUnwindSafe(|| match parser {
-                0 => { let _ = parse_line(&value); }
-                1 => { let _ = parse_rfc5424(&value); }
-                2 => { let _ = parse_rfc3164(&value, 2026, 0); }
-                3 => { let _ = parse_cef_line(&value); }
-                4 => { let _ = parse_leef_line(&value); }
-                _ => { let _ = parse_combined_access(&value, "fuzz-host"); }
+                0 => {
+                    let _ = parse_line(&value);
+                }
+                1 => {
+                    let _ = parse_rfc5424(&value);
+                }
+                2 => {
+                    let _ = parse_rfc3164(&value, 2026, 0);
+                }
+                3 => {
+                    let _ = parse_cef_line(&value);
+                }
+                4 => {
+                    let _ = parse_leef_line(&value);
+                }
+                _ => {
+                    let _ = parse_combined_access(&value, "fuzz-host");
+                }
             }));
-            assert!(result.is_ok(), "parser {parser} panicked for input length {length}");
+            assert!(
+                result.is_ok(),
+                "parser {parser} panicked for input length {length}"
+            );
         }
     }
 }
