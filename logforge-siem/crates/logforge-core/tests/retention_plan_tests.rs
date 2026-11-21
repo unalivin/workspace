@@ -11,7 +11,7 @@ fn age_policy_prunes_old_events_even_when_event_count_is_below_limit() {
         "2026-11-20T00:00:00Z new host: fresh one",
         "2026-11-20T00:00:01Z new host: fresh two",
     ];
-    let refs: Vec<_> = records.iter().copied().collect();
+    let refs = records.to_vec();
     service.ingest_lines(source, &refs).unwrap();
     let plan = plan_retention(service.db(), 30, 100, 100_000, "2026-11-21T00:00:00Z").unwrap();
     assert_eq!(plan.count, 1);
@@ -31,7 +31,7 @@ fn byte_cap_keeps_newest_records_and_lists_all_removals() {
         "2026-11-20T00:00:01Z host app: beta has a medium sized record",
         "2026-11-20T00:00:02Z host app: gamma has a medium sized record",
     ];
-    let refs: Vec<_> = records.iter().copied().collect();
+    let refs = records.to_vec();
     service.ingest_lines(source, &refs).unwrap();
     let plan = plan_retention(service.db(), 60, 10, 100, "2026-11-21T00:00:00Z").unwrap();
     assert!(plan.count >= 2);
