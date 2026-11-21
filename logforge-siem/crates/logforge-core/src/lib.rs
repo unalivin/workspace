@@ -6,6 +6,7 @@ pub mod cef_parser;
 pub mod config;
 pub mod correlation;
 pub mod db;
+pub mod dedup_cache;
 pub mod diagnostics;
 pub mod export;
 pub mod ingest;
@@ -18,6 +19,8 @@ pub mod rule_engine;
 pub mod schema_mapper;
 pub mod service;
 pub mod stats;
+pub mod storage_metrics;
+pub mod syslog_rfc5424;
 pub mod theme;
 pub mod time_series;
 
