@@ -443,11 +443,12 @@ impl SiemService {
         filter: &crate::event_query::EventFilter,
     ) -> Result<i64, DbError> {
         let plan = filter.count_plan()?;
-        self.db.conn().query_row(
-            &plan.sql,
-            params_from_iter(plan.parameters.iter()),
-            |row| row.get(0),
-        ).map_err(DbError::from)
+        self.db
+            .conn()
+            .query_row(&plan.sql, params_from_iter(plan.parameters.iter()), |row| {
+                row.get(0)
+            })
+            .map_err(DbError::from)
     }
 
     pub fn search_events(&self, query: &str, limit: usize) -> Result<Vec<LogEvent>, DbError> {

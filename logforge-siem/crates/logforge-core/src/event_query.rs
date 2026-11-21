@@ -46,10 +46,8 @@ impl EventFilter {
             }
         }
         if let (Some(start), Some(end)) = (&self.from_utc, &self.to_utc) {
-            let start = chrono::DateTime::parse_from_rfc3339(start)
-                .map_err(|_| invalid_query())?;
-            let end = chrono::DateTime::parse_from_rfc3339(end)
-                .map_err(|_| invalid_query())?;
+            let start = chrono::DateTime::parse_from_rfc3339(start).map_err(|_| invalid_query())?;
+            let end = chrono::DateTime::parse_from_rfc3339(end).map_err(|_| invalid_query())?;
             if start > end {
                 return Err(invalid_query());
             }
@@ -61,54 +59,118 @@ impl EventFilter {
         self.validate()?;
         let mut conditions = Vec::new();
         let mut parameters = Vec::new();
-        if let Some(query) = self.query.as_deref().filter(|query| !query.trim().is_empty()) {
-            let compiled = crate::query_language::compile_query(query)
-                .map_err(|_| invalid_query())?;
+        if let Some(query) = self
+            .query
+            .as_deref()
+            .filter(|query| !query.trim().is_empty())
+        {
+            let compiled =
+                crate::query_language::compile_query(query).map_err(|_| invalid_query())?;
             if !compiled.fts_match.is_empty() {
-                push_condition(&mut conditions, &mut parameters,
+                push_condition(
+                    &mut conditions,
+                    &mut parameters,
                     "e.id IN (SELECT rowid FROM events_fts WHERE events_fts MATCH ?)",
-                    Value::Text(compiled.fts_match));
+                    Value::Text(compiled.fts_match),
+                );
             }
             if let Some(value) = compiled.lower_timestamp {
-                push_condition(&mut conditions, &mut parameters, "e.timestamp_utc >= ?", Value::Text(value));
+                push_condition(
+                    &mut conditions,
+                    &mut parameters,
+                    "e.timestamp_utc >= ?",
+                    Value::Text(value),
+                );
             }
             if let Some(value) = compiled.upper_timestamp {
-                push_condition(&mut conditions, &mut parameters, "e.timestamp_utc <= ?", Value::Text(value));
+                push_condition(
+                    &mut conditions,
+                    &mut parameters,
+                    "e.timestamp_utc <= ?",
+                    Value::Text(value),
+                );
             }
             if let Some(value) = compiled.severity {
-                push_condition(&mut conditions, &mut parameters, "lower(e.severity) = ?", Value::Text(value));
+                push_condition(
+                    &mut conditions,
+                    &mut parameters,
+                    "lower(e.severity) = ?",
+                    Value::Text(value),
+                );
             }
             if let Some(value) = compiled.host {
-                push_condition(&mut conditions, &mut parameters, "e.host = ?", Value::Text(value));
+                push_condition(
+                    &mut conditions,
+                    &mut parameters,
+                    "e.host = ?",
+                    Value::Text(value),
+                );
             }
         }
         if let Some(value) = self.source_id {
-            push_condition(&mut conditions, &mut parameters, "e.source_id = ?", Value::Integer(value));
+            push_condition(
+                &mut conditions,
+                &mut parameters,
+                "e.source_id = ?",
+                Value::Integer(value),
+            );
         }
         if let Some(value) = &self.severity {
-            push_condition(&mut conditions, &mut parameters, "lower(e.severity) = ?", Value::Text(value.to_ascii_lowercase()));
+            push_condition(
+                &mut conditions,
+                &mut parameters,
+                "lower(e.severity) = ?",
+                Value::Text(value.to_ascii_lowercase()),
+            );
         }
         if let Some(value) = &self.host {
-            push_condition(&mut conditions, &mut parameters, "e.host = ?", Value::Text(value.clone()));
+            push_condition(
+                &mut conditions,
+                &mut parameters,
+                "e.host = ?",
+                Value::Text(value.clone()),
+            );
         }
         if let Some(value) = &self.service {
-            push_condition(&mut conditions, &mut parameters, "e.service = ?", Value::Text(value.clone()));
+            push_condition(
+                &mut conditions,
+                &mut parameters,
+                "e.service = ?",
+                Value::Text(value.clone()),
+            );
         }
         if let Some(value) = &self.from_utc {
-            push_condition(&mut conditions, &mut parameters, "e.timestamp_utc >= ?", Value::Text(value.clone()));
+            push_condition(
+                &mut conditions,
+                &mut parameters,
+                "e.timestamp_utc >= ?",
+                Value::Text(value.clone()),
+            );
         }
         if let Some(value) = &self.to_utc {
-            push_condition(&mut conditions, &mut parameters, "e.timestamp_utc <= ?", Value::Text(value.clone()));
+            push_condition(
+                &mut conditions,
+                &mut parameters,
+                "e.timestamp_utc <= ?",
+                Value::Text(value.clone()),
+            );
         }
         if let Some(value) = self.redacted {
-            push_condition(&mut conditions, &mut parameters, "e.redacted = ?", Value::Integer(i64::from(value)));
+            push_condition(
+                &mut conditions,
+                &mut parameters,
+                "e.redacted = ?",
+                Value::Integer(i64::from(value)),
+            );
         }
         if let (Some(timestamp), Some(id)) = (&self.after_timestamp, self.after_id) {
             parameters.push(Value::Text(timestamp.clone()));
             let timestamp_slot = parameters.len();
             parameters.push(Value::Integer(id));
             let id_slot = parameters.len();
-            conditions.push(format!("(e.timestamp_utc, e.id) < (?{timestamp_slot}, ?{id_slot})"));
+            conditions.push(format!(
+                "(e.timestamp_utc, e.id) < (?{timestamp_slot}, ?{id_slot})"
+            ));
         }
         let mut sql = format!("SELECT e.id, e.source_id, e.timestamp_utc, e.received_at, e.severity, e.host, e.service, e.message, e.raw_line, e.dedup_hash, e.redacted, e.fields_json FROM events e");
         if !conditions.is_empty() {
@@ -137,7 +199,12 @@ impl EventFilter {
     }
 }
 
-fn push_condition(conditions: &mut Vec<String>, parameters: &mut Vec<Value>, clause: &str, value: Value) {
+fn push_condition(
+    conditions: &mut Vec<String>,
+    parameters: &mut Vec<Value>,
+    clause: &str,
+    value: Value,
+) {
     parameters.push(value);
     conditions.push(clause.replacen('?', &format!("?{}", parameters.len()), 1));
 }
