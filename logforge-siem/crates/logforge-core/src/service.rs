@@ -1,5 +1,5 @@
 use crate::db::{Database, DbError};
-use crate::ingest::{parse_line, IngestError};
+use crate::ingest::IngestError;
 use crate::model::{Alert, DetectionRule, LogEvent, OverviewCounts, SavedQuery, Source};
 use chrono::Utc;
 use rusqlite::params;
@@ -91,7 +91,7 @@ impl SiemService {
         summary.dropped = dropped;
 
         for raw in to_process {
-            let parsed = match parse_line(raw) {
+            let parsed = match crate::parser_suite::parse_with_format(raw, crate::parser_suite::LogFormat::Auto) {
                 Ok(ev) => ev,
                 Err(IngestError::Empty) => continue,
                 Err(_) => {
