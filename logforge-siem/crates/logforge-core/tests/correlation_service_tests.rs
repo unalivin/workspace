@@ -15,7 +15,10 @@ fn ingested_events_drive_persistent_threshold_correlation_alerts() {
     let first_line = format!("{} host-a sshd: login failed for alice", base.to_rfc3339());
     service.ingest_lines(source, &[&first_line]).unwrap();
     assert_eq!(service.list_alerts(None).unwrap().len(), 1);
-    let second_line = format!("{} host-a sshd: login failed for bob", (base + chrono::Duration::seconds(60)).to_rfc3339());
+    let second_line = format!(
+        "{} host-a sshd: login failed for bob",
+        (base + chrono::Duration::seconds(60)).to_rfc3339()
+    );
     service.ingest_lines(source, &[&second_line]).unwrap();
     let alerts = service.list_alerts(None).unwrap();
     assert_eq!(alerts.len(), 3);
@@ -43,11 +46,17 @@ fn sequence_correlation_requires_first_then_second_pattern_on_same_key() {
         .unwrap();
     let base = chrono::Utc::now();
     let first = format!("{} host-a sshd: authentication accepted", base.to_rfc3339());
-    let wrong_host = format!("{} host-b sudo: privilege escalated", (base + chrono::Duration::seconds(30)).to_rfc3339());
+    let wrong_host = format!(
+        "{} host-b sudo: privilege escalated",
+        (base + chrono::Duration::seconds(30)).to_rfc3339()
+    );
     service.ingest_lines(source, &[&first]).unwrap();
     service.ingest_lines(source, &[&wrong_host]).unwrap();
     assert!(service.list_alerts(None).unwrap().is_empty());
-    let second = format!("{} host-a sudo: privilege escalated", (base + chrono::Duration::seconds(60)).to_rfc3339());
+    let second = format!(
+        "{} host-a sudo: privilege escalated",
+        (base + chrono::Duration::seconds(60)).to_rfc3339()
+    );
     service.ingest_lines(source, &[&second]).unwrap();
     let alerts = service.list_alerts(None).unwrap();
     assert_eq!(alerts.len(), 1);
