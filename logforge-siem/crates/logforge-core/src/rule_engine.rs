@@ -1,6 +1,6 @@
 use crate::model::DetectionRule;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct RuleMatch<'a> {
     pub rule: &'a DetectionRule,
     pub matched_pattern: String,
@@ -183,9 +183,6 @@ mod tests {
         assert_eq!(validate_pattern(""), Err(PatternError::Empty));
         assert!(validate_pattern("unknown:value").is_err());
         assert!(!evaluate_rule(&rule("contains:secret", false), "secret").unwrap());
-        assert_eq!(
-            evaluate_rules(&[rule("bad:", true)], "bad"),
-            Vec::<&DetectionRule>::new()
-        );
+        assert!(evaluate_rules(&[rule("bad:", true)], "bad").is_empty());
     }
 }
