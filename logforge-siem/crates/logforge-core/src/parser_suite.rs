@@ -16,7 +16,11 @@ pub fn parse_with_format(raw: &str, format: LogFormat) -> Result<NormalizedEvent
             if raw.trim_start().starts_with("CEF:") {
                 crate::cef_parser::parse_cef_line(raw)
             } else if raw.trim_start().starts_with("<") {
-                if raw.trim_start().split_once('>').is_some_and(|(_, rest)| rest.trim_start().starts_with("1 ")) {
+                if raw
+                    .trim_start()
+                    .split_once('>')
+                    .is_some_and(|(_, rest)| rest.trim_start().starts_with("1 "))
+                {
                     crate::syslog_rfc5424::parse_rfc5424(raw)
                 } else {
                     let year = chrono::Utc::now().year();

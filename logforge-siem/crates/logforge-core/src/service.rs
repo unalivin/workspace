@@ -410,11 +410,15 @@ mod tests {
         assert_eq!(summary.deduplicated, 1);
         assert_eq!(summary.malformed, 1);
         assert_eq!(summary.alerts_created, 1);
-        let (malformed_count, malformed_raw): (i64, String) = svc.db().conn().query_row(
-            "SELECT COUNT(*), raw_line FROM malformed_events WHERE source_id = ?1",
-            params![src_id],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        ).expect("malformed event persisted");
+        let (malformed_count, malformed_raw): (i64, String) = svc
+            .db()
+            .conn()
+            .query_row(
+                "SELECT COUNT(*), raw_line FROM malformed_events WHERE source_id = ?1",
+                params![src_id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("malformed event persisted");
         assert_eq!(malformed_count, 1);
         assert!(!malformed_raw.contains("malformed-secret"));
 
