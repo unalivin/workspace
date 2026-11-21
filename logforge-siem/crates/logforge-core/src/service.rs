@@ -183,7 +183,7 @@ impl SiemService {
             summary.received += 1;
 
             for rule in crate::rule_engine::evaluate_rules(&rules, &parsed.message) {
-                    self.db.conn().execute(
+                self.db.conn().execute(
                         "INSERT INTO alerts (rule_id, event_id, severity, status, title, case_ref, created_at, updated_at)
                          VALUES (?1, ?2, ?3, 'open', ?4, '', ?5, ?5)",
                         params![

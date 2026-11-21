@@ -17,7 +17,9 @@ impl std::fmt::Display for PatternError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Empty => formatter.write_str("rule pattern cannot be empty"),
-            Self::UnknownOperator(operator) => write!(formatter, "unknown rule operator: {operator}"),
+            Self::UnknownOperator(operator) => {
+                write!(formatter, "unknown rule operator: {operator}")
+            }
             Self::EmptyOperand => formatter.write_str("rule expression contains an empty operand"),
         }
     }
@@ -94,7 +96,10 @@ fn parse_predicate(pattern: &str) -> Result<Predicate, PatternError> {
             if parts.len() < 2 || parts.iter().any(|part| part.trim().is_empty()) {
                 return Err(PatternError::EmptyOperand);
             }
-            let predicates = parts.iter().map(|part| parse_predicate(part)).collect::<Result<Vec<_>, _>>()?;
+            let predicates = parts
+                .iter()
+                .map(|part| parse_predicate(part))
+                .collect::<Result<Vec<_>, _>>()?;
             if operator.eq_ignore_ascii_case("all") {
                 Ok(Predicate::All(predicates))
             } else {
@@ -128,10 +133,13 @@ pub fn evaluate_with_reasons<'a>(rules: &'a [DetectionRule], message: &str) -> V
     rules
         .iter()
         .filter_map(|rule| {
-            evaluate_rule(rule, message).ok().filter(|matched| *matched).map(|_| RuleMatch {
-                rule,
-                matched_pattern: rule.pattern.clone(),
-            })
+            evaluate_rule(rule, message)
+                .ok()
+                .filter(|matched| *matched)
+                .map(|_| RuleMatch {
+                    rule,
+                    matched_pattern: rule.pattern.clone(),
+                })
         })
         .collect()
 }
@@ -157,8 +165,16 @@ mod tests {
         assert!(evaluate_rule(&rule("starts:login", true), "Login from host").unwrap());
         assert!(evaluate_rule(&rule("ends:denied", true), "request denied").unwrap());
         assert!(evaluate_rule(&rule("equals:HEALTH", true), "health").unwrap());
-        assert!(evaluate_rule(&rule("all:contains:login&contains:denied", true), "login denied").unwrap());
-        assert!(evaluate_rule(&rule("any:contains:login&contains:blocked", true), "login denied").unwrap());
+        assert!(evaluate_rule(
+            &rule("all:contains:login&contains:denied", true),
+            "login denied"
+        )
+        .unwrap());
+        assert!(evaluate_rule(
+            &rule("any:contains:login&contains:blocked", true),
+            "login denied"
+        )
+        .unwrap());
         assert!(!evaluate_rule(&rule("not:contains:allowed", true), "login denied").unwrap());
     }
 
@@ -167,6 +183,9 @@ mod tests {
         assert_eq!(validate_pattern(""), Err(PatternError::Empty));
         assert!(validate_pattern("unknown:value").is_err());
         assert!(!evaluate_rule(&rule("contains:secret", false), "secret").unwrap());
-        assert_eq!(evaluate_rules(&[rule("bad:", true)], "bad"), Vec::<&DetectionRule>::new());
+        assert_eq!(
+            evaluate_rules(&[rule("bad:", true)], "bad"),
+            Vec::<&DetectionRule>::new()
+        );
     }
 }
