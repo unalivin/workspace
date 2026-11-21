@@ -136,9 +136,11 @@ pub fn event_volume_report(
         format!(" WHERE {}", conditions.join(" AND "))
     };
     let total_sql = format!("SELECT COUNT(*) FROM events e{source_join}{where_sql}");
-    let total_events: i64 = db
-        .conn()
-        .query_row(&total_sql, rusqlite::params_from_iter(values.iter()), |row| row.get(0))?;
+    let total_events: i64 = db.conn().query_row(
+        &total_sql,
+        rusqlite::params_from_iter(values.iter()),
+        |row| row.get(0),
+    )?;
 
     let limit_index = values.len() + 1;
     let buckets_sql = format!(
