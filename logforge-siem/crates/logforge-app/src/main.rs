@@ -83,6 +83,10 @@ enum Commands {
         #[arg(long)]
         status: Option<String>,
     },
+    Case {
+        #[command(subcommand)]
+        action: CaseAction,
+    },
     Sources,
     Rules,
     Ingest {
@@ -111,6 +115,18 @@ enum Commands {
         #[arg(long, default_value = "json")]
         format: String,
     },
+}
+
+#[derive(Subcommand)]
+enum CaseAction {
+    List { #[arg(long)] status: Option<String> },
+    Show { id: i64 },
+    Create { title: String, #[arg(long, default_value = "")] description: String, #[arg(long, default_value = "medium")] priority: String, #[arg(long, default_value = "")] assignee: String },
+    Status { id: i64, status: String },
+    Assign { id: i64, assignee: String },
+    Note { id: i64, author: String, body: String },
+    LinkAlert { id: i64, alert_id: i64 },
+    UnlinkAlert { id: i64, alert_id: i64 },
 }
 
 #[derive(Subcommand)]
@@ -158,6 +174,30 @@ fn main() {
             Commands::Alerts { status } => {
                 let alerts = service.list_alerts(status.as_deref()).expect("alerts");
                 println!("{}", serde_json::to_string_pretty(&alerts).expect("json"));
+            }
+            Commands::Case { action } => {
+                let manager = logforge_core::cases::CaseManager::new(service.db());
+                match action {
+                    CaseAction::List { status } => {
+                        for case in manager.list(status.as_deref()).expect("cases") {
+                            println!("#{} [{}] {} | priority={} assignee={} alerts={}", case.id, case.status, case.title, case.priority, case.assignee, case.alert_count);
+                        }
+                    }
+                    CaseAction::Show { id } => {
+                        let case = manager.get(id).expect("case").expect("case not found");
+                        println!("#{} {}\\nstatus={} priority={} assignee={} alerts={}\\n{}", case.id, case.title, case.status, case.priority, case.assignee, case.alert_count, case.description);
+                        for note in manager.notes(id).expect("notes") { println!("[{}] {}: {}", note.created_at, note.author, note.body); }
+                    }
+                    CaseAction::Create { title, description, priority, assignee } => {
+                        let id = manager.create(&title, &description, &priority, &assignee).expect("create case");
+                        println!("case_id={id}");
+                    }
+                    CaseAction::Status { id, status } => println!("updated={}", manager.set_status(id, &status).expect("update status")),
+                    CaseAction::Assign { id, assignee } => println!("updated={}", manager.assign(id, &assignee).expect("assign case")),
+                    CaseAction::Note { id, author, body } => println!("note_id={}", manager.add_note(id, &author, &body).expect("add note")),
+                    CaseAction::LinkAlert { id, alert_id } => { manager.link_alert(id, alert_id).expect("link alert"); println!("linked=true"); }
+                    CaseAction::UnlinkAlert { id, alert_id } => println!("unlinked={}", manager.unlink_alert(id, alert_id).expect("unlink alert")),
+                }
             }
             Commands::Sources => {
                 let sources = service.list_sources().expect("sources");

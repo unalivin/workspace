@@ -10,6 +10,7 @@ pub enum GuiTab {
     Schema,
     Detections,
     Alerts,
+    Cases,
     Retention,
     Audit,
     About,
@@ -58,6 +59,7 @@ impl eframe::App for LogForgeApp {
                 ui.selectable_value(&mut self.active_tab, GuiTab::Schema, "Schema");
                 ui.selectable_value(&mut self.active_tab, GuiTab::Detections, "Detections");
                 ui.selectable_value(&mut self.active_tab, GuiTab::Alerts, "Alerts");
+                ui.selectable_value(&mut self.active_tab, GuiTab::Cases, "Cases");
                 ui.selectable_value(&mut self.active_tab, GuiTab::Retention, "Retention");
                 ui.selectable_value(&mut self.active_tab, GuiTab::Audit, "Audit");
                 ui.separator();
@@ -126,6 +128,22 @@ impl eframe::App for LogForgeApp {
                         for r in rules {
                             ui.label(format!("{} [{}] pattern={}", r.name, r.severity, r.pattern));
                         }
+                    }
+                }
+                GuiTab::Cases => {
+                    ui.heading("Investigation Cases");
+                    for case in logforge_core::cases::CaseManager::new(self.service.db()).list(None).unwrap_or_default() {
+                        ui.group(|ui| {
+                            ui.horizontal(|ui| {
+                                ui.strong(format!("#{} {}", case.id, case.title));
+                                ui.label(format!("{} · {} · {} alerts", case.status, case.priority, case.alert_count));
+                            });
+                            ui.label(format!("Assignee: {}", if case.assignee.is_empty() { "unassigned" } else { &case.assignee }));
+                            ui.label(&case.description);
+                            if let Ok(notes) = logforge_core::cases::CaseManager::new(self.service.db()).notes(case.id) {
+                                for note in notes { ui.label(format!("{}: {}", note.author, note.body)); }
+                            }
+                        });
                     }
                 }
                 GuiTab::Retention => {

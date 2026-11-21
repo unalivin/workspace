@@ -23,6 +23,7 @@ pub enum TuiTab {
     Schema,
     Detections,
     Alerts,
+    Cases,
     Retention,
     Audit,
     About,
@@ -39,6 +40,7 @@ impl TuiTab {
             TuiTab::Schema,
             TuiTab::Detections,
             TuiTab::Alerts,
+            TuiTab::Cases,
             TuiTab::Retention,
             TuiTab::Audit,
             TuiTab::About,
@@ -55,6 +57,7 @@ impl TuiTab {
             TuiTab::Schema => "5 Schema",
             TuiTab::Detections => "6 Detections",
             TuiTab::Alerts => "7 Alerts",
+            TuiTab::Cases => "c Cases",
             TuiTab::Retention => "8 Retention",
             TuiTab::Audit => "9 Audit",
             TuiTab::About => "0 About",
@@ -158,6 +161,13 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                     .map(|r| format!("{} [{}] pattern={}", r.name, r.severity, r.pattern))
                     .collect::<Vec<_>>()
                     .join("\n"),
+                TuiTab::Cases => logforge_core::cases::CaseManager::new(service.db())
+                    .list(None)
+                    .unwrap_or_default()
+                    .iter()
+                    .map(|case| format!("#{} [{}] {} — {} alerts, {}", case.id, case.status, case.title, case.alert_count, case.assignee))
+                    .collect::<Vec<_>>()
+                    .join("\\n"),
                 TuiTab::Retention => {
                     let pol = logforge_core::retention::get_default_policy(service.db());
                     let metrics = logforge_core::storage_metrics::collect_storage_metrics(service.db());
@@ -206,6 +216,7 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                     KeyCode::Char('5') => active_tab = TuiTab::Schema,
                     KeyCode::Char('6') => active_tab = TuiTab::Detections,
                     KeyCode::Char('7') => active_tab = TuiTab::Alerts,
+                    KeyCode::Char('c') => active_tab = TuiTab::Cases,
                     KeyCode::Char('8') => active_tab = TuiTab::Retention,
                     KeyCode::Char('9') => active_tab = TuiTab::Audit,
                     KeyCode::Char('0') => active_tab = TuiTab::About,

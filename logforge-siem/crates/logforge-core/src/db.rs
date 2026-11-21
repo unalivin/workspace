@@ -35,6 +35,10 @@ const MIGRATIONS: &[Migration] = &[
         version: 5,
         sql: include_str!("../../../migrations/0005_retention_bytes.sql"),
     },
+    Migration {
+        version: 6,
+        sql: include_str!("../../../migrations/0006_cases.sql"),
+    },
 ];
 
 pub struct Database {
@@ -117,7 +121,7 @@ mod tests {
             .conn()
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .expect("user_version");
-        assert_eq!(version, 5);
+        assert_eq!(version, 6);
 
         let integrity: String = db
             .conn()
