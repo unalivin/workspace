@@ -1,5 +1,7 @@
 pub mod category_colors;
+pub mod correlation;
 pub mod db;
+pub mod diagnostics;
 pub mod export;
 pub mod ingest;
 pub mod model;
