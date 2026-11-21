@@ -7,8 +7,8 @@
 |---|---|---|---|---|
 | logforge-siem | rust | sonix-devs | Complete | Extract Rust template to templates/rust/, then start netauto |
 | netauto | go | sonix-devs | Complete | Extract Go template to templates/go/, then start vulntrack |
-| vulntrack | go | sonix-devs | Not started | Create requirements, acceptance criteria, and threat model |
-| forensicflow | rust | sonix-devs | Not started | Waiting on vulntrack |
+| vulntrack | go | sonix-devs | Complete | Done |
+| forensicflow | rust | sonix-devs | Not started | Create requirements, acceptance criteria, and threat model |
 | ipam-pro | go | sonix-devs | Not started | Waiting on forensicflow |
 | securebaseline | cpp | sonix-devs | Not started | Waiting on ipam-pro |
 | netgraph | cpp | sonix-devs | Not started | Waiting on securebaseline |
