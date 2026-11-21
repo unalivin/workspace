@@ -31,12 +31,7 @@ fn bulk_update_only_changes_alerts_matching_every_selector() {
 fn bulk_update_rejects_unbounded_and_invalid_selection() {
     let db = Database::open_in_memory().expect("database");
     let service = SiemService::new(db);
-    assert!(bulk_update_alerts(
-        service.db(),
-        &AlertBulkFilter::default(),
-        "resolved"
-    )
-    .is_err());
+    assert!(bulk_update_alerts(service.db(), &AlertBulkFilter::default(), "resolved").is_err());
     assert!(bulk_update_alerts(
         service.db(),
         &AlertBulkFilter {

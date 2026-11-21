@@ -66,9 +66,11 @@ pub fn bulk_update_alerts(
     {
         return Err(Box::new(AlertWorkflowError::InvalidStatus));
     }
-    if filter.severity.as_deref().is_some_and(|severity| {
-        !["debug", "info", "warn", "error", "critical"].contains(&severity)
-    }) {
+    if filter
+        .severity
+        .as_deref()
+        .is_some_and(|severity| !["debug", "info", "warn", "error", "critical"].contains(&severity))
+    {
         return Err(Box::new(AlertWorkflowError::InvalidSeverity));
     }
     let parse = |value: &Option<String>| -> Result<Option<chrono::DateTime<chrono::FixedOffset>>, AlertWorkflowError> {
@@ -108,18 +110,26 @@ pub fn bulk_update_alerts(
         conditions.push(format!("severity = ?{}", values.len()));
     }
     if let Some(after) = created_after {
-        values.push(rusqlite::types::Value::Text(after.with_timezone(&Utc).to_rfc3339()));
+        values.push(rusqlite::types::Value::Text(
+            after.with_timezone(&Utc).to_rfc3339(),
+        ));
         conditions.push(format!("created_at >= ?{}", values.len()));
     }
     if let Some(before) = created_before {
-        values.push(rusqlite::types::Value::Text(before.with_timezone(&Utc).to_rfc3339()));
+        values.push(rusqlite::types::Value::Text(
+            before.with_timezone(&Utc).to_rfc3339(),
+        ));
         conditions.push(format!("created_at < ?{}", values.len()));
     }
     if !filter.alert_ids.is_empty() {
-        let slots = filter.alert_ids.iter().map(|id| {
-            values.push(rusqlite::types::Value::Integer(*id));
-            format!("?{}", values.len())
-        }).collect::<Vec<_>>();
+        let slots = filter
+            .alert_ids
+            .iter()
+            .map(|id| {
+                values.push(rusqlite::types::Value::Integer(*id));
+                format!("?{}", values.len())
+            })
+            .collect::<Vec<_>>();
         conditions.push(format!("id IN ({})", slots.join(", ")));
     }
     let now = Utc::now().to_rfc3339();
