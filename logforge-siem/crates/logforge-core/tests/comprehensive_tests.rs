@@ -10,7 +10,7 @@ fn test_diagnostics_report_fields() {
     let report = collect_diagnostics(&db).expect("diag");
     assert_eq!(report.app_name, "LogForge-SIEM");
     assert_eq!(report.version, "0.1.0-dev");
-    assert_eq!(report.schema_version, 2);
+    assert_eq!(report.schema_version, 3);
 }
 
 #[test]
