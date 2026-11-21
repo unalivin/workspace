@@ -317,17 +317,15 @@ impl SiemService {
             summary.received += 1;
 
             for rule in crate::rule_engine::evaluate_rules(&rules, &parsed.message) {
+                let title = format!("{}: {}", rule.name, parsed.host);
                 self.db.conn().execute(
-                        "INSERT INTO alerts (rule_id, event_id, severity, status, title, case_ref, created_at, updated_at)
-                         VALUES (?1, ?2, ?3, 'open', ?4, '', ?5, ?5)",
-                        params![
-                            rule.id,
-                            event_id,
-                            rule.severity,
-                            format!("{}: {}", rule.name, parsed.host),
-                            now,
-                        ],
-                    )?;
+                    "INSERT INTO alerts (rule_id, event_id, severity, status, title, case_ref, created_at, updated_at)
+                     VALUES (?1, ?2, ?3, 'open', ?4, '', ?5, ?5)",
+                    params![rule.id, event_id, rule.severity, title, now],
+                )?;
+                self.queue_alert_notification(
+                    self.db.conn().last_insert_rowid(), event_id, rule.severity, &title, &now,
+                )?;
                 summary.alerts_created += 1;
             }
             summary.alerts_created += self.evaluate_correlations(
@@ -355,6 +353,26 @@ impl SiemService {
         )?;
 
         Ok(summary)
+    }
+
+    fn queue_alert_notification(
+        &self,
+        alert_id: i64,
+        event_id: i64,
+        severity: &str,
+        title: &str,
+        now_utc: &str,
+    ) -> Result<(), DbError> {
+        let payload = serde_json::json!({
+            "alert_id": alert_id,
+            "event_id": event_id,
+            "severity": severity,
+            "title": title,
+        });
+        let _ = crate::notifier::enqueue_alert_notification(
+            &self.db, alert_id, "alert.created", severity, &payload, now_utc,
+        )?;
+        Ok(())
     }
 
     pub fn add_threshold_correlation(
@@ -495,10 +513,14 @@ impl SiemService {
                 )?
             };
             if result.emitted {
+                let title = format!("Correlation: {name} on {key}");
                 self.db.conn().execute(
                     "INSERT INTO alerts (rule_id, event_id, severity, status, title, case_ref, created_at, updated_at)
                      VALUES (?1, ?2, ?3, 'open', ?4, '', ?5, ?5)",
-                    params![rule_id, event_id, severity, format!("Correlation: {name} on {key}"), now],
+                    params![rule_id, event_id, severity, title, now],
+                )?;
+                self.queue_alert_notification(
+                    self.db.conn().last_insert_rowid(), event_id, &severity, &title, &now,
                 )?;
                 created += 1;
             }
