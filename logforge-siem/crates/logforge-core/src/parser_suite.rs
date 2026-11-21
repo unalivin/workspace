@@ -107,7 +107,7 @@ pub fn validate_reader<R: BufRead>(
                 report.parsed_lines += 1;
                 *report
                     .severity_counts
-                    .entry(event.severity.to_string())
+                    .entry(event.severity.as_str().to_string())
                     .or_default() += 1;
             }
             Err(error) => {

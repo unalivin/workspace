@@ -156,6 +156,17 @@ enum Commands {
         limit: usize,
     },
     Diagnostics,
+    RetentionSet {
+        name: String,
+        #[arg(long)]
+        days: i64,
+        #[arg(long)]
+        events: i64,
+        #[arg(long)]
+        bytes: i64,
+        #[arg(long)]
+        disabled: bool,
+    },
     Retention {
         #[arg(long)]
         prune: Option<i64>,
@@ -555,6 +566,25 @@ fn main() {
                 let diag = logforge_core::diagnostics::collect_diagnostics(service.db())
                     .expect("diagnostics");
                 println!("{}", serde_json::to_string_pretty(&diag).expect("json"));
+            }
+            Commands::RetentionSet {
+                name,
+                days,
+                events,
+                bytes,
+                disabled,
+            } => {
+                let changed = logforge_core::retention::update_default_policy(
+                    service.db(),
+                    &name,
+                    days,
+                    events,
+                    bytes,
+                    !disabled,
+                    &chrono::Utc::now().to_rfc3339(),
+                )
+                .expect("update retention policy");
+                println!("updated={changed}");
             }
             Commands::Retention {
                 prune,

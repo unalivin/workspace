@@ -77,7 +77,7 @@ pub fn verify_case_bundle(bundle: &CaseExportBundle) -> Result<bool, serde_json:
 }
 
 fn compute_bundle_hash(bundle: &CaseExportBundle) -> Result<String, serde_json::Error> {
-    let canonical = serde_json::to_vec((
+    let canonical = serde_json::to_vec(&(
         &bundle.case,
         &bundle.notes,
         &bundle.alerts,

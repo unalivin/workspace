@@ -103,3 +103,50 @@ pub fn prune_excess_events(db: &Database, max_events: i64) -> Result<usize, DbEr
         params![to_delete],
     ).map_err(DbError::from)
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RetentionPolicyError {
+    EmptyName,
+    InvalidLimits,
+}
+
+impl std::fmt::Display for RetentionPolicyError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::EmptyName => formatter.write_str("retention policy name must not be empty"),
+            Self::InvalidLimits => formatter.write_str("retention limits must be positive and bounded"),
+        }
+    }
+}
+
+impl std::error::Error for RetentionPolicyError {}
+
+/// Updates the default retention policy with validated, bounded resource limits.
+pub fn update_default_policy(
+    db: &Database,
+    name: &str,
+    max_days: i64,
+    max_events: i64,
+    max_bytes: i64,
+    enabled: bool,
+    now_utc: &str,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    let name = name.trim();
+    if name.is_empty() {
+        return Err(Box::new(RetentionPolicyError::EmptyName));
+    }
+    if !(1..=36_500).contains(&max_days)
+        || !(1..=1_000_000_000).contains(&max_events)
+        || !(1..=1_i64 << 50).contains(&max_bytes)
+        || chrono::DateTime::parse_from_rfc3339(now_utc).is_err()
+    {
+        return Err(Box::new(RetentionPolicyError::InvalidLimits));
+    }
+    let updated = db.conn().execute(
+        "UPDATE retention_policies \
+         SET name = ?1, max_days = ?2, max_events = ?3, max_bytes = ?4, \
+             enabled = ?5, updated_at = ?6 WHERE id = 1",
+        rusqlite::params![name, max_days, max_events, max_bytes, i64::from(enabled), now_utc],
+    )?;
+    Ok(updated != 0)
+}
