@@ -82,7 +82,7 @@ pub struct PendingNotification {
     pub attempt_count: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct OutboxCounts {
     pub queued: i64,
     pub claimed: i64,
