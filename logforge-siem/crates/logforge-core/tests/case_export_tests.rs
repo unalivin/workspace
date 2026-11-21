@@ -1,4 +1,4 @@
-use logforge_core::case_export::export_case_bundle;
+use logforge_core::case_export::{export_case_bundle, verify_case_bundle};
 use logforge_core::cases::CaseManager;
 use logforge_core::{Database, SiemService};
 
@@ -30,6 +30,11 @@ fn case_bundle_contains_related_alerts_events_notes_and_audit_status() {
     assert_eq!(bundle.notes.len(), 1);
     assert!(bundle.audit_chain.valid);
     assert_eq!(bundle.case.id, case_id);
+    assert_eq!(bundle.content_sha256.len(), 64);
+    assert!(verify_case_bundle(&bundle).expect("verify package hash"));
+    let mut tampered = bundle.clone();
+    tampered.case.title.push_str(" changed");
+    assert!(!verify_case_bundle(&tampered).expect("detect tampering"));
 }
 
 #[test]

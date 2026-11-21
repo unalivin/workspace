@@ -124,6 +124,14 @@ enum Commands {
         action: NotifierAction,
     },
     AuditVerify,
+    AuditLog {
+        #[arg(long)]
+        actor: Option<String>,
+        #[arg(long)]
+        action: Option<String>,
+        #[arg(long, default_value_t = 100)]
+        limit: usize,
+    },
     Diagnostics,
     Retention {
         #[arg(long)]
@@ -460,6 +468,23 @@ fn main() {
                 let res = logforge_core::audit_verify::verify_audit_chain(service.db())
                     .expect("verify audit");
                 println!("entries={} valid={}", res.total_entries, res.valid);
+            }
+            Commands::AuditLog {
+                actor,
+                action,
+                limit,
+            } => {
+                let entries = logforge_core::audit_verify::query_audit_log(
+                    service.db(),
+                    &logforge_core::audit_verify::AuditFilter {
+                        actor,
+                        action,
+                        limit,
+                        ..logforge_core::audit_verify::AuditFilter::default()
+                    },
+                )
+                .expect("audit log");
+                println!("{}", serde_json::to_string_pretty(&entries).expect("json"));
             }
             Commands::Diagnostics => {
                 let diag = logforge_core::diagnostics::collect_diagnostics(service.db())
