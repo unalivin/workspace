@@ -205,7 +205,11 @@ pub fn alert_severity_matrix(db: &Database) -> Result<Vec<AlertSeverityCount>, D
 }
 
 /// Counts alerts opened in the half-open UTC interval [start, end).
-pub fn count_alerts_in_range(db: &Database, start_utc: &str, end_utc: &str) -> Result<i64, DbError> {
+pub fn count_alerts_in_range(
+    db: &Database,
+    start_utc: &str,
+    end_utc: &str,
+) -> Result<i64, DbError> {
     let start = chrono::DateTime::parse_from_rfc3339(start_utc)
         .map_err(|_| DbError::Sqlite(rusqlite::Error::InvalidQuery))?;
     let end = chrono::DateTime::parse_from_rfc3339(end_utc)
