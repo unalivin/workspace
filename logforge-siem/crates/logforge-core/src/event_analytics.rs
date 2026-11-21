@@ -149,9 +149,13 @@ fn top_values(db: &Database, column: &str, limit: usize) -> Result<Vec<ValueCoun
     };
     let _ = alert_join;
     let mut statement = db.conn().prepare(query)?;
-    let rows = statement.query_map(params![limit.clamp(1, 100) as i64], |row| Ok(ValueCount {
-        value: row.get(0)?, event_count: row.get(1)?, alert_count: row.get(2)?,
-    }))?;
+    let rows = statement.query_map(params![limit.clamp(1, 100) as i64], |row| {
+        Ok(ValueCount {
+            value: row.get(0)?,
+            event_count: row.get(1)?,
+            alert_count: row.get(2)?,
+        })
+    })?;
     rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
 }
 
@@ -163,9 +167,13 @@ fn severity_distribution(db: &Database) -> Result<Vec<SeverityCount>, DbError> {
          LEFT JOIN (SELECT severity, COUNT(*) alert_count FROM alerts WHERE status != 'resolved' GROUP BY severity) a ON a.severity = levels.severity
          ORDER BY CASE levels.severity WHEN 'critical' THEN 0 WHEN 'error' THEN 1 WHEN 'warn' THEN 2 WHEN 'info' THEN 3 ELSE 4 END",
     )?;
-    let rows = statement.query_map([], |row| Ok(SeverityCount {
-        severity: row.get(0)?, event_count: row.get(1)?, alert_count: row.get(2)?,
-    }))?;
+    let rows = statement.query_map([], |row| {
+        Ok(SeverityCount {
+            severity: row.get(0)?,
+            event_count: row.get(1)?,
+            alert_count: row.get(2)?,
+        })
+    })?;
     rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
 }
 
@@ -174,12 +182,20 @@ fn latency(db: &Database) -> Result<IngestionLatency, DbError> {
         "SELECT CAST((julianday(received_at) - julianday(timestamp_utc)) * 86400000 AS INTEGER) AS delay
          FROM events WHERE received_at >= timestamp_utc ORDER BY delay",
     )?;
-    let values = statement.query_map([], |row| row.get::<_, i64>(0))?
+    let values = statement
+        .query_map([], |row| row.get::<_, i64>(0))?
         .collect::<Result<Vec<_>, _>>()?;
     if values.is_empty() {
-        return Ok(IngestionLatency { sample_count: 0, average_millis: 0, p95_millis: 0, max_millis: 0 });
+        return Ok(IngestionLatency {
+            sample_count: 0,
+            average_millis: 0,
+            p95_millis: 0,
+            max_millis: 0,
+        });
     }
-    let sum = values.iter().fold(0i128, |sum, value| sum + i128::from(*value));
+    let sum = values
+        .iter()
+        .fold(0i128, |sum, value| sum + i128::from(*value));
     let p95_index = ((values.len() - 1) * 95).div_ceil(100);
     Ok(IngestionLatency {
         sample_count: values.len() as i64,
