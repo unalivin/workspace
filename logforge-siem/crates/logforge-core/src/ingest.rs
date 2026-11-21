@@ -69,9 +69,11 @@ pub fn redact_secrets(input: &str) -> (String, bool) {
 pub fn normalize_timestamp(ts: Option<&str>) -> Result<String, IngestError> {
     match ts {
         None | Some("") => Ok(Utc::now().to_rfc3339()),
-        Some(raw) => crate::timestamp::parse_timestamp(raw, &crate::timestamp::TimestampContext::default())
-            .map(|parsed| parsed.timestamp_utc.to_rfc3339())
-            .map_err(|_| IngestError::Malformed(format!("invalid timestamp: {raw}"))),
+        Some(raw) => {
+            crate::timestamp::parse_timestamp(raw, &crate::timestamp::TimestampContext::default())
+                .map(|parsed| parsed.timestamp_utc.to_rfc3339())
+                .map_err(|_| IngestError::Malformed(format!("invalid timestamp: {raw}")))
+        }
     }
 }
 

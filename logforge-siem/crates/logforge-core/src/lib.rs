@@ -28,8 +28,8 @@ pub mod storage_metrics;
 pub mod syslog_rfc5424;
 pub mod theme;
 pub mod time_normalize;
-pub mod timestamp;
 pub mod time_series;
+pub mod timestamp;
 
 pub use db::{Database, DbError, Migration};
 pub use ingest::{parse_line, IngestError, NormalizedEvent};
