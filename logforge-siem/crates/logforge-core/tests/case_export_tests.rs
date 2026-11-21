@@ -9,7 +9,12 @@ fn case_bundle_contains_related_alerts_events_notes_and_audit_status() {
     service.seed_demo_data().expect("seed");
     let manager = CaseManager::new(service.db());
     let case_id = manager
-        .create("SSH investigation", "Review repeated login failures", "high", "analyst")
+        .create(
+            "SSH investigation",
+            "Review repeated login failures",
+            "high",
+            "analyst",
+        )
         .expect("case");
     let alert = service.list_alerts(None).expect("alerts").remove(0);
     manager.link_alert(case_id, alert.id).expect("link alert");
