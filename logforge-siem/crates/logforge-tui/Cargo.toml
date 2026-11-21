@@ -6,6 +6,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+chrono = "0.4"
 crossterm = "0.28"
 logforge-core = { path = "../logforge-core" }
 ratatui = "0.29"

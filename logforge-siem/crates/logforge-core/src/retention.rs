@@ -6,81 +6,62 @@ pub struct RetentionPolicy {
     pub name: String,
     pub max_days: i64,
     pub max_events: i64,
+    pub max_bytes: i64,
     pub enabled: bool,
-}
-
-pub fn get_default_policy(db: &Database) -> Result<RetentionPolicy, DbError> {
-    db.conn()
-        .query_row(
-            "SELECT name, max_days, max_events, enabled FROM retention_policies WHERE id = 1",
-            [],
-            |r| {
-                Ok(RetentionPolicy {
-                    name: r.get(0)?,
-                    max_days: r.get(1)?,
-                    max_events: r.get(2)?,
-                    enabled: r.get::<_, i64>(3)? != 0,
-                })
-            },
-        )
-        .map_err(DbError::from)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RetentionPlan {
     pub event_ids: Vec<i64>,
     pub count: usize,
+    pub bytes_to_free: i64,
 }
 
-pub fn plan_retention(
-    db: &Database,
-    max_days: i64,
-    max_events: i64,
-    now_utc: &str,
-) -> Result<RetentionPlan, DbError> {
-    let age_cutoff = chrono::DateTime::parse_from_rfc3339(now_utc)
+pub fn get_default_policy(db: &Database) -> Result<RetentionPolicy, DbError> {
+    db.conn().query_row(
+        "SELECT name, max_days, max_events, max_bytes, enabled FROM retention_policies WHERE id = 1",
+        [],
+        |row| Ok(RetentionPolicy {
+            name: row.get(0)?,
+            max_days: row.get(1)?,
+            max_events: row.get(2)?,
+            max_bytes: row.get(3)?,
+            enabled: row.get::<_, i64>(4)? != 0,
+        }),
+    ).map_err(DbError::from)
+}
+
+pub fn plan_retention(db: &Database, max_days: i64, max_events: i64, max_bytes: i64, now_utc: &str) -> Result<RetentionPlan, DbError> {
+    let now = chrono::DateTime::parse_from_rfc3339(now_utc)
         .map_err(|_| DbError::Sqlite(rusqlite::Error::InvalidQuery))?
-        .with_timezone(&chrono::Utc)
-        - chrono::Duration::days(max_days.max(0));
-    let cutoff = age_cutoff.to_rfc3339();
+        .with_timezone(&chrono::Utc);
+    let cutoff = now - chrono::Duration::days(max_days.max(0));
     let mut statement = db.conn().prepare(
-        "SELECT id FROM events WHERE timestamp_utc < ?1 ORDER BY timestamp_utc ASC, id ASC",
+        "SELECT id, timestamp_utc, length(raw_line) + length(message) + length(fields_json) FROM events ORDER BY timestamp_utc DESC, id DESC",
     )?;
-    let old = statement
-        .query_map(params![cutoff], |row| row.get::<_, i64>(0))?
-        .collect::<Result<Vec<_>, _>>()?;
-    let mut keep = std::collections::HashSet::new();
-    if max_events > 0 {
-        let mut stmt = db
-            .conn()
-            .prepare("SELECT id FROM events ORDER BY timestamp_utc DESC, id DESC LIMIT ?1")?;
-        for id in stmt.query_map(params![max_events], |row| row.get::<_, i64>(0))? {
-            keep.insert(id?);
+    let rows = statement.query_map([], |row| Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?, row.get::<_, i64>(2)?)))?;
+    let mut kept_count = 0i64;
+    let mut kept_bytes = 0i64;
+    let mut event_ids = Vec::new();
+    let mut bytes_to_free = 0i64;
+    for row in rows {
+        let (id, timestamp, bytes) = row?;
+        let event_time = chrono::DateTime::parse_from_rfc3339(&timestamp)
+            .map_err(|_| DbError::Sqlite(rusqlite::Error::InvalidQuery))?
+            .with_timezone(&chrono::Utc);
+        let within_age = event_time >= cutoff;
+        let within_count = kept_count < max_events.max(0);
+        let within_size = bytes >= 0 && kept_bytes.saturating_add(bytes) <= max_bytes.max(0);
+        if within_age && within_count && within_size {
+            kept_count += 1;
+            kept_bytes = kept_bytes.saturating_add(bytes);
+        } else {
+            event_ids.push(id);
+            bytes_to_free = bytes_to_free.saturating_add(bytes.max(0));
         }
     }
-    let mut ids: Vec<i64> = old.into_iter().filter(|id| !keep.contains(id)).collect();
-    let total: i64 = db
-        .conn()
-        .query_row("SELECT COUNT(*) FROM events", [], |row| row.get(0))?;
-    if total - ids.len() as i64 > max_events.max(0) {
-        let mut stmt = db
-            .conn()
-            .prepare("SELECT id FROM events ORDER BY timestamp_utc ASC, id ASC")?;
-        for id in stmt.query_map([], |row| row.get::<_, i64>(0))? {
-            let id = id?;
-            if ids.len() as i64 >= total - max_events.max(0) {
-                break;
-            }
-            if !keep.contains(&id) && !ids.contains(&id) {
-                ids.push(id);
-            }
-        }
-    }
-    ids.sort_unstable();
-    Ok(RetentionPlan {
-        count: ids.len(),
-        event_ids: ids,
-    })
+    event_ids.sort_unstable();
+    Ok(RetentionPlan { count: event_ids.len(), event_ids, bytes_to_free })
 }
 
 pub fn apply_retention_plan(db: &Database, plan: &RetentionPlan) -> Result<usize, DbError> {
@@ -94,16 +75,11 @@ pub fn apply_retention_plan(db: &Database, plan: &RetentionPlan) -> Result<usize
 }
 
 pub fn prune_excess_events(db: &Database, max_events: i64) -> Result<usize, DbError> {
-    let total: i64 = db
-        .conn()
-        .query_row("SELECT COUNT(*) FROM events", [], |r| r.get(0))?;
-    if total <= max_events {
-        return Ok(0);
-    }
+    let total: i64 = db.conn().query_row("SELECT COUNT(*) FROM events", [], |row| row.get(0))?;
+    if total <= max_events { return Ok(0); }
     let to_delete = total - max_events;
-    let deleted = db.conn().execute(
-        "DELETE FROM events WHERE id IN (SELECT id FROM events ORDER BY timestamp_utc ASC LIMIT ?1)",
+    db.conn().execute(
+        "DELETE FROM events WHERE id IN (SELECT id FROM events ORDER BY timestamp_utc ASC, id ASC LIMIT ?1)",
         params![to_delete],
-    )?;
-    Ok(deleted)
+    ).map_err(DbError::from)
 }

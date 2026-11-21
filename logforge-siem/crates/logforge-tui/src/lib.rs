@@ -162,10 +162,20 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                     let pol = logforge_core::retention::get_default_policy(service.db());
                     let metrics = logforge_core::storage_metrics::collect_storage_metrics(service.db());
                     match (pol, metrics) {
-                        (Ok(p), Ok(m)) => format!(
-                            "Policy: {} ({} days, max {} events)\nStorage: {} bytes ({} events, {} alerts)",
-                            p.name, p.max_days, p.max_events, m.total_bytes, m.events_count, m.alerts_count
-                        ),
+                        (Ok(p), Ok(m)) => {
+                            let plan = logforge_core::retention::plan_retention(
+                                service.db(), p.max_days, p.max_events, p.max_bytes,
+                                &chrono::Utc::now().to_rfc3339(),
+                            );
+                            match plan {
+                                Ok(plan) => format!(
+                                    "Policy: {} ({} days, max {} events, {} bytes)\nStorage: {} bytes ({} events, {} alerts)\nDry run: {} events, {} bytes would be removed\nCandidates: {}",
+                                    p.name, p.max_days, p.max_events, p.max_bytes, m.total_bytes, m.events_count, m.alerts_count, plan.count, plan.bytes_to_free,
+                                    plan.event_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ")
+                                ),
+                                Err(_) => "Retention preview unavailable.".to_string(),
+                            }
+                        }
                         _ => "Retention policy unavailable.".to_string(),
                     }
                 }

@@ -1,0 +1,1 @@
+ALTER TABLE retention_policies ADD COLUMN max_bytes INTEGER NOT NULL DEFAULT 1073741824 CHECK (max_bytes > 0);

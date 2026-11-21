@@ -103,6 +103,8 @@ enum Commands {
         #[arg(long)]
         prune: Option<i64>,
         #[arg(long)]
+        max_bytes: Option<i64>,
+        #[arg(long)]
         dry_run: bool,
     },
     Export {
@@ -219,20 +221,22 @@ fn main() {
                     .expect("diagnostics");
                 println!("{}", serde_json::to_string_pretty(&diag).expect("json"));
             }
-            Commands::Retention { prune, dry_run } => {
+            Commands::Retention { prune, max_bytes, dry_run } => {
                 let pol =
                     logforge_core::retention::get_default_policy(service.db()).expect("policy");
                 let max_events = prune.unwrap_or(pol.max_events);
+                let max_bytes = max_bytes.unwrap_or(pol.max_bytes);
                 let plan = logforge_core::retention::plan_retention(
                     service.db(),
                     pol.max_days,
                     max_events,
+                    max_bytes,
                     &chrono::Utc::now().to_rfc3339(),
                 )
                 .expect("plan");
                 println!(
-                    "policy={} max_days={} max_events={} candidates={}",
-                    pol.name, pol.max_days, max_events, plan.count
+                    "policy={} max_days={} max_events={} max_bytes={} candidates={} bytes_to_free={}",
+                    pol.name, pol.max_days, max_events, max_bytes, plan.count, plan.bytes_to_free
                 );
                 for id in &plan.event_ids {
                     println!("event_id={id}");

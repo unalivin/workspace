@@ -131,7 +131,13 @@ impl eframe::App for LogForgeApp {
                 GuiTab::Retention => {
                     ui.heading("Retention");
                     if let Ok(p) = logforge_core::retention::get_default_policy(self.service.db()) {
-                        ui.label(format!("Policy: {} ({} days, max {} events)", p.name, p.max_days, p.max_events));
+                        ui.label(format!("Policy: {} ({} days, max {} events, {} bytes)", p.name, p.max_days, p.max_events, p.max_bytes));
+                        if let Ok(plan) = logforge_core::retention::plan_retention(self.service.db(), p.max_days, p.max_events, p.max_bytes, &chrono::Utc::now().to_rfc3339()) {
+                            ui.label(format!("Dry run: {} events and {} bytes would be removed", plan.count, plan.bytes_to_free));
+                            egui::ScrollArea::vertical().max_height(220.0).show(ui, |ui| {
+                                for id in plan.event_ids { ui.label(format!("Candidate event #{id}")); }
+                            });
+                        }
                     }
                     if let Ok(m) = logforge_core::storage_metrics::collect_storage_metrics(self.service.db()) {
                         ui.label(format!("Storage: {} bytes ({} events, {} alerts)", m.total_bytes, m.events_count, m.alerts_count));
