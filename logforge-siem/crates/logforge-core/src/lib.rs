@@ -23,6 +23,7 @@ pub mod stats;
 pub mod storage_metrics;
 pub mod syslog_rfc5424;
 pub mod theme;
+pub mod time_normalize;
 pub mod time_series;
 
 pub use db::{Database, DbError, Migration};
