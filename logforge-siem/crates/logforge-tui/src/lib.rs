@@ -210,6 +210,17 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                         lines.push(format!("Received {} · accepted {} · duplicate {:.1}% · malformed {:.1}% · dropped {}", metrics.received, metrics.accepted, metrics.duplicate_rate_percent, metrics.malformed_rate_percent, metrics.dropped));
                     }
                     lines.extend(sources.iter().map(|source| format!("{} [{}] events={} critical={} errors={} last={}", source.name, if source.enabled { "enabled" } else { "disabled" }, source.total_events, source.critical_events, source.error_events, source.last_event_at.as_deref().unwrap_or("never"))));
+                    if let Ok(queue) = logforge_core::cases::case_queue_metrics(
+                        service.db(),
+                        &chrono::Utc::now().to_rfc3339(),
+                        24,
+                    ) {
+                        lines.push(format!(
+                            "Cases open={} in_progress={} closed={} overdue={} unassigned={}",
+                            queue.open_cases, queue.in_progress_cases, queue.closed_cases,
+                            queue.overdue_active, queue.unassigned_active
+                        ));
+                    }
                     lines.push("Alerts by rule:".to_string());
                     lines.extend(rules.iter().map(|rule| format!("{} total={} open={}", rule.rule_name, rule.total_alerts, rule.open_alerts)));
                     lines.join("\\n")

@@ -216,6 +216,17 @@ impl eframe::App for LogForgeApp {
                             metrics.malformed_rate_percent, metrics.dropped
                         ));
                     }
+                    if let Ok(queue) = logforge_core::cases::case_queue_metrics(
+                        self.service.db(),
+                        &chrono::Utc::now().to_rfc3339(),
+                        24,
+                    ) {
+                        ui.label(format!(
+                            "Cases: {} open · {} in progress · {} closed · {} overdue · {} unassigned",
+                            queue.open_cases, queue.in_progress_cases, queue.closed_cases,
+                            queue.overdue_active, queue.unassigned_active
+                        ));
+                    }
                     ui.separator();
                     egui::ScrollArea::vertical().show(ui, |ui| {
                         if let Ok(sources) = logforge_core::stats::source_health(self.service.db()) {
