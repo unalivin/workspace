@@ -287,14 +287,35 @@ impl SiemService {
              FROM correlation_rules cr JOIN detection_rules dr ON dr.id = cr.detection_rule_id
              WHERE cr.enabled = 1 AND dr.enabled = 1 ORDER BY cr.id",
         )?;
-        let configs = statement.query_map([], |row| Ok((
-            row.get::<_, i64>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?,
-            row.get::<_, i64>(3)?, row.get::<_, i64>(4)?, row.get::<_, String>(5)?,
-            row.get::<_, String>(6)?, row.get::<_, String>(7)?, row.get::<_, String>(8)?,
-        )))?.collect::<Result<Vec<_>, _>>()?;
+        let configs = statement
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, i64>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, i64>(3)?,
+                    row.get::<_, i64>(4)?,
+                    row.get::<_, String>(5)?,
+                    row.get::<_, String>(6)?,
+                    row.get::<_, String>(7)?,
+                    row.get::<_, String>(8)?,
+                ))
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
         drop(statement);
         let mut created = 0;
-        for (rule_id, kind, field, window, threshold, first_pattern, second_pattern, name, severity) in configs {
+        for (
+            rule_id,
+            kind,
+            field,
+            window,
+            threshold,
+            first_pattern,
+            second_pattern,
+            name,
+            severity,
+        ) in configs
+        {
             let key = match field.as_str() {
                 "host" => host,
                 "service" => service,
@@ -317,7 +338,13 @@ impl SiemService {
             let now = Utc::now().to_rfc3339();
             let result = if kind == "threshold" {
                 crate::correlation_state::evaluate_threshold(
-                    &self.db, &format!("rule:{rule_id}"), key, window, threshold as usize, &incoming, &now,
+                    &self.db,
+                    &format!("rule:{rule_id}"),
+                    key,
+                    window,
+                    threshold as usize,
+                    &incoming,
+                    &now,
                 )?
             } else {
                 crate::correlation_state::evaluate_sequence(
@@ -325,7 +352,9 @@ impl SiemService {
                     &format!("rule:{rule_id}"),
                     key,
                     crate::correlation_state::SequenceSpec {
-                        first_action: "first", second_action: "second", window_seconds: window,
+                        first_action: "first",
+                        second_action: "second",
+                        window_seconds: window,
                     },
                     &incoming,
                     &now,
