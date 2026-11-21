@@ -79,18 +79,47 @@ impl SiemService {
     }
 
     pub fn ingest_lines(&self, source_id: i64, lines: &[&str]) -> Result<IngestSummary, DbError> {
+        self.ingest_with_policy(source_id, lines, crate::intake_queue::FullPolicy::DropNewest)
+    }
+
+    pub fn ingest_with_policy(
+        &self,
+        source_id: i64,
+        lines: &[&str],
+        policy: crate::intake_queue::FullPolicy,
+    ) -> Result<IngestSummary, DbError> {
+        let mut summary = IngestSummary::default();
+        match policy {
+            crate::intake_queue::FullPolicy::DropNewest => {
+                let queue = crate::intake_queue::BoundedIntake::new(MAX_BATCH_SIZE);
+                for line in lines {
+                    let _ = queue.push(*line, policy, std::time::Duration::ZERO);
+                }
+                let mut accepted = Vec::new();
+                while let Some(line) = queue.pop(std::time::Duration::ZERO) { accepted.push(line); }
+                summary = self.ingest_batch(source_id, &accepted, queue.counters().dropped as usize)?;
+            }
+            crate::intake_queue::FullPolicy::BlockReader => {
+                for batch in lines.chunks(MAX_BATCH_SIZE) {
+                    let result = self.ingest_batch(source_id, batch, 0)?;
+                    summary.received += result.received;
+                    summary.deduplicated += result.deduplicated;
+                    summary.malformed += result.malformed;
+                    summary.alerts_created += result.alerts_created;
+                    summary.dropped += result.dropped;
+                }
+            }
+        }
+        Ok(summary)
+    }
+
+    fn ingest_batch(&self, source_id: i64, lines: &[&str], dropped: usize) -> Result<IngestSummary, DbError> {
         let mut summary = IngestSummary::default();
         let now = Utc::now().to_rfc3339();
         let rules = self.list_rules()?;
-
-        let (to_process, dropped) = if lines.len() > MAX_BATCH_SIZE {
-            (&lines[..MAX_BATCH_SIZE], lines.len() - MAX_BATCH_SIZE)
-        } else {
-            (lines, 0)
-        };
         summary.dropped = dropped;
 
-        for raw in to_process {
+        for raw in lines {
             let parsed = match crate::parser_suite::parse_with_format(
                 raw,
                 crate::parser_suite::LogFormat::Auto,
@@ -430,6 +459,20 @@ mod tests {
         svc.update_alert_status(alerts[0].id, "resolved")
             .expect("resolve");
         assert_eq!(svc.list_alerts(Some("open")).expect("open").len(), 0);
+    }
+
+    #[test]
+    fn intake_policies_drop_newest_or_block_reader_at_capacity() {
+        let db = Database::open_in_memory().expect("open db");
+        let service = SiemService::new(db);
+        let source = service.add_source("queue", "file", "memory").expect("source");
+        let lines = vec!["2026-11-21T09:00:00Z host app: same event"; MAX_BATCH_SIZE + 1];
+        let dropped = service.ingest_with_policy(source, &lines, crate::intake_queue::FullPolicy::DropNewest).expect("drop policy");
+        assert_eq!(dropped.dropped, 1);
+        assert_eq!(dropped.received + dropped.deduplicated, MAX_BATCH_SIZE);
+        let blocked = service.ingest_with_policy(source, &lines, crate::intake_queue::FullPolicy::BlockReader).expect("block policy");
+        assert_eq!(blocked.dropped, 0);
+        assert_eq!(blocked.deduplicated, MAX_BATCH_SIZE + 1);
     }
 
     #[test]
