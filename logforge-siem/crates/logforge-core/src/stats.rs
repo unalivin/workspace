@@ -55,7 +55,7 @@ pub fn top_sources(db: &Database) -> Result<Vec<SourceCount>, DbError> {
 /// Returns event volume by normalized severity, including zero-volume levels.
 pub fn events_by_severity(db: &Database) -> Result<Vec<SeverityCount>, DbError> {
     let mut statement = db.conn().prepare(
-        "SELECT severity, COUNT(e.id) FROM ( \
+        "SELECT levels.severity, COUNT(e.id) FROM ( \
             SELECT 'debug' AS severity, 0 AS position UNION ALL \
             SELECT 'info', 1 UNION ALL SELECT 'warn', 2 UNION ALL \
             SELECT 'error', 3 UNION ALL SELECT 'critical', 4 \
