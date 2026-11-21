@@ -326,7 +326,7 @@ impl SiemService {
                 self.queue_alert_notification(
                     self.db.conn().last_insert_rowid(),
                     event_id,
-                    rule.severity,
+                    &rule.severity,
                     &title,
                     &now,
                 )?;
