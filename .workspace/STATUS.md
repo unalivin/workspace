@@ -6,8 +6,8 @@
 | Project | Language | Destination | State | Next step |
 |---|---|---|---|---|
 | logforge-siem | rust | sonix-devs | Complete | Extract Rust template to templates/rust/, then start netauto |
-| netauto | go | sonix-devs | In progress | Domain and service layers with tests |
-| vulntrack | go | sonix-devs | Not started | Waiting on netauto |
+| netauto | go | sonix-devs | Complete | Extract Go template to templates/go/, then start vulntrack |
+| vulntrack | go | sonix-devs | Not started | Create requirements, acceptance criteria, and threat model |
 | forensicflow | rust | sonix-devs | Not started | Waiting on vulntrack |
 | ipam-pro | go | sonix-devs | Not started | Waiting on forensicflow |
 | securebaseline | cpp | sonix-devs | Not started | Waiting on ipam-pro |
