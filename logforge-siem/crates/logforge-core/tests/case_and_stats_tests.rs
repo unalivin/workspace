@@ -1,5 +1,5 @@
 use logforge_core::case_links::{link_alert_to_case, list_case_links};
-use logforge_core::stats::top_sources;
+use logforge_core::stats::{count_events_in_range, events_by_severity, ingestion_stats, source_health, top_sources};
 use logforge_core::{Database, SiemService};
 
 #[test]
@@ -25,4 +25,47 @@ fn test_top_sources_returns_seeded_source() {
     assert_eq!(sources.len(), 1);
     assert_eq!(sources[0].name, "demo-auth");
     assert_eq!(sources[0].event_count, 3);
+}
+
+#[test]
+fn operational_stats_include_empty_severities_and_source_health() {
+    let db = Database::open_in_memory().expect("db");
+    let svc = SiemService::new(db);
+    svc.seed_demo_data().expect("seed");
+
+    let severity = events_by_severity(svc.db()).expect("severity counts");
+    assert_eq!(severity.len(), 5);
+    assert_eq!(severity.iter().map(|item| item.event_count).sum::<i64>(), 3);
+
+    let health = source_health(svc.db()).expect("source health");
+    assert_eq!(health.len(), 1);
+    assert_eq!(health[0].name, "demo-auth");
+    assert_eq!(health[0].total_events, 3);
+    assert!(health[0].last_event_at.is_some());
+}
+
+#[test]
+fn ingestion_rates_are_zero_safe_and_time_ranges_are_half_open() {
+    let db = Database::open_in_memory().expect("db");
+    let svc = SiemService::new(db);
+    svc.seed_demo_data().expect("seed");
+
+    let metrics = ingestion_stats(svc.db()).expect("ingestion stats");
+    assert!(metrics.received >= metrics.accepted);
+    assert!((0.0..=100.0).contains(&metrics.duplicate_rate_percent));
+    assert_eq!(
+        count_events_in_range(
+            svc.db(),
+            "2000-01-01T00:00:00Z",
+            "2100-01-01T00:00:00Z"
+        )
+        .expect("range count"),
+        3
+    );
+    assert!(count_events_in_range(
+        svc.db(),
+        "2100-01-01T00:00:00Z",
+        "2000-01-01T00:00:00Z"
+    )
+    .is_err());
 }
