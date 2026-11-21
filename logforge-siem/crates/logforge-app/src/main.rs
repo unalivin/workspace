@@ -100,6 +100,12 @@ enum Commands {
     },
     Sources,
     Rules,
+    RulePreview {
+        #[arg(long, default_value_t = 100)]
+        limit: usize,
+        #[arg(long)]
+        query: Option<String>,
+    },
     Ingest {
         source: String,
         file: PathBuf,
@@ -364,6 +370,18 @@ fn main() {
             Commands::Rules => {
                 let rules = service.list_rules().expect("rules");
                 println!("{}", serde_json::to_string_pretty(&rules).expect("json"));
+            }
+            Commands::RulePreview { limit, query } => {
+                let report = logforge_core::rule_preview::preview_detection_rules(
+                    &service,
+                    &logforge_core::event_query::EventFilter {
+                        limit,
+                        query,
+                        ..logforge_core::event_query::EventFilter::default()
+                    },
+                )
+                .expect("rule preview");
+                println!("{}", serde_json::to_string_pretty(&report).expect("json"));
             }
             Commands::Ingest {
                 source,
