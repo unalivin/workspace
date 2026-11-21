@@ -79,7 +79,11 @@ impl SiemService {
     }
 
     pub fn ingest_lines(&self, source_id: i64, lines: &[&str]) -> Result<IngestSummary, DbError> {
-        self.ingest_with_policy(source_id, lines, crate::intake_queue::FullPolicy::DropNewest)
+        self.ingest_with_policy(
+            source_id,
+            lines,
+            crate::intake_queue::FullPolicy::DropNewest,
+        )
     }
 
     pub fn ingest_with_policy(
@@ -96,8 +100,11 @@ impl SiemService {
                     let _ = queue.push(*line, policy, std::time::Duration::ZERO);
                 }
                 let mut accepted = Vec::new();
-                while let Some(line) = queue.pop(std::time::Duration::ZERO) { accepted.push(line); }
-                summary = self.ingest_batch(source_id, &accepted, queue.counters().dropped as usize)?;
+                while let Some(line) = queue.pop(std::time::Duration::ZERO) {
+                    accepted.push(line);
+                }
+                summary =
+                    self.ingest_batch(source_id, &accepted, queue.counters().dropped as usize)?;
             }
             crate::intake_queue::FullPolicy::BlockReader => {
                 for batch in lines.chunks(MAX_BATCH_SIZE) {
@@ -113,7 +120,12 @@ impl SiemService {
         Ok(summary)
     }
 
-    fn ingest_batch(&self, source_id: i64, lines: &[&str], dropped: usize) -> Result<IngestSummary, DbError> {
+    fn ingest_batch(
+        &self,
+        source_id: i64,
+        lines: &[&str],
+        dropped: usize,
+    ) -> Result<IngestSummary, DbError> {
         let mut summary = IngestSummary::default();
         let now = Utc::now().to_rfc3339();
         let rules = self.list_rules()?;
@@ -465,12 +477,18 @@ mod tests {
     fn intake_policies_drop_newest_or_block_reader_at_capacity() {
         let db = Database::open_in_memory().expect("open db");
         let service = SiemService::new(db);
-        let source = service.add_source("queue", "file", "memory").expect("source");
+        let source = service
+            .add_source("queue", "file", "memory")
+            .expect("source");
         let lines = vec!["2026-11-21T09:00:00Z host app: same event"; MAX_BATCH_SIZE + 1];
-        let dropped = service.ingest_with_policy(source, &lines, crate::intake_queue::FullPolicy::DropNewest).expect("drop policy");
+        let dropped = service
+            .ingest_with_policy(source, &lines, crate::intake_queue::FullPolicy::DropNewest)
+            .expect("drop policy");
         assert_eq!(dropped.dropped, 1);
         assert_eq!(dropped.received + dropped.deduplicated, MAX_BATCH_SIZE);
-        let blocked = service.ingest_with_policy(source, &lines, crate::intake_queue::FullPolicy::BlockReader).expect("block policy");
+        let blocked = service
+            .ingest_with_policy(source, &lines, crate::intake_queue::FullPolicy::BlockReader)
+            .expect("block policy");
         assert_eq!(blocked.dropped, 0);
         assert_eq!(blocked.deduplicated, MAX_BATCH_SIZE + 1);
     }
