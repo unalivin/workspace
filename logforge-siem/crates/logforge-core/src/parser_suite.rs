@@ -68,7 +68,9 @@ pub fn validate_reader<R: BufRead>(
             let consumed = newline.map_or(available.len(), |index| index + 1);
             let content = newline.unwrap_or(consumed);
             if !too_long {
-                let room = max_line_bytes.saturating_add(1).saturating_sub(buffer.len());
+                let room = max_line_bytes
+                    .saturating_add(1)
+                    .saturating_sub(buffer.len());
                 let copy = content.min(room);
                 buffer.extend_from_slice(&available[..copy]);
                 too_long = copy < content || buffer.len() > max_line_bytes;
@@ -84,7 +86,11 @@ pub fn validate_reader<R: BufRead>(
         report.lines_seen += 1;
         if too_long {
             report.malformed_lines += 1;
-            record_error(&mut report, max_error_samples, "record exceeds configured line limit");
+            record_error(
+                &mut report,
+                max_error_samples,
+                "record exceeds configured line limit",
+            );
             continue;
         }
         while matches!(buffer.last(), Some(b'\n' | b'\r')) {
