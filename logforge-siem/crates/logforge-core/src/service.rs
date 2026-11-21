@@ -142,7 +142,9 @@ impl SiemService {
         let mut batch = Vec::with_capacity(MAX_BATCH_SIZE);
         loop {
             let mut bytes = Vec::with_capacity(512);
-            let Some(oversized) = read_bounded_line(&mut reader, &mut bytes, crate::ingest::MAX_LINE_BYTES)? else {
+            let Some(oversized) =
+                read_bounded_line(&mut reader, &mut bytes, crate::ingest::MAX_LINE_BYTES)?
+            else {
                 break;
             };
             let mut line = String::from_utf8_lossy(&bytes).into_owned();
@@ -161,7 +163,11 @@ impl SiemService {
         Ok(total)
     }
 
-    fn ingest_string_batch(&self, source_id: i64, batch: &[String]) -> Result<IngestSummary, DbError> {
+    fn ingest_string_batch(
+        &self,
+        source_id: i64,
+        batch: &[String],
+    ) -> Result<IngestSummary, DbError> {
         let lines: Vec<&str> = batch.iter().map(String::as_str).collect();
         self.ingest_lines(source_id, &lines)
     }

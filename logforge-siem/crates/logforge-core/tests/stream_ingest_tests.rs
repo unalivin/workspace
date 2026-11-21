@@ -13,7 +13,10 @@ fn streams_large_files_in_bounded_batches_without_loading_all_rows() {
     let result = service.ingest_reader(source, Cursor::new(input)).unwrap();
     assert_eq!(result.received, logforge_core::service::MAX_BATCH_SIZE + 1);
     assert_eq!(result.malformed, 0);
-    assert_eq!(service.overview_counts().unwrap().total_events, result.received as i64);
+    assert_eq!(
+        service.overview_counts().unwrap().total_events,
+        result.received as i64
+    );
 }
 
 #[test]
@@ -21,7 +24,10 @@ fn streaming_bounds_oversized_records_and_reports_io_errors() {
     let db = Database::open_in_memory().unwrap();
     let service = SiemService::new(db);
     let source = service.add_source("bounded", "file", "memory").unwrap();
-    let line = format!("2026-11-21T10:00:00Z host app: {}\n", "x".repeat(logforge_core::ingest::MAX_LINE_BYTES + 100));
+    let line = format!(
+        "2026-11-21T10:00:00Z host app: {}\n",
+        "x".repeat(logforge_core::ingest::MAX_LINE_BYTES + 100)
+    );
     let result = service.ingest_reader(source, Cursor::new(line)).unwrap();
     assert_eq!(result.malformed, 1);
 
@@ -32,7 +38,9 @@ fn streaming_bounds_oversized_records_and_reports_io_errors() {
         }
     }
     impl std::io::BufRead for BrokenReader {
-        fn fill_buf(&mut self) -> std::io::Result<&[u8]> { Err(std::io::Error::other("simulated read failure")) }
+        fn fill_buf(&mut self) -> std::io::Result<&[u8]> {
+            Err(std::io::Error::other("simulated read failure"))
+        }
         fn consume(&mut self, _: usize) {}
     }
     assert!(service.ingest_reader(source, BrokenReader).is_err());
