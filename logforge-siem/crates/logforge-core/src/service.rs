@@ -4,6 +4,7 @@ use crate::model::{Alert, DetectionRule, LogEvent, OverviewCounts, SavedQuery, S
 use chrono::Utc;
 use rusqlite::{params, params_from_iter, OptionalExtension};
 use sha2::{Digest, Sha256};
+use std::io::BufRead;
 
 pub const MAX_BATCH_SIZE: usize = 5_000;
 
@@ -130,6 +131,39 @@ impl SiemService {
             lines,
             crate::intake_queue::FullPolicy::DropNewest,
         )
+    }
+
+    pub fn ingest_reader<R: BufRead>(
+        &self,
+        source_id: i64,
+        mut reader: R,
+    ) -> Result<IngestSummary, StreamIngestError> {
+        let mut total = IngestSummary::default();
+        let mut batch = Vec::with_capacity(MAX_BATCH_SIZE);
+        loop {
+            let mut bytes = Vec::with_capacity(512);
+            let Some(oversized) = read_bounded_line(&mut reader, &mut bytes, crate::ingest::MAX_LINE_BYTES)? else {
+                break;
+            };
+            let mut line = String::from_utf8_lossy(&bytes).into_owned();
+            if oversized && line.len() <= crate::ingest::MAX_LINE_BYTES {
+                line.push(' ');
+            }
+            batch.push(line);
+            if batch.len() == MAX_BATCH_SIZE {
+                add_summaries(&mut total, self.ingest_string_batch(source_id, &batch)?);
+                batch.clear();
+            }
+        }
+        if !batch.is_empty() {
+            add_summaries(&mut total, self.ingest_string_batch(source_id, &batch)?);
+        }
+        Ok(total)
+    }
+
+    fn ingest_string_batch(&self, source_id: i64, batch: &[String]) -> Result<IngestSummary, DbError> {
+        let lines: Vec<&str> = batch.iter().map(String::as_str).collect();
+        self.ingest_lines(source_id, &lines)
     }
 
     pub fn ingest_with_policy(
@@ -632,6 +666,50 @@ impl SiemService {
         ];
         self.ingest_lines(src_id, &demo_lines)?;
         Ok(())
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum StreamIngestError {
+    #[error(transparent)]
+    Database(#[from] DbError),
+    #[error("read input: {0}")]
+    Io(#[from] std::io::Error),
+}
+
+fn add_summaries(total: &mut IngestSummary, part: IngestSummary) {
+    total.received += part.received;
+    total.deduplicated += part.deduplicated;
+    total.dropped += part.dropped;
+    total.malformed += part.malformed;
+    total.alerts_created += part.alerts_created;
+}
+
+fn read_bounded_line<R: BufRead>(
+    reader: &mut R,
+    output: &mut Vec<u8>,
+    max_bytes: usize,
+) -> Result<Option<bool>, std::io::Error> {
+    let mut oversized = false;
+    loop {
+        let (consumed, content_len, has_newline, copied) = {
+            let available = reader.fill_buf()?;
+            if available.is_empty() {
+                return Ok((!output.is_empty()).then_some(oversized || output.len() > max_bytes));
+            }
+            let newline = available.iter().position(|byte| *byte == b'\n');
+            let consumed = newline.map_or(available.len(), |index| index + 1);
+            let content_len = newline.unwrap_or(consumed);
+            let room = max_bytes.saturating_add(1).saturating_sub(output.len());
+            let copied = content_len.min(room);
+            output.extend_from_slice(&available[..copied]);
+            (consumed, content_len, newline.is_some(), copied)
+        };
+        oversized |= copied < content_len;
+        reader.consume(consumed);
+        if has_newline {
+            return Ok(Some(oversized || output.len() > max_bytes));
+        }
     }
 }
 

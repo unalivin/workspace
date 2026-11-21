@@ -278,12 +278,13 @@ fn main() {
                 println!("{}", serde_json::to_string_pretty(&rules).expect("json"));
             }
             Commands::Ingest { source, file } => {
-                let content = std::fs::read_to_string(&file).expect("read input file");
-                let lines: Vec<&str> = content.lines().collect();
+                let input = std::fs::File::open(&file).expect("open input file");
                 let src_id = service
                     .add_source(&source, "file", &file.display().to_string())
                     .unwrap_or(1);
-                let summary = service.ingest_lines(src_id, &lines).expect("ingest");
+                let summary = service
+                    .ingest_reader(src_id, std::io::BufReader::new(input))
+                    .expect("ingest");
                 println!(
                     "received={} deduplicated={} dropped={} malformed={} alerts={}",
                     summary.received,
