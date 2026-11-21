@@ -187,9 +187,9 @@ pub struct RuleAlertCount {
 /// alert history so their zero-activity state is visible in operational reports.
 pub fn alert_counts_by_rule(db: &Database) -> Result<Vec<RuleAlertCount>, DbError> {
     let mut statement = db.conn().prepare(
-        "SELECT r.id, r.name, COUNT(a.id),\
-            SUM(CASE WHEN a.status = 'open' THEN 1 ELSE 0 END), MAX(a.created_at)\
-         FROM detection_rules r LEFT JOIN alerts a ON a.rule_id = r.id\
+        "SELECT r.id, r.name, COUNT(a.id), \
+            SUM(CASE WHEN a.status = 'open' THEN 1 ELSE 0 END), MAX(a.created_at) \
+         FROM detection_rules r LEFT JOIN alerts a ON a.rule_id = r.id \
          GROUP BY r.id, r.name ORDER BY COUNT(a.id) DESC, r.name COLLATE NOCASE",
     )?;
     let rows = statement.query_map([], |row| {
