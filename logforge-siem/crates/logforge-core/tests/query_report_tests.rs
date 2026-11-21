@@ -55,7 +55,10 @@ fn rules_without_alerts_are_present_in_rule_report() {
     let db = Database::open_in_memory().expect("database");
     let service = SiemService::new(db);
     service.seed_demo_data().expect("seed");
+    service
+        .add_rule("No matching events", "info", "equals:never-this-pattern")
+        .expect("add quiet rule");
     let report = alert_counts_by_rule(service.db()).expect("rule report");
-    assert_eq!(report.len(), 2);
+    assert_eq!(report.len(), 3);
     assert!(report.iter().any(|rule| rule.total_alerts == 0));
 }

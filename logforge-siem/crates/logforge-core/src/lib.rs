@@ -26,6 +26,7 @@ pub mod query_parser;
 pub mod query_report;
 pub mod retention;
 pub mod rule_engine;
+pub mod rule_preview;
 pub mod schema_mapper;
 pub mod service;
 pub mod stats;
