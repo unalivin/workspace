@@ -11,19 +11,12 @@ fn ingested_events_drive_persistent_threshold_correlation_alerts() {
     service
         .add_threshold_correlation(rule, "host", 600, 2)
         .unwrap();
-    service
-        .ingest_lines(
-            source,
-            &["2026-11-21T10:00:00Z host-a sshd: login failed for alice"],
-        )
-        .unwrap();
+    let base = chrono::Utc::now();
+    let first_line = format!("{} host-a sshd: login failed for alice", base.to_rfc3339());
+    service.ingest_lines(source, &[&first_line]).unwrap();
     assert_eq!(service.list_alerts(None).unwrap().len(), 1);
-    service
-        .ingest_lines(
-            source,
-            &["2026-11-21T10:01:00Z host-a sshd: login failed for bob"],
-        )
-        .unwrap();
+    let second_line = format!("{} host-a sshd: login failed for bob", (base + chrono::Duration::seconds(60)).to_rfc3339());
+    service.ingest_lines(source, &[&second_line]).unwrap();
     let alerts = service.list_alerts(None).unwrap();
     assert_eq!(alerts.len(), 3);
     assert!(alerts
@@ -48,25 +41,14 @@ fn sequence_correlation_requires_first_then_second_pattern_on_same_key() {
             "privilege escalated",
         )
         .unwrap();
-    service
-        .ingest_lines(
-            source,
-            &["2026-11-21T11:00:00Z host-a sshd: authentication accepted"],
-        )
-        .unwrap();
-    service
-        .ingest_lines(
-            source,
-            &["2026-11-21T11:01:00Z host-b sudo: privilege escalated"],
-        )
-        .unwrap();
+    let base = chrono::Utc::now();
+    let first = format!("{} host-a sshd: authentication accepted", base.to_rfc3339());
+    let wrong_host = format!("{} host-b sudo: privilege escalated", (base + chrono::Duration::seconds(30)).to_rfc3339());
+    service.ingest_lines(source, &[&first]).unwrap();
+    service.ingest_lines(source, &[&wrong_host]).unwrap();
     assert!(service.list_alerts(None).unwrap().is_empty());
-    service
-        .ingest_lines(
-            source,
-            &["2026-11-21T11:02:00Z host-a sudo: privilege escalated"],
-        )
-        .unwrap();
+    let second = format!("{} host-a sudo: privilege escalated", (base + chrono::Duration::seconds(60)).to_rfc3339());
+    service.ingest_lines(source, &[&second]).unwrap();
     let alerts = service.list_alerts(None).unwrap();
     assert_eq!(alerts.len(), 1);
     assert!(alerts[0]
