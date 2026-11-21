@@ -172,7 +172,7 @@ impl EventFilter {
                 "(e.timestamp_utc, e.id) < (?{timestamp_slot}, ?{id_slot})"
             ));
         }
-        let mut sql = format!("SELECT e.id, e.source_id, e.timestamp_utc, e.received_at, e.severity, e.host, e.service, e.message, e.raw_line, e.dedup_hash, e.redacted, e.fields_json FROM events e");
+        let mut sql = "SELECT e.id, e.source_id, e.timestamp_utc, e.received_at, e.severity, e.host, e.service, e.message, e.raw_line, e.dedup_hash, e.redacted, e.fields_json FROM events e".to_string();
         if !conditions.is_empty() {
             sql.push_str(" WHERE ");
             sql.push_str(&conditions.join(" AND "));
