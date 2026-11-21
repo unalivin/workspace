@@ -1,4 +1,6 @@
+pub mod category_colors;
 pub mod db;
+pub mod export;
 pub mod ingest;
 pub mod model;
 pub mod service;
