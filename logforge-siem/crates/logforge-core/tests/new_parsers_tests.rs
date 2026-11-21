@@ -12,12 +12,12 @@ fn test_parse_cef_valid() {
     let line = "CEF:0|Acme|Firewall|1.0|100|Blocked|7|src=192.0.2.1";
     let ev = parse_cef_line(line).expect("cef");
     assert_eq!(ev.host, "Acme");
-    assert_eq!(ev.service, "Firewall");
+    assert_eq!(ev.service, "Firewall 1.0");
 }
 
 #[test]
 fn test_parse_leef_valid() {
-    let line = "LEEF:1.0|Acme|IDS|2.0|200|src=192.0.2.2";
+    let line = "LEEF:1.0|Acme|IDS|2.0|200|^|src=192.0.2.2";
     let ev = parse_leef_line(line).expect("leef");
     assert_eq!(ev.host, "Acme");
     assert_eq!(ev.service, "IDS");
