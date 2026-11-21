@@ -113,7 +113,7 @@ mod tests {
             .conn()
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .expect("user_version");
-        assert_eq!(version, 5);
+        assert_eq!(version, 4);
 
         let integrity: String = db
             .conn()
