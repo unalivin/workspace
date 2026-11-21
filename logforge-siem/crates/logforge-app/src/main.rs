@@ -74,6 +74,12 @@ struct Cli {
 enum Commands {
     Overview,
     Stats,
+    Risk {
+        #[arg(long)]
+        since: String,
+        #[arg(long, default_value_t = 50)]
+        limit: usize,
+    },
     Report {
         #[arg(value_enum)]
         dimension: ReportDimension,
@@ -286,6 +292,11 @@ fn main() {
                     "alert_severity": logforge_core::stats::alert_severity_matrix(service.db()).expect("alert severity"),
                 });
                 println!("{}", serde_json::to_string_pretty(&stats).expect("json"));
+            }
+            Commands::Risk { since, limit } => {
+                let report = logforge_core::risk_scoring::score_host_risk(service.db(), &since, limit)
+                    .expect("host risk report");
+                println!("{}", serde_json::to_string_pretty(&report).expect("json"));
             }
             Commands::Report {
                 dimension,

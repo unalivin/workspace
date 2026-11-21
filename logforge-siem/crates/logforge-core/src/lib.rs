@@ -26,6 +26,7 @@ pub mod query_language;
 pub mod query_parser;
 pub mod query_report;
 pub mod retention;
+pub mod risk_scoring;
 pub mod rule_engine;
 pub mod rule_preview;
 pub mod schema_mapper;

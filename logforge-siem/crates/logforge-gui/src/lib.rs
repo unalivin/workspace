@@ -260,7 +260,17 @@ impl eframe::App for LogForgeApp {
                             }
                         }
                         ui.separator();
-                        if let Ok(alerts) = logforge_core::query_report::alert_counts_by_rule(self.service.db()) {
+                        if let Ok(risk) = logforge_core::risk_scoring::score_host_risk(
+                        self.service.db(),
+                        "1970-01-01T00:00:00Z",
+                        20,
+                    ) {
+                        ui.heading("Host risk (all retained events)");
+                        for host in risk.hosts {
+                            ui.label(format!("{} · {} ({}) · {} events · {} alerts", host.host, host.score, host.band, host.total_events, host.open_alerts));
+                        }
+                    }
+                    if let Ok(alerts) = logforge_core::query_report::alert_counts_by_rule(self.service.db()) {
                             ui.heading("Alert volume by rule");
                             for rule in alerts {
                                 ui.label(format!("{}: {} total, {} open", rule.rule_name, rule.total_alerts, rule.open_alerts));

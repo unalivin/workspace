@@ -236,6 +236,17 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                             queue.overdue_active, queue.unassigned_active
                         ));
                     }
+                    if let Ok(risk) = logforge_core::risk_scoring::score_host_risk(
+                        service.db(),
+                        "1970-01-01T00:00:00Z",
+                        20,
+                    ) {
+                        lines.push("Host risk (all retained events):".to_string());
+                        lines.extend(risk.hosts.iter().map(|host| format!(
+                            "{} score={} band={} events={} alerts={}",
+                            host.host, host.score, host.band, host.total_events, host.open_alerts
+                        )));
+                    }
                     lines.push("Alerts by rule:".to_string());
                     lines.extend(rules.iter().map(|rule| format!("{} total={} open={}", rule.rule_name, rule.total_alerts, rule.open_alerts)));
                     lines.join("\\n")
