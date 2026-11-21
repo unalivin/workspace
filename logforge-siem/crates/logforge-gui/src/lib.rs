@@ -21,6 +21,7 @@ pub struct LogForgeApp {
     service: SiemService,
     active_tab: GuiTab,
     search_query: String,
+    search_host: String,
     last_data_version: i64,
     external_update_notice: bool,
 }
@@ -32,6 +33,7 @@ impl LogForgeApp {
             service,
             active_tab: GuiTab::Overview,
             search_query: String::new(),
+            search_host: String::new(),
             last_data_version,
             external_update_notice: false,
         }
@@ -96,9 +98,17 @@ impl eframe::App for LogForgeApp {
                     ui.horizontal(|ui| {
                         ui.label("Query:");
                         ui.text_edit_singleline(&mut self.search_query);
+                        ui.label("Exact host:");
+                        ui.text_edit_singleline(&mut self.search_host);
                     });
                     ui.separator();
-                    if let Ok(events) = self.service.search_events(&self.search_query, 100) {
+                    let filter = logforge_core::event_query::EventFilter {
+                        query: (!self.search_query.trim().is_empty()).then(|| self.search_query.clone()),
+                        host: (!self.search_host.trim().is_empty()).then(|| self.search_host.clone()),
+                        limit: 100,
+                        ..logforge_core::event_query::EventFilter::default()
+                    };
+                    if let Ok(events) = self.service.search_events_filtered(&filter) {
                         egui::ScrollArea::vertical().show(ui, |ui| {
                             for ev in events {
                                 let badge = if ev.redacted { " [REDACTED]" } else { "" };

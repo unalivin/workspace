@@ -2,7 +2,7 @@ use crate::db::{Database, DbError};
 use crate::ingest::IngestError;
 use crate::model::{Alert, DetectionRule, LogEvent, OverviewCounts, SavedQuery, Source};
 use chrono::Utc;
-use rusqlite::{params, OptionalExtension};
+use rusqlite::{params, params_from_iter, OptionalExtension};
 use sha2::{Digest, Sha256};
 
 pub const MAX_BATCH_SIZE: usize = 5_000;
@@ -426,6 +426,28 @@ impl SiemService {
             }
         }
         Ok(created)
+    }
+
+    pub fn search_events_filtered(
+        &self,
+        filter: &crate::event_query::EventFilter,
+    ) -> Result<Vec<LogEvent>, DbError> {
+        let plan = filter.search_plan()?;
+        let mut statement = self.db.conn().prepare(&plan.sql)?;
+        let rows = statement.query_map(params_from_iter(plan.parameters.iter()), map_event)?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
+    }
+
+    pub fn count_events_filtered(
+        &self,
+        filter: &crate::event_query::EventFilter,
+    ) -> Result<i64, DbError> {
+        let plan = filter.count_plan()?;
+        self.db.conn().query_row(
+            &plan.sql,
+            params_from_iter(plan.parameters.iter()),
+            |row| row.get(0),
+        ).map_err(DbError::from)
     }
 
     pub fn search_events(&self, query: &str, limit: usize) -> Result<Vec<LogEvent>, DbError> {

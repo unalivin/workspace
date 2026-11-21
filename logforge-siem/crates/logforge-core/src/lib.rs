@@ -12,6 +12,7 @@ pub mod db;
 pub mod dedup_cache;
 pub mod diagnostics;
 pub mod event_analytics;
+pub mod event_query;
 pub mod export;
 pub mod ingest;
 pub mod intake_queue;
