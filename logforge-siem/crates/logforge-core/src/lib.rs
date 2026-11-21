@@ -2,6 +2,7 @@ pub mod db;
 pub mod ingest;
 pub mod model;
 pub mod service;
+pub mod theme;
 
 pub use db::{Database, DbError, Migration};
 pub use ingest::{parse_line, IngestError, NormalizedEvent};

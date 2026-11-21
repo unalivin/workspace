@@ -1,0 +1,43 @@
+{
+  "brand": {
+    "base_light": "#f8fafc",
+    "base_dark": "#0f172a",
+    "brand_light": "#1e293b",
+    "brand_dark": "#334155",
+    "highlight": "#f59e0b"
+  },
+  "categorical_light": [
+    "#2B6CD4",
+    "#D9730D",
+    "#1B9A66",
+    "#C42E67",
+    "#7449D1",
+    "#0E94A3",
+    "#A88400",
+    "#66727F"
+  ],
+  "categorical_dark": [
+    "#6EA2F2",
+    "#F2A04D",
+    "#4CC796",
+    "#F07AA3",
+    "#A58AF0",
+    "#4CC4D1",
+    "#E0BC3A",
+    "#A1ABB6"
+  ],
+  "severity_light": {
+    "critical": "#B3261E",
+    "high": "#C2410C",
+    "medium": "#A16207",
+    "low": "#2F7D4F",
+    "info": "#2B6CB0"
+  },
+  "severity_dark": {
+    "critical": "#FF8A80",
+    "high": "#FFA463",
+    "medium": "#F2C94C",
+    "low": "#6FD39A",
+    "info": "#7DB4F0"
+  }
+}
