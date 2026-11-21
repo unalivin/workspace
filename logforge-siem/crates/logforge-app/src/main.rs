@@ -308,8 +308,9 @@ fn main() {
                 println!("{}", serde_json::to_string_pretty(&stats).expect("json"));
             }
             Commands::Risk { since, limit } => {
-                let report = logforge_core::risk_scoring::score_host_risk(service.db(), &since, limit)
-                    .expect("host risk report");
+                let report =
+                    logforge_core::risk_scoring::score_host_risk(service.db(), &since, limit)
+                        .expect("host risk report");
                 println!("{}", serde_json::to_string_pretty(&report).expect("json"));
             }
             Commands::Report {

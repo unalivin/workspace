@@ -310,12 +310,14 @@ pub fn outbox_health(db: &Database, now_utc: &str) -> Result<NotificationOutboxH
             MIN(CASE WHEN state = 'dead' THEN created_at END) \
          FROM notification_outbox",
         params![now_utc],
-        |row| Ok((
-            row.get::<_, Option<i64>>(0)?.unwrap_or(0),
-            row.get::<_, Option<i64>>(1)?.unwrap_or(0),
-            row.get(2)?,
-            row.get(3)?,
-        )),
+        |row| {
+            Ok((
+                row.get::<_, Option<i64>>(0)?.unwrap_or(0),
+                row.get::<_, Option<i64>>(1)?.unwrap_or(0),
+                row.get(2)?,
+                row.get(3)?,
+            ))
+        },
     )?;
     Ok(NotificationOutboxHealth {
         counts,

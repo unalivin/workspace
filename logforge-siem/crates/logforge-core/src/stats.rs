@@ -300,7 +300,12 @@ pub fn source_liveness(
             seconds_since_last_event: age,
         });
     }
-    let count = |state| sources.iter().filter(|source| source.state == state).count();
+    let count = |state| {
+        sources
+            .iter()
+            .filter(|source| source.state == state)
+            .count()
+    };
     Ok(SourceLivenessReport {
         checked_at: checked.to_rfc3339(),
         stale_after_seconds,
