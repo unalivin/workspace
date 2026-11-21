@@ -73,6 +73,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     Overview,
+    Stats,
     Demo,
     Search {
         query: String,
@@ -220,6 +221,16 @@ fn main() {
             Commands::Overview => {
                 let c = service.overview_counts().expect("overview");
                 println!("{}", serde_json::to_string_pretty(&c).expect("json"));
+            }
+            Commands::Stats => {
+                let stats = serde_json::json!({
+                    "ingestion": logforge_core::stats::ingestion_stats(service.db()).expect("ingestion stats"),
+                    "sources": logforge_core::stats::source_health(service.db()).expect("source health"),
+                    "event_severity": logforge_core::stats::events_by_severity(service.db()).expect("event severity"),
+                    "alert_status": logforge_core::stats::alert_status_counts(service.db()).expect("alert status"),
+                    "alert_severity": logforge_core::stats::alert_severity_matrix(service.db()).expect("alert severity"),
+                });
+                println!("{}", serde_json::to_string_pretty(&stats).expect("json"));
             }
             Commands::Demo => {
                 service.seed_demo_data().expect("seed demo");
