@@ -1,5 +1,5 @@
 use crate::model::Severity;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use thiserror::Error;
@@ -69,11 +69,9 @@ pub fn redact_secrets(input: &str) -> (String, bool) {
 pub fn normalize_timestamp(ts: Option<&str>) -> Result<String, IngestError> {
     match ts {
         None | Some("") => Ok(Utc::now().to_rfc3339()),
-        Some(raw) => {
-            let parsed = DateTime::parse_from_rfc3339(raw)
-                .map_err(|_| IngestError::Malformed(format!("invalid timestamp: {raw}")))?;
-            Ok(parsed.with_timezone(&Utc).to_rfc3339())
-        }
+        Some(raw) => crate::timestamp::parse_timestamp(raw, &crate::timestamp::TimestampContext::default())
+            .map(|parsed| parsed.timestamp_utc.to_rfc3339())
+            .map_err(|_| IngestError::Malformed(format!("invalid timestamp: {raw}"))),
     }
 }
 
