@@ -12,7 +12,9 @@ pub fn export_alerts_json(alerts: &[Alert]) -> Result<String, serde_json::Error>
 /// Writes normalized event fields as RFC 4180-compatible CSV. Every text field
 /// is quoted and embedded quote marks are doubled, including host and service.
 pub fn write_events_csv<W: Write>(events: &[LogEvent], writer: &mut W) -> io::Result<usize> {
-    writer.write_all(b"id,source_id,timestamp_utc,received_at,severity,host,service,message,redacted\r\n")?;
+    writer.write_all(
+        b"id,source_id,timestamp_utc,received_at,severity,host,service,message,redacted\r\n",
+    )?;
     for event in events {
         let row = [
             event.id.to_string(),
@@ -38,7 +40,9 @@ pub fn write_events_csv<W: Write>(events: &[LogEvent], writer: &mut W) -> io::Re
 
 /// Writes alert data as a CSV report, including status and workflow timestamps.
 pub fn write_alerts_csv<W: Write>(alerts: &[Alert], writer: &mut W) -> io::Result<usize> {
-    writer.write_all(b"id,rule_id,event_id,severity,status,title,case_ref,created_at,updated_at\r\n")?;
+    writer.write_all(
+        b"id,rule_id,event_id,severity,status,title,case_ref,created_at,updated_at\r\n",
+    )?;
     for alert in alerts {
         let row = [
             alert.id.to_string(),
