@@ -55,7 +55,7 @@ impl SiemService {
             params![i64::from(enabled), source_id],
         )?;
         if changed != 0 {
-self.record_audit(
+            self.record_audit(
                 "local",
                 "set_source_enabled",
                 &format!("source:{source_id}:{enabled}"),
@@ -84,7 +84,7 @@ self.record_audit(
             params![i64::from(enabled), rule_id],
         )?;
         if changed != 0 {
-self.record_audit(
+            self.record_audit(
                 "local",
                 "set_rule_enabled",
                 &format!("rule:{rule_id}:{enabled}"),
