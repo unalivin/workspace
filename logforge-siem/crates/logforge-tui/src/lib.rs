@@ -181,15 +181,15 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                     let metrics = logforge_core::storage_metrics::collect_storage_metrics(service.db());
                     match (pol, metrics) {
                         (Ok(p), Ok(m)) => {
-                            let plan = logforge_core::retention::plan_retention(
+                            let plan = logforge_core::retention::plan_retention_with_reasons(
                                 service.db(), p.max_days, p.max_events, p.max_bytes,
                                 &chrono::Utc::now().to_rfc3339(),
                             );
                             match plan {
                                 Ok(plan) => format!(
-                                    "Policy: {} ({} days, max {} events, {} bytes)\nStorage: {} bytes ({} events, {} alerts)\nDry run: {} events, {} bytes would be removed\nCandidates: {}",
-                                    p.name, p.max_days, p.max_events, p.max_bytes, m.total_bytes, m.events_count, m.alerts_count, plan.count, plan.bytes_to_free,
-                                    plan.event_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ")
+                                    "Policy: {} ({} days, max {} events, {} bytes)\nStorage: {} bytes ({} events, {} alerts)\nDry run: {} events, {} bytes would be removed\nReasons: age={} count={} bytes={}\nCandidates: {}",
+                                    p.name, p.max_days, p.max_events, p.max_bytes, m.total_bytes, m.events_count, m.alerts_count, plan.plan.count, plan.plan.bytes_to_free, plan.age_expired, plan.event_limit_exceeded, plan.byte_limit_exceeded,
+                                    plan.plan.event_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ")
                                 ),
                                 Err(_) => "Retention preview unavailable.".to_string(),
                             }
@@ -221,6 +221,16 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                     let sources = logforge_core::stats::source_health(service.db()).unwrap_or_default();
                     let rules = logforge_core::query_report::alert_counts_by_rule(service.db()).unwrap_or_default();
                     let mut lines = vec!["Operational health".to_string()];
+                    if let Ok(liveness) = logforge_core::stats::source_liveness(
+                        service.db(),
+                        &chrono::Utc::now().to_rfc3339(),
+                        300,
+                    ) {
+                        lines.push(format!(
+                            "Source freshness: active={} stale={} never_seen={} disabled={}",
+                            liveness.active, liveness.stale, liveness.never_seen, liveness.disabled
+                        ));
+                    }
                     if let Ok(metrics) = ingestion {
                         lines.push(format!("Received {} · accepted {} · duplicate {:.1}% · malformed {:.1}% · dropped {}", metrics.received, metrics.accepted, metrics.duplicate_rate_percent, metrics.malformed_rate_percent, metrics.dropped));
                     }
@@ -245,6 +255,14 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                         lines.extend(risk.hosts.iter().map(|host| format!(
                             "{} score={} band={} events={} alerts={}",
                             host.host, host.score, host.band, host.total_events, host.open_alerts
+                        )));
+                    }
+                    if let Ok(workload) = logforge_core::cases::case_workload_by_assignee(service.db()) {
+                        lines.push("Active case workload:".to_string());
+                        lines.extend(workload.iter().map(|item| format!(
+                            "{} active={} critical={} oldest={}",
+                            item.assignee, item.active_cases, item.critical_cases,
+                            item.oldest_case_at.as_deref().unwrap_or("none")
                         )));
                     }
                     lines.push("Alerts by rule:".to_string());

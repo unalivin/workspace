@@ -14,6 +14,7 @@ pub struct HostRisk {
     pub warning_events: i64,
     pub open_alerts: i64,
     pub distinct_services: i64,
+    pub risk_factors: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -63,6 +64,13 @@ pub fn score_host_risk(
             open_alerts,
             distinct_services,
         );
+        let risk_factors = explain_risk_factors(
+            critical_events,
+            error_events,
+            warning_events,
+            open_alerts,
+            distinct_services,
+        );
         Ok(HostRisk {
             host: row.get(0)?,
             score,
@@ -73,6 +81,7 @@ pub fn score_host_risk(
             warning_events,
             open_alerts,
             distinct_services,
+            risk_factors,
         })
     })?;
     let mut hosts = rows.collect::<Result<Vec<_>, _>>()?;
@@ -109,6 +118,33 @@ fn calculate_host_risk(
         .saturating_add(open_alerts.max(0).saturating_mul(20))
         .saturating_add(distinct_services.saturating_sub(1).max(0).saturating_mul(3));
     score.clamp(0, 100) as u8
+}
+
+fn explain_risk_factors(
+    critical: i64,
+    errors: i64,
+    warnings: i64,
+    open_alerts: i64,
+    distinct_services: i64,
+) -> Vec<String> {
+    let mut factors = Vec::new();
+    if critical > 0 {
+        factors.push(format!("{critical} critical events (+{})", critical.saturating_mul(18)));
+    }
+    if errors > 0 {
+        factors.push(format!("{errors} error events (+{})", errors.saturating_mul(12)));
+    }
+    if warnings > 0 {
+        factors.push(format!("{warnings} warning events (+{})", warnings.saturating_mul(5)));
+    }
+    if open_alerts > 0 {
+        factors.push(format!("{open_alerts} unresolved alerts (+{})", open_alerts.saturating_mul(20)));
+    }
+    if distinct_services > 1 {
+        let extra = distinct_services - 1;
+        factors.push(format!("activity across {distinct_services} services (+{})", extra.saturating_mul(3)));
+    }
+    factors
 }
 
 fn risk_band(score: u8) -> &'static str {

@@ -114,6 +114,12 @@ enum Commands {
     },
     CaseExport {
         id: i64,
+        #[arg(long)]
+        redacted: bool,
+    },
+    CaseMetrics {
+        #[arg(long, default_value_t = 24)]
+        overdue_hours: i64,
     },
     Validate {
         file: PathBuf,
@@ -420,10 +426,31 @@ fn main() {
                     ),
                 }
             }
-            Commands::CaseExport { id } => {
-                let bundle = logforge_core::case_export::export_case_bundle(service.db(), id)
-                    .expect("export case")
-                    .expect("case not found");
+            Commands::CaseMetrics { overdue_hours } => {
+                let metrics = logforge_core::cases::case_queue_metrics(
+                    service.db(),
+                    &chrono::Utc::now().to_rfc3339(),
+                    overdue_hours,
+                )
+                .expect("case metrics");
+                let workload = logforge_core::cases::case_workload_by_assignee(service.db())
+                    .expect("case workload");
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&serde_json::json!({
+                        "queue": metrics,
+                        "workload": workload
+                    }))
+                    .expect("json")
+                );
+            }
+            Commands::CaseExport { id, redacted } => {
+                let result = if redacted {
+                    logforge_core::case_export::export_case_bundle_redacted(service.db(), id)
+                } else {
+                    logforge_core::case_export::export_case_bundle(service.db(), id)
+                };
+                let bundle = result.expect("export case").expect("case not found");
                 println!("{}", serde_json::to_string_pretty(&bundle).expect("json"));
             }
             Commands::Sources => {
@@ -595,7 +622,7 @@ fn main() {
                     logforge_core::retention::get_default_policy(service.db()).expect("policy");
                 let max_events = prune.unwrap_or(pol.max_events);
                 let max_bytes = max_bytes.unwrap_or(pol.max_bytes);
-                let plan = logforge_core::retention::plan_retention(
+                let breakdown = logforge_core::retention::plan_retention_with_reasons(
                     service.db(),
                     pol.max_days,
                     max_events,
@@ -603,9 +630,11 @@ fn main() {
                     &chrono::Utc::now().to_rfc3339(),
                 )
                 .expect("plan");
+                let plan = breakdown.plan;
                 println!(
-                    "policy={} max_days={} max_events={} max_bytes={} candidates={} bytes_to_free={}",
-                    pol.name, pol.max_days, max_events, max_bytes, plan.count, plan.bytes_to_free
+                    "policy={} max_days={} max_events={} max_bytes={} candidates={} bytes_to_free={} age_expired={} count_exceeded={} byte_exceeded={}",
+                    pol.name, pol.max_days, max_events, max_bytes, plan.count, plan.bytes_to_free,
+                    breakdown.age_expired, breakdown.event_limit_exceeded, breakdown.byte_limit_exceeded
                 );
                 for id in &plan.event_ids {
                     println!("event_id={id}");

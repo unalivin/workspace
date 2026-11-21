@@ -67,7 +67,28 @@ pub fn export_case_bundle(
         audit_chain: verify_audit_chain(db)?,
         content_sha256: String::new(),
     };
-    bundle.content_sha256 = compute_bundle_hash(&bundle)?;
+    bundle.content_sha256 = compute_bundle_hash(&bundle)
+        .map_err(|_| DbError::Sqlite(rusqlite::Error::InvalidQuery))?;
+    Ok(Some(bundle))
+}
+
+/// Builds a safer sharing copy that omits raw records and arbitrary extension
+/// fields while preserving normalized event context and a verifiable digest.
+pub fn export_case_bundle_redacted(
+    db: &Database,
+    case_id: i64,
+) -> Result<Option<CaseExportBundle>, DbError> {
+    let Some(mut bundle) = export_case_bundle(db, case_id)? else {
+        return Ok(None);
+    };
+    for event in &mut bundle.events {
+        event.message = crate::ingest::redact_secrets(&event.message).0;
+        event.raw_line = "[omitted from redacted export]".to_string();
+        event.fields_json = "{}".to_string();
+        event.redacted = true;
+    }
+    bundle.content_sha256 = compute_bundle_hash(&bundle)
+        .map_err(|_| DbError::Sqlite(rusqlite::Error::InvalidQuery))?;
     Ok(Some(bundle))
 }
 

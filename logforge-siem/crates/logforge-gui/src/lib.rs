@@ -173,10 +173,11 @@ impl eframe::App for LogForgeApp {
                     ui.heading("Retention");
                     if let Ok(p) = logforge_core::retention::get_default_policy(self.service.db()) {
                         ui.label(format!("Policy: {} ({} days, max {} events, {} bytes)", p.name, p.max_days, p.max_events, p.max_bytes));
-                        if let Ok(plan) = logforge_core::retention::plan_retention(self.service.db(), p.max_days, p.max_events, p.max_bytes, &chrono::Utc::now().to_rfc3339()) {
-                            ui.label(format!("Dry run: {} events and {} bytes would be removed", plan.count, plan.bytes_to_free));
+                        if let Ok(breakdown) = logforge_core::retention::plan_retention_with_reasons(self.service.db(), p.max_days, p.max_events, p.max_bytes, &chrono::Utc::now().to_rfc3339()) {
+                            ui.label(format!("Dry run: {} events and {} bytes would be removed", breakdown.plan.count, breakdown.plan.bytes_to_free));
+                            ui.label(format!("Reasons: age={} · event limit={} · storage limit={}", breakdown.age_expired, breakdown.event_limit_exceeded, breakdown.byte_limit_exceeded));
                             egui::ScrollArea::vertical().max_height(220.0).show(ui, |ui| {
-                                for id in plan.event_ids { ui.label(format!("Candidate event #{id}")); }
+                                for id in breakdown.plan.event_ids { ui.label(format!("Candidate event #{id}")); }
                             });
                         }
                     }
@@ -222,6 +223,16 @@ impl eframe::App for LogForgeApp {
                 GuiTab::Health => {
                     ui.heading("Operational Health");
                     ui.label("Source activity and ingestion quality");
+                    if let Ok(liveness) = logforge_core::stats::source_liveness(
+                        self.service.db(),
+                        &chrono::Utc::now().to_rfc3339(),
+                        300,
+                    ) {
+                        ui.label(format!(
+                            "Freshness (<5m): {} active · {} stale · {} never seen · {} disabled",
+                            liveness.active, liveness.stale, liveness.never_seen, liveness.disabled
+                        ));
+                    }
                     if let Ok(metrics) = logforge_core::stats::ingestion_stats(self.service.db()) {
                         ui.label(format!(
                             "Received {} · accepted {} · duplicate {:.1}% · malformed {:.1}% · dropped {}",

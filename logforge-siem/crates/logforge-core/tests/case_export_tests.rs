@@ -1,4 +1,6 @@
-use logforge_core::case_export::{export_case_bundle, verify_case_bundle};
+use logforge_core::case_export::{
+    export_case_bundle, export_case_bundle_redacted, verify_case_bundle,
+};
 use logforge_core::cases::CaseManager;
 use logforge_core::{Database, SiemService};
 
@@ -41,4 +43,24 @@ fn case_bundle_contains_related_alerts_events_notes_and_audit_status() {
 fn exporting_unknown_case_returns_none() {
     let db = Database::open_in_memory().expect("database");
     assert!(export_case_bundle(&db, 99).expect("export").is_none());
+}
+
+#[test]
+fn redacted_case_bundle_omits_raw_payload_and_has_a_valid_digest() {
+    let db = Database::open_in_memory().expect("database");
+    let service = SiemService::new(db);
+    service.seed_demo_data().expect("seed");
+    let manager = CaseManager::new(service.db());
+    let case_id = manager.create("Shareable case", "", "medium", "").expect("case");
+    let alert = service.list_alerts(None).expect("alerts").remove(0);
+    manager.link_alert(case_id, alert.id).expect("link");
+
+    let bundle = export_case_bundle_redacted(service.db(), case_id)
+        .expect("export")
+        .expect("case");
+    assert_eq!(bundle.events.len(), 1);
+    assert_eq!(bundle.events[0].raw_line, "[omitted from redacted export]");
+    assert_eq!(bundle.events[0].fields_json, "{}");
+    assert!(bundle.events[0].redacted);
+    assert!(verify_case_bundle(&bundle).expect("verify digest"));
 }

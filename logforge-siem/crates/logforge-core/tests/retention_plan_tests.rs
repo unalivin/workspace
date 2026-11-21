@@ -37,3 +37,35 @@ fn byte_cap_keeps_newest_records_and_lists_all_removals() {
     assert!(plan.count >= 2);
     assert!(plan.bytes_to_free > 0);
 }
+
+#[test]
+fn retention_breakdown_explains_count_age_and_size_reasons() {
+    use logforge_core::retention::plan_retention_with_reasons;
+
+    let db = Database::open_in_memory().expect("database");
+    let service = logforge_core::SiemService::new(db);
+    service.seed_demo_data().expect("seed");
+    let count_plan = plan_retention_with_reasons(
+        service.db(),
+        365,
+        2,
+        1_000_000,
+        "2026-11-21T09:00:00Z",
+    )
+    .expect("count plan");
+    assert_eq!(count_plan.plan.count, 1);
+    assert_eq!(count_plan.event_limit_exceeded, 1);
+    assert_eq!(count_plan.age_expired, 0);
+    assert_eq!(count_plan.byte_limit_exceeded, 0);
+
+    let age_plan = plan_retention_with_reasons(
+        service.db(),
+        1,
+        100,
+        1_000_000,
+        "2026-11-25T00:00:00Z",
+    )
+    .expect("age plan");
+    assert_eq!(age_plan.plan.count, 3);
+    assert_eq!(age_plan.age_expired, 3);
+}
