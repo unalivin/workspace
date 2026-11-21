@@ -5,8 +5,8 @@
 
 | Project | Language | Destination | State | Next step |
 |---|---|---|---|---|
-| logforge-siem | rust | sonix-devs | In progress | CLI, TUI, and GUI crates |
-| netauto | go | sonix-devs | Not started | Waiting on logforge-siem |
+| logforge-siem | rust | sonix-devs | Complete | Extract Rust template to templates/rust/, then start netauto |
+| netauto | go | sonix-devs | Not started | Create requirements, acceptance criteria, and threat model |
 | vulntrack | go | sonix-devs | Not started | Waiting on netauto |
 | forensicflow | rust | sonix-devs | Not started | Waiting on vulntrack |
 | ipam-pro | go | sonix-devs | Not started | Waiting on forensicflow |
