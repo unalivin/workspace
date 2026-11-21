@@ -95,6 +95,7 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
             });
         let alerts = service.list_alerts(Some("open")).unwrap_or_default();
         let events = service.search_events("", 25).unwrap_or_default();
+        let analytics = logforge_core::event_analytics::analytics_snapshot(service.db(), 5).ok();
 
         terminal.draw(|frame| {
             let chunks = Layout::default()
@@ -120,14 +121,17 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
 
             let body = match active_tab {
                 TuiTab::Overview => format!(
-                    "Total events: {}\nActive sources: {}\nOpen alerts: {}\nReceived: {} | Deduplicated: {} | Dropped: {} | Malformed: {}\n\nPress 1-7 to switch tabs, q to quit.",
+                    "Total events: {}\nActive sources: {}\nOpen alerts: {}\nReceived: {} | Deduplicated: {} | Dropped: {} | Malformed: {}\nIngestion latency average/p95: {}/{} ms\nTop hosts: {}\n\nPress 1-9 or c to switch tabs, q to quit.",
                     counts.total_events,
                     counts.active_sources,
                     counts.open_alerts,
                     counts.stat_received,
                     counts.stat_deduplicated,
                     counts.stat_dropped,
-                    counts.stat_malformed
+                    counts.stat_malformed,
+                    analytics.as_ref().map_or(0, |snapshot| snapshot.ingestion_latency.average_millis),
+                    analytics.as_ref().map_or(0, |snapshot| snapshot.ingestion_latency.p95_millis),
+                    analytics.as_ref().map(|snapshot| snapshot.top_hosts.iter().map(|host| format!("{} ({})", host.value, host.event_count)).collect::<Vec<_>>().join(", ")).unwrap_or_default()
                 ),
                 TuiTab::Search => events
                     .iter()
