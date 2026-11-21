@@ -58,12 +58,14 @@ pub fn preview_detection_rules(
         let matched_rules = evaluate_with_reasons(&rules, &event.message)
             .into_iter()
             .map(|matched| {
-                let entry = counts.entry(matched.rule.id).or_insert_with(|| RuleMatchCount {
-                    rule_id: matched.rule.id,
-                    rule_name: matched.rule.name.clone(),
-                    severity: matched.rule.severity.clone(),
-                    matched_events: 0,
-                });
+                let entry = counts
+                    .entry(matched.rule.id)
+                    .or_insert_with(|| RuleMatchCount {
+                        rule_id: matched.rule.id,
+                        rule_name: matched.rule.name.clone(),
+                        severity: matched.rule.severity.clone(),
+                        matched_events: 0,
+                    });
                 entry.matched_events += 1;
                 total_matches += 1;
                 RulePreviewMatch {
