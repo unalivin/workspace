@@ -1,0 +1,97 @@
+name: Release phishlens
+
+on:
+  push:
+    tags:
+      - 'phishlens/v*'
+
+permissions:
+  contents: read
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: phishlens
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.83.0
+      - name: Install Linux GUI dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libwayland-dev libgl1-mesa-dev libx11-dev libxi-dev libxrandr-dev libxcursor-dev
+      - name: Run tests
+        run: cargo test --workspace
+      - name: Package Linux x64
+        run: bash scripts/package.sh --target linux-x64 --output ../dist/phishlens-linux-x64.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phishlens-linux-x64
+          path: dist/phishlens-linux-x64.tar.gz
+
+  build-macos:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: phishlens
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.83.0
+      - name: Run tests
+        run: cargo test --workspace
+      - name: Package macOS arm64
+        run: bash scripts/package.sh --target macos-arm64 --output ../dist/phishlens-macos-arm64.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phishlens-macos-arm64
+          path: dist/phishlens-macos-arm64.tar.gz
+
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: phishlens
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.83.0
+      - name: Run tests
+        run: cargo test --workspace
+      - name: Package Windows x64
+        shell: bash
+        run: bash scripts/package.sh --target windows-x64 --output ../dist/phishlens-windows-x64.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phishlens-windows-x64
+          path: dist/phishlens-windows-x64.exe
+
+  publish:
+    needs: [build-linux, build-macos, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Verify tag and artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git rev-parse --verify "refs/tags/${GITHUB_REF_NAME}^{commit}"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists" >&2
+            exit 1
+          fi
+          test -f dist/phishlens-linux-x64.tar.gz
+          test -f dist/phishlens-macos-arm64.tar.gz
+          test -f dist/phishlens-windows-x64.exe
+          gh release create "$GITHUB_REF_NAME" \
+            dist/phishlens-linux-x64.tar.gz \
+            dist/phishlens-macos-arm64.tar.gz \
+            dist/phishlens-windows-x64.exe \
+            --prerelease \
+            --title "PhishLens v0.1.0-dev (dev beta)" \
+            --notes-file phishlens/docs/RELEASE_NOTES.md

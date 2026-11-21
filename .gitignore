@@ -1,0 +1,14 @@
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+/dist/
+/build/
+/target/
+*.exe
+*.tar.gz
+*.db
+*.db-wal
+*.db-shm
+.env

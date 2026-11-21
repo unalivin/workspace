@@ -1,0 +1,103 @@
+name: Release pipelineshield
+
+on:
+  push:
+    tags:
+      - 'pipelineshield/v*'
+
+permissions:
+  contents: read
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pipelineshield
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.4'
+      - name: Install Linux GUI dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev xorg-dev libxkbcommon-dev
+      - name: Run tests
+        run: go test -race ./...
+      - name: Package Linux x64
+        run: bash scripts/package.sh --target linux-x64 --output ../dist/pipelineshield-linux-x64.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pipelineshield-linux-x64
+          path: dist/pipelineshield-linux-x64.tar.gz
+
+  build-macos:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: pipelineshield
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.4'
+      - name: Run tests
+        run: go test -race ./...
+      - name: Package macOS arm64
+        run: bash scripts/package.sh --target macos-arm64 --output ../dist/pipelineshield-macos-arm64.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pipelineshield-macos-arm64
+          path: dist/pipelineshield-macos-arm64.tar.gz
+
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: pipelineshield
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.4'
+      - name: Run tests
+        run: go test ./...
+      - name: Package Windows x64
+        shell: bash
+        run: bash scripts/package.sh --target windows-x64 --output ../dist/pipelineshield-windows-x64.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pipelineshield-windows-x64
+          path: dist/pipelineshield-windows-x64.exe
+
+  publish:
+    needs: [build-linux, build-macos, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Verify tag and artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git rev-parse --verify "refs/tags/${GITHUB_REF_NAME}^{commit}"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists" >&2
+            exit 1
+          fi
+          test -f dist/pipelineshield-linux-x64.tar.gz
+          test -f dist/pipelineshield-macos-arm64.tar.gz
+          test -f dist/pipelineshield-windows-x64.exe
+          gh release create "$GITHUB_REF_NAME" \
+            dist/pipelineshield-linux-x64.tar.gz \
+            dist/pipelineshield-macos-arm64.tar.gz \
+            dist/pipelineshield-windows-x64.exe \
+            --prerelease \
+            --title "PipelineShield v0.1.0-dev (dev beta)" \
+            --notes-file pipelineshield/docs/RELEASE_NOTES.md
