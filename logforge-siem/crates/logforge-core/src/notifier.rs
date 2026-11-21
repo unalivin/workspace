@@ -279,3 +279,49 @@ pub fn retry_dead_notifications(
         .execute(&sql, rusqlite::params_from_iter(values.iter()))
         .map_err(DbError::from)
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct NotificationOutboxHealth {
+    pub counts: OutboxCounts,
+    pub due_now: i64,
+    pub delayed: i64,
+    pub oldest_queued_at: Option<String>,
+    pub oldest_dead_at: Option<String>,
+}
+
+/// Gives workers and operators a time-aware view of queue pressure in addition
+/// to raw state counts. The caller supplies a UTC reference time for repeatable
+/// monitoring and tests.
+pub fn outbox_health(db: &Database, now_utc: &str) -> Result<NotificationOutboxHealth, DbError> {
+    if chrono::DateTime::parse_from_rfc3339(now_utc).is_err() {
+        return Err(DbError::Sqlite(rusqlite::Error::InvalidQuery));
+    }
+    let counts = outbox_counts(db)?;
+    let (due_now, delayed, oldest_queued_at, oldest_dead_at): (
+        i64,
+        i64,
+        Option<String>,
+        Option<String>,
+    ) = db.conn().query_row(
+        "SELECT \
+            SUM(CASE WHEN state = 'queued' AND next_attempt_at <= ?1 THEN 1 ELSE 0 END), \
+            SUM(CASE WHEN state = 'queued' AND next_attempt_at > ?1 THEN 1 ELSE 0 END), \
+            MIN(CASE WHEN state = 'queued' THEN created_at END), \
+            MIN(CASE WHEN state = 'dead' THEN created_at END) \
+         FROM notification_outbox",
+        params![now_utc],
+        |row| Ok((
+            row.get::<_, Option<i64>>(0)?.unwrap_or(0),
+            row.get::<_, Option<i64>>(1)?.unwrap_or(0),
+            row.get(2)?,
+            row.get(3)?,
+        )),
+    )?;
+    Ok(NotificationOutboxHealth {
+        counts,
+        due_now,
+        delayed,
+        oldest_queued_at,
+        oldest_dead_at,
+    })
+}

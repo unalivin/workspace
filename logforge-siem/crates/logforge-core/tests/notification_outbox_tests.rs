@@ -126,3 +126,23 @@ fn abandoned_claims_recover_and_dead_letters_can_be_manually_retried() {
     );
     assert_eq!(outbox_counts(service.db()).expect("counts").queued, 1);
 }
+
+#[test]
+fn outbox_health_distinguishes_due_from_delayed_messages() {
+    use logforge_core::notifier::outbox_health;
+
+    let db = Database::open_in_memory().expect("database");
+    let service = SiemService::new(db);
+    let source = service.add_source("health", "file", "memory").expect("source");
+    service.add_rule("failure", "error", "failed").expect("rule");
+    upsert_notification_rule(service.db(), "alert.created", "warn", true, 0, 0)
+        .expect("notification rule");
+    service
+        .ingest_lines(source, &["2026-11-21T10:00:00Z host app: failed request"])
+        .expect("ingest");
+    let health = outbox_health(service.db(), "2026-11-21T10:01:00Z").expect("outbox health");
+    assert_eq!(health.due_now, 1);
+    assert_eq!(health.delayed, 0);
+    assert_eq!(health.counts.queued, 1);
+    assert!(health.oldest_queued_at.is_some());
+}

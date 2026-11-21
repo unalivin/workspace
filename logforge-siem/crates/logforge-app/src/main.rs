@@ -290,6 +290,9 @@ fn main() {
                     "source_liveness": logforge_core::stats::source_liveness(
                         service.db(), &chrono::Utc::now().to_rfc3339(), 300
                     ).expect("source liveness"),
+                    "notification_outbox": logforge_core::notifier::outbox_health(
+                        service.db(), &chrono::Utc::now().to_rfc3339()
+                    ).expect("outbox health"),
                     "event_severity": logforge_core::stats::events_by_severity(service.db()).expect("event severity"),
                     "alert_status": logforge_core::stats::alert_status_counts(service.db()).expect("alert status"),
                     "alert_severity": logforge_core::stats::alert_severity_matrix(service.db()).expect("alert severity"),
