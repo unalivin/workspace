@@ -5,9 +5,9 @@
 
 | Project | Language | Destination | State | Next step |
 |---|---|---|---|---|
-| logforge-siem | rust | sonix-devs | Complete | Extract Rust template to templates/rust/, then start netauto |
-| netauto | go | sonix-devs | Complete | Extract Go template to templates/go/, then start vulntrack |
-| vulntrack | go | sonix-devs | Complete | Done |
+| logforge-siem | rust | sonix-devs | In progress | production lines below floor (2000/7000); add production implementation |
+| netauto | go | sonix-devs | In progress | production lines, tests, screens, migrations, icon assets, diagrams below floors; implement and retest |
+| vulntrack | go | sonix-devs | In progress | production lines, tests, screens, migrations, tables, icon assets, diagrams below floors; implement and retest |
 | forensicflow | rust | sonix-devs | Not started | Create requirements, acceptance criteria, and threat model |
 | ipam-pro | go | sonix-devs | Not started | Waiting on forensicflow |
 | securebaseline | cpp | sonix-devs | Not started | Waiting on ipam-pro |

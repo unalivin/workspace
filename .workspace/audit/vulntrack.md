@@ -1,10 +1,13 @@
-# VulnTrack Requirement Audit
+Project vulntrack, language go, size class L
 
-| # | Requirement | Status | Proof | Command |
-|---|---|---|---|---|
-| 1 | Threat model and architecture | Implemented | `docs/THREAT_MODEL.md`, `docs/ARCHITECTURE.md` | `verify-repo.sh` |
-| 2 | SQLite schema migrations and SQL tests | Implemented | `migrations/0001_initial.sql`, `internal/db/db_test.go` | `go test ./...` (pending CI) |
-| 3 | Import, deduplication, risk scoring, SLA, exceptions | Implemented | `internal/service/service.go`, `service_test.go` | `go test -race ./...` (pending CI) |
-| 4 | CLI and launcher | Implemented | `cmd/vulntrack/main.go`, `main_test.go` | `go test -race ./...` (pending CI) |
-| 5 | Terminal UI and Desktop GUI | Implemented | `internal/tui/tui.go`, `internal/gui/gui.go` | `go build ./...` (pending CI) |
-| 6 | Packaging and documentation | Implemented | `Makefile`, `scripts/`, `docs/`, `README.md` | `verify-repo.sh` |
+production lines                  325  (need >= 7000)  FAIL
+test functions                      3  (need >= 60)  FAIL
+screens in GUI and TUI              0  (need >= 10)  FAIL
+migrations                          1  (need >= 2)  FAIL
+SQL tables                          4  (need >= 8)  FAIL
+icon.svg bytes                    347  (need >= 1500)  FAIL
+icon PNG sizes                      0  (need >= 7)  FAIL
+.ico and .icns files                0  (need >= 2)  FAIL
+diagrams                            1  (need >= 3)  FAIL
+
+vulntrack does not meet the floor (9 failing rows). State stays In progress.
