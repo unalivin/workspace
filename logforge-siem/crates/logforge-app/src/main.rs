@@ -109,6 +109,15 @@ enum Commands {
     CaseExport {
         id: i64,
     },
+    Validate {
+        file: PathBuf,
+        #[arg(long, value_enum, default_value = "auto")]
+        format: CliLogFormat,
+        #[arg(long, default_value_t = 1_048_576)]
+        max_line_bytes: usize,
+        #[arg(long, default_value_t = 10)]
+        error_samples: usize,
+    },
     Ingest {
         source: String,
         file: PathBuf,
@@ -398,6 +407,22 @@ fn main() {
                     },
                 )
                 .expect("rule preview");
+                println!("{}", serde_json::to_string_pretty(&report).expect("json"));
+            }
+            Commands::Validate {
+                file,
+                format,
+                max_line_bytes,
+                error_samples,
+            } => {
+                let input = std::fs::File::open(&file).expect("open input file");
+                let report = logforge_core::parser_suite::validate_reader(
+                    std::io::BufReader::new(input),
+                    format.into(),
+                    max_line_bytes,
+                    error_samples,
+                )
+                .expect("validate input");
                 println!("{}", serde_json::to_string_pretty(&report).expect("json"));
             }
             Commands::Ingest {
