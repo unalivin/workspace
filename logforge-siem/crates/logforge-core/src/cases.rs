@@ -2,7 +2,7 @@ use crate::db::{Database, DbError};
 use chrono::Utc;
 use rusqlite::{params, OptionalExtension};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct CaseRecord {
     pub id: i64,
     pub title: String,
@@ -16,7 +16,7 @@ pub struct CaseRecord {
     pub alert_count: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct CaseNote {
     pub id: i64,
     pub case_id: i64,

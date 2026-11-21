@@ -1,7 +1,7 @@
 use crate::db::{Database, DbError};
 use sha2::{Digest, Sha256};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct AuditVerifyResult {
     pub total_entries: usize,
     pub valid: bool,

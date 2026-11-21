@@ -106,6 +106,9 @@ enum Commands {
         #[arg(long)]
         query: Option<String>,
     },
+    CaseExport {
+        id: i64,
+    },
     Ingest {
         source: String,
         file: PathBuf,
@@ -362,6 +365,12 @@ fn main() {
                         manager.unlink_alert(id, alert_id).expect("unlink alert")
                     ),
                 }
+            }
+            Commands::CaseExport { id } => {
+                let bundle = logforge_core::case_export::export_case_bundle(service.db(), id)
+                    .expect("export case")
+                    .expect("case not found");
+                println!("{}", serde_json::to_string_pretty(&bundle).expect("json"));
             }
             Commands::Sources => {
                 let sources = service.list_sources().expect("sources");
