@@ -6,7 +6,7 @@ use rusqlite::OptionalExtension;
 use serde::Serialize;
 use std::collections::BTreeMap;
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct CaseExportBundle {
     pub exported_at: String,
     pub case: CaseRecord,
