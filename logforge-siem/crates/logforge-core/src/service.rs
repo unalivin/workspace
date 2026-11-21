@@ -194,8 +194,7 @@ impl SiemService {
                             now,
                         ],
                     )?;
-                    summary.alerts_created += 1;
-                }
+                summary.alerts_created += 1;
             }
         }
 
