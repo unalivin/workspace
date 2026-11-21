@@ -197,9 +197,24 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                         _ => "Retention policy unavailable.".to_string(),
                     }
                 }
-                TuiTab::Audit => match logforge_core::audit_verify::verify_audit_chain(service.db()) {
-                    Ok(res) => format!("Audit entries: {} | Chain valid: {}", res.total_entries, res.valid),
-                    Err(_) => "Audit verification unavailable.".to_string(),
+                TuiTab::Audit => {
+                    let verification = logforge_core::audit_verify::verify_audit_chain(service.db());
+                    let entries = logforge_core::audit_verify::query_audit_log(
+                        service.db(),
+                        &logforge_core::audit_verify::AuditFilter {
+                            limit: 25,
+                            ..logforge_core::audit_verify::AuditFilter::default()
+                        },
+                    );
+                    let mut lines = match verification {
+                        Ok(result) => vec![format!("Audit entries: {} | Chain valid: {}", result.total_entries, result.valid)],
+                        Err(_) => vec!["Audit verification unavailable.".to_string()],
+                    };
+                    lines.push("Recent activity:".to_string());
+                    lines.extend(entries.unwrap_or_default().iter().map(|entry| format!(
+                        "{} · {} · {} · {}", entry.created_at, entry.actor, entry.action, entry.target
+                    )));
+                    lines.join("\\n")
                 },
                 TuiTab::Health => {
                     let ingestion = logforge_core::stats::ingestion_stats(service.db());

@@ -189,6 +189,19 @@ impl eframe::App for LogForgeApp {
                     if let Ok(res) = logforge_core::audit_verify::verify_audit_chain(self.service.db()) {
                         ui.label(format!("Audit entries: {} | Chain valid: {}", res.total_entries, res.valid));
                     }
+                    ui.separator();
+                    ui.heading("Recent audit activity");
+                    let filter = logforge_core::audit_verify::AuditFilter {
+                        limit: 50,
+                        ..logforge_core::audit_verify::AuditFilter::default()
+                    };
+                    if let Ok(entries) = logforge_core::audit_verify::query_audit_log(self.service.db(), &filter) {
+                        egui::ScrollArea::vertical().show(ui, |ui| {
+                            for entry in entries {
+                                ui.label(format!("{} · {} · {} · {}", entry.created_at, entry.actor, entry.action, entry.target));
+                            }
+                        });
+                    }
                 }
                 GuiTab::Alerts => {
                     ui.heading("Alerts");
