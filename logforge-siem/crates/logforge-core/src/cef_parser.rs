@@ -33,12 +33,18 @@ pub fn parse_cef_line(raw: &str) -> Result<NormalizedEvent, IngestError> {
     let host = first_value(extensions, &["dvchost", "dhost", "shost"])
         .unwrap_or(&record.header.device_vendor)
         .to_string();
-    let service = format!("{} {}", record.header.device_product, record.header.device_version)
-        .trim()
-        .to_string();
+    let service = format!(
+        "{} {}",
+        record.header.device_product, record.header.device_version
+    )
+    .trim()
+    .to_string();
     let extension_message = first_value(extensions, &["msg", "request", "reason"]);
     let message = match extension_message {
-        Some(value) if !value.trim().is_empty() => format!("[{}] {}: {}", record.header.signature_id, record.header.name, value),
+        Some(value) if !value.trim().is_empty() => format!(
+            "[{}] {}: {}",
+            record.header.signature_id, record.header.name, value
+        ),
         _ => format!("[{}] {}", record.header.signature_id, record.header.name),
     };
     let severity = cef_severity(&record.header.severity_raw);
@@ -68,7 +74,9 @@ pub fn parse_cef_record(raw: &str) -> Result<CefRecord, IngestError> {
     let (safe_line, _) = redact_secrets(trimmed);
     let mut fields = split_header(&safe_line)?;
     if fields.len() != 8 {
-        return Err(malformed("CEF requires seven header fields followed by extension data"));
+        return Err(malformed(
+            "CEF requires seven header fields followed by extension data",
+        ));
     }
     let version = fields[0]
         .strip_prefix("CEF:")
@@ -147,7 +155,8 @@ fn parse_extensions(input: &str) -> Result<BTreeMap<String, String>, IngestError
             break;
         }
         let key_start = index;
-        while index < bytes.len() && (bytes[index].is_ascii_alphanumeric() || bytes[index] == b'_') {
+        while index < bytes.len() && (bytes[index].is_ascii_alphanumeric() || bytes[index] == b'_')
+        {
             index += 1;
         }
         if key_start == index || index >= bytes.len() || bytes[index] != b'=' {
@@ -176,7 +185,9 @@ fn parse_extensions(input: &str) -> Result<BTreeMap<String, String>, IngestError
                     probe += 1;
                 }
                 let candidate_start = probe;
-                while probe < bytes.len() && (bytes[probe].is_ascii_alphanumeric() || bytes[probe] == b'_') {
+                while probe < bytes.len()
+                    && (bytes[probe].is_ascii_alphanumeric() || bytes[probe] == b'_')
+                {
                     probe += 1;
                 }
                 if probe > candidate_start && probe < bytes.len() && bytes[probe] == b'=' {
@@ -226,7 +237,9 @@ fn cef_severity(raw: &str) -> Severity {
 }
 
 fn parse_cef_timestamp(value: Option<&str>) -> Result<String, IngestError> {
-    let Some(value) = value else { return normalize_timestamp(None) };
+    let Some(value) = value else {
+        return normalize_timestamp(None);
+    };
     if let Ok(milliseconds) = value.parse::<i64>() {
         let seconds = milliseconds.div_euclid(1000);
         let nanos = milliseconds.rem_euclid(1000) as u32 * 1_000_000;
