@@ -6,6 +6,7 @@ pub mod category_colors;
 pub mod cef_parser;
 pub mod config;
 pub mod correlation;
+pub mod correlation_state;
 pub mod db;
 pub mod dedup_cache;
 pub mod diagnostics;
