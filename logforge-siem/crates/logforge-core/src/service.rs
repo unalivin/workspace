@@ -91,7 +91,10 @@ impl SiemService {
         summary.dropped = dropped;
 
         for raw in to_process {
-            let parsed = match crate::parser_suite::parse_with_format(raw, crate::parser_suite::LogFormat::Auto) {
+            let parsed = match crate::parser_suite::parse_with_format(
+                raw,
+                crate::parser_suite::LogFormat::Auto,
+            ) {
                 Ok(ev) => ev,
                 Err(IngestError::Empty) => continue,
                 Err(_) => {
@@ -196,7 +199,17 @@ impl SiemService {
              ORDER BY e.timestamp_utc DESC
              LIMIT ?6",
         )?;
-        let rows = stmt.query_map(params![fts, compiled.lower_timestamp, compiled.upper_timestamp, compiled.severity, compiled.host, limit_i64], map_event)?;
+        let rows = stmt.query_map(
+            params![
+                fts,
+                compiled.lower_timestamp,
+                compiled.upper_timestamp,
+                compiled.severity,
+                compiled.host,
+                limit_i64
+            ],
+            map_event,
+        )?;
         rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
     }
 
@@ -261,7 +274,11 @@ impl SiemService {
             "UPDATE alerts SET status = ?1, updated_at = ?2 WHERE id = ?3",
             params![status, now, alert_id],
         )?;
-        self.record_audit("local", "update_alert", &format!("alert:{alert_id}:{status}"))?;
+        self.record_audit(
+            "local",
+            "update_alert",
+            &format!("alert:{alert_id}:{status}"),
+        )?;
         Ok(())
     }
 

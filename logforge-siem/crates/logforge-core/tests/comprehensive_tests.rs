@@ -62,8 +62,10 @@ fn test_ingest_multiple_sources() {
     let svc = SiemService::new(db);
     let s1 = svc.add_source("s1", "file", "/tmp/1.log").expect("s1");
     let s2 = svc.add_source("s2", "file", "/tmp/2.log").expect("s2");
-    svc.ingest_lines(s1, &["2026-11-21T00:00:00Z h1 a: m1"]).expect("i1");
-    svc.ingest_lines(s2, &["2026-11-21T00:00:01Z h2 b: m2"]).expect("i2");
+    svc.ingest_lines(s1, &["2026-11-21T00:00:00Z h1 a: m1"])
+        .expect("i1");
+    svc.ingest_lines(s2, &["2026-11-21T00:00:01Z h2 b: m2"])
+        .expect("i2");
     assert_eq!(svc.overview_counts().expect("c").total_events, 2);
 }
 

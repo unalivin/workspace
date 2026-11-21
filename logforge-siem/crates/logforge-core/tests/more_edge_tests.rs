@@ -1,4 +1,6 @@
-use logforge_core::ingest::{compute_dedup_hash, normalize_timestamp, parse_line, redact_secrets, IngestError};
+use logforge_core::ingest::{
+    compute_dedup_hash, normalize_timestamp, parse_line, redact_secrets, IngestError,
+};
 use logforge_core::model::Severity;
 use logforge_core::notifier::{is_quiet_hour, severity_rank};
 use logforge_core::query_parser::parse_search_query;

@@ -37,7 +37,10 @@ fn test_validate_text_scale_zero_rejected() {
 
 #[test]
 fn test_theme_mode_high_contrast_alias() {
-    assert_eq!(ThemeMode::parse("high_contrast"), Some(ThemeMode::HighContrast));
+    assert_eq!(
+        ThemeMode::parse("high_contrast"),
+        Some(ThemeMode::HighContrast)
+    );
 }
 
 #[test]

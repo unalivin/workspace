@@ -46,7 +46,10 @@ fn test_query_parser_strips_punctuation() {
 
 #[test]
 fn test_parse_json_array_rejected() {
-    assert!(matches!(parse_line("[1, 2, 3]"), Err(IngestError::Malformed(_))));
+    assert!(matches!(
+        parse_line("[1, 2, 3]"),
+        Err(IngestError::Malformed(_))
+    ));
 }
 
 #[test]

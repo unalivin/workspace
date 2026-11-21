@@ -1,6 +1,8 @@
 use logforge_core::category_colors::assign_category_color;
 use logforge_core::export::{export_alerts_json, export_events_csv, export_events_json};
-use logforge_core::notifier::{is_quiet_hour, should_notify, upsert_notification_rule, NotificationRule};
+use logforge_core::notifier::{
+    is_quiet_hour, should_notify, upsert_notification_rule, NotificationRule,
+};
 use logforge_core::query_parser::parse_search_query;
 use logforge_core::retention::{get_default_policy, prune_excess_events};
 use logforge_core::{Database, SiemService};

@@ -35,7 +35,12 @@ mod tests {
 
     #[test]
     fn explicit_dispatch_rejects_mismatched_formats_without_panicking() {
-        for format in [LogFormat::Json, LogFormat::Rfc5424, LogFormat::Cef, LogFormat::Leef] {
+        for format in [
+            LogFormat::Json,
+            LogFormat::Rfc5424,
+            LogFormat::Cef,
+            LogFormat::Leef,
+        ] {
             assert!(parse_with_format("not a log record", format).is_err());
         }
     }

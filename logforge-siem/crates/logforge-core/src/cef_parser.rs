@@ -1,4 +1,6 @@
-use crate::ingest::{compute_dedup_hash, normalize_timestamp, redact_secrets, IngestError, NormalizedEvent};
+use crate::ingest::{
+    compute_dedup_hash, normalize_timestamp, redact_secrets, IngestError, NormalizedEvent,
+};
 use crate::model::Severity;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,7 +22,9 @@ pub fn parse_cef_line(raw: &str) -> Result<NormalizedEvent, IngestError> {
     let (clean, redacted) = redact_secrets(trimmed);
     let parts: Vec<&str> = clean.splitn(8, '|').collect();
     if parts.len() < 8 {
-        return Err(IngestError::Malformed("CEF requires 7 pipe-delimited header fields".to_string()));
+        return Err(IngestError::Malformed(
+            "CEF requires 7 pipe-delimited header fields".to_string(),
+        ));
     }
 
     let version_str = parts[0].trim_start_matches("CEF:");

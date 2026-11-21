@@ -8,13 +8,24 @@ fn test_alert_acknowledge_and_resolve() {
     let svc = SiemService::new(db);
     let sid = svc.add_source("s1", "file", "/tmp/a.log").expect("src");
     svc.add_rule("r1", "critical", "breach").expect("rule");
-    svc.ingest_lines(sid, &["2026-11-21T01:00:00Z h1 app: breach detected"]).expect("ingest");
+    svc.ingest_lines(sid, &["2026-11-21T01:00:00Z h1 app: breach detected"])
+        .expect("ingest");
     let alerts = svc.list_alerts(Some("open")).expect("alerts");
     assert_eq!(alerts.len(), 1);
-    svc.update_alert_status(alerts[0].id, "acknowledged").expect("ack");
-    assert_eq!(svc.list_alerts(Some("acknowledged")).expect("ack list").len(), 1);
-    svc.update_alert_status(alerts[0].id, "resolved").expect("res");
-    assert_eq!(svc.list_alerts(Some("resolved")).expect("res list").len(), 1);
+    svc.update_alert_status(alerts[0].id, "acknowledged")
+        .expect("ack");
+    assert_eq!(
+        svc.list_alerts(Some("acknowledged"))
+            .expect("ack list")
+            .len(),
+        1
+    );
+    svc.update_alert_status(alerts[0].id, "resolved")
+        .expect("res");
+    assert_eq!(
+        svc.list_alerts(Some("resolved")).expect("res list").len(),
+        1
+    );
 }
 
 #[test]
@@ -40,7 +51,8 @@ fn test_saved_query_upsert() {
     let db = Database::open_in_memory().expect("db");
     let svc = SiemService::new(db);
     svc.save_query("errors", "severity:error").expect("save 1");
-    svc.save_query("errors", "severity:critical").expect("save 2");
+    svc.save_query("errors", "severity:critical")
+        .expect("save 2");
     let list = svc.list_saved_queries().expect("list");
     assert_eq!(list.len(), 1);
     assert_eq!(list[0].query, "severity:critical");
@@ -51,7 +63,8 @@ fn test_audit_chain_records_entries() {
     let db = Database::open_in_memory().expect("db");
     let svc = SiemService::new(db);
     svc.record_audit("alice", "login", "session").expect("a1");
-    svc.record_audit("bob", "export", "report.json").expect("a2");
+    svc.record_audit("bob", "export", "report.json")
+        .expect("a2");
     let count: i64 = svc
         .db()
         .conn()

@@ -47,8 +47,7 @@ impl Database {
              PRAGMA foreign_keys = ON;",
         )?;
 
-        let current_version: u32 =
-            conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
+        let current_version: u32 = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
 
         for migration in MIGRATIONS {
             if migration.version > current_version {

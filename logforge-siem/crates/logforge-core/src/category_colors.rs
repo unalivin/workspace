@@ -2,7 +2,12 @@ use crate::db::{Database, DbError};
 use crate::theme::{CATEGORICAL_DARK, CATEGORICAL_LIGHT};
 use rusqlite::params;
 
-pub fn assign_category_color(db: &Database, kind: &str, value: &str, dark: bool) -> Result<String, DbError> {
+pub fn assign_category_color(
+    db: &Database,
+    kind: &str,
+    value: &str,
+    dark: bool,
+) -> Result<String, DbError> {
     let mut stmt = db
         .conn()
         .prepare("SELECT colour FROM category_colors WHERE kind = ?1 AND value = ?2")?;
@@ -19,7 +24,11 @@ pub fn assign_category_color(db: &Database, kind: &str, value: &str, dark: bool)
         |r| r.get::<_, i64>(0),
     )? as usize;
 
-    let palette = if dark { CATEGORICAL_DARK } else { CATEGORICAL_LIGHT };
+    let palette = if dark {
+        CATEGORICAL_DARK
+    } else {
+        CATEGORICAL_LIGHT
+    };
     let colour = if count < palette.len() {
         palette[count].to_string()
     } else {

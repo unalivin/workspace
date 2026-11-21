@@ -72,18 +72,24 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     let mut active_tab = TuiTab::Overview;
-    let accent = if no_color { Color::Reset } else { Color::Yellow };
+    let accent = if no_color {
+        Color::Reset
+    } else {
+        Color::Yellow
+    };
 
     loop {
-        let counts = service.overview_counts().unwrap_or(logforge_core::OverviewCounts {
-            total_events: 0,
-            active_sources: 0,
-            open_alerts: 0,
-            stat_received: 0,
-            stat_deduplicated: 0,
-            stat_dropped: 0,
-            stat_malformed: 0,
-        });
+        let counts = service
+            .overview_counts()
+            .unwrap_or(logforge_core::OverviewCounts {
+                total_events: 0,
+                active_sources: 0,
+                open_alerts: 0,
+                stat_received: 0,
+                stat_deduplicated: 0,
+                stat_dropped: 0,
+                stat_malformed: 0,
+            });
         let alerts = service.list_alerts(Some("open")).unwrap_or_default();
         let events = service.search_events("", 25).unwrap_or_default();
 

@@ -215,7 +215,10 @@ mod tests {
 
     #[test]
     fn rejects_malformed_json_and_syslog() {
-        assert!(matches!(parse_line("{bad json"), Err(IngestError::Malformed(_))));
+        assert!(matches!(
+            parse_line("{bad json"),
+            Err(IngestError::Malformed(_))
+        ));
         assert!(matches!(
             parse_line("only two"),
             Err(IngestError::Malformed(_))

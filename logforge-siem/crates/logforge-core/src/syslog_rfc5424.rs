@@ -1,4 +1,6 @@
-use crate::ingest::{compute_dedup_hash, normalize_timestamp, redact_secrets, IngestError, NormalizedEvent};
+use crate::ingest::{
+    compute_dedup_hash, normalize_timestamp, redact_secrets, IngestError, NormalizedEvent,
+};
 use crate::model::Severity;
 
 pub fn parse_rfc5424(raw: &str) -> Result<NormalizedEvent, IngestError> {
@@ -24,10 +26,16 @@ pub fn parse_rfc5424(raw: &str) -> Result<NormalizedEvent, IngestError> {
     let rest = trimmed[end_pri + 1..].trim_start();
     let parts: Vec<&str> = rest.splitn(6, ' ').collect();
     if parts.len() < 6 {
-        return Err(IngestError::Malformed("incomplete RFC5424 header".to_string()));
+        return Err(IngestError::Malformed(
+            "incomplete RFC5424 header".to_string(),
+        ));
     }
 
-    let ts = if parts[1] == "-" { None } else { Some(parts[1]) };
+    let ts = if parts[1] == "-" {
+        None
+    } else {
+        Some(parts[1])
+    };
     let timestamp_utc = normalize_timestamp(ts)?;
     let host = parts[2].to_string();
     let service = parts[3].to_string();

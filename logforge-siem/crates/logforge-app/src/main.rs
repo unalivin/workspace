@@ -220,13 +220,29 @@ fn main() {
                 println!("{}", serde_json::to_string_pretty(&diag).expect("json"));
             }
             Commands::Retention { prune, dry_run } => {
-                let pol = logforge_core::retention::get_default_policy(service.db()).expect("policy");
+                let pol =
+                    logforge_core::retention::get_default_policy(service.db()).expect("policy");
                 let max_events = prune.unwrap_or(pol.max_events);
-                let plan = logforge_core::retention::plan_retention(service.db(), pol.max_days, max_events, &chrono::Utc::now().to_rfc3339()).expect("plan");
-                println!("policy={} max_days={} max_events={} candidates={}", pol.name, pol.max_days, max_events, plan.count);
-                for id in &plan.event_ids { println!("event_id={id}"); }
-                if dry_run { println!("dry_run=true"); } else {
-                    let deleted = logforge_core::retention::apply_retention_plan(service.db(), &plan).expect("prune");
+                let plan = logforge_core::retention::plan_retention(
+                    service.db(),
+                    pol.max_days,
+                    max_events,
+                    &chrono::Utc::now().to_rfc3339(),
+                )
+                .expect("plan");
+                println!(
+                    "policy={} max_days={} max_events={} candidates={}",
+                    pol.name, pol.max_days, max_events, plan.count
+                );
+                for id in &plan.event_ids {
+                    println!("event_id={id}");
+                }
+                if dry_run {
+                    println!("dry_run=true");
+                } else {
+                    let deleted =
+                        logforge_core::retention::apply_retention_plan(service.db(), &plan)
+                            .expect("prune");
                     println!("pruned={deleted}");
                 }
             }
@@ -235,7 +251,10 @@ fn main() {
                 if format == "csv" {
                     println!("{}", logforge_core::export::export_events_csv(&events));
                 } else {
-                    println!("{}", logforge_core::export::export_events_json(&events).expect("json"));
+                    println!(
+                        "{}",
+                        logforge_core::export::export_events_json(&events).expect("json")
+                    );
                 }
             }
         }

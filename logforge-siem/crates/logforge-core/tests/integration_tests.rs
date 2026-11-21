@@ -1,4 +1,7 @@
-use logforge_core::ingest::{compute_dedup_hash, normalize_timestamp, parse_line, redact_secrets, IngestError, MAX_LINE_BYTES};
+use logforge_core::ingest::{
+    compute_dedup_hash, normalize_timestamp, parse_line, redact_secrets, IngestError,
+    MAX_LINE_BYTES,
+};
 use logforge_core::model::Severity;
 use logforge_core::theme::{severity_color, ThemeMode, CATEGORICAL_DARK, CATEGORICAL_LIGHT};
 use logforge_core::{Database, SiemService};
@@ -145,7 +148,12 @@ fn test_parse_syslog_valid() {
 
 #[test]
 fn test_theme_mode_roundtrip() {
-    for mode in [ThemeMode::Light, ThemeMode::Dark, ThemeMode::System, ThemeMode::HighContrast] {
+    for mode in [
+        ThemeMode::Light,
+        ThemeMode::Dark,
+        ThemeMode::System,
+        ThemeMode::HighContrast,
+    ] {
         assert_eq!(ThemeMode::parse(mode.as_str()), Some(mode));
     }
 }
@@ -165,15 +173,21 @@ fn test_severity_colors_light_and_dark() {
 #[test]
 fn test_db_settings_roundtrip() {
     let db = Database::open_in_memory().expect("db");
-    db.set_setting("theme", "dark", "2026-11-21T00:00:00Z").expect("set");
-    assert_eq!(db.get_setting("theme").expect("get"), Some("dark".to_string()));
+    db.set_setting("theme", "dark", "2026-11-21T00:00:00Z")
+        .expect("set");
+    assert_eq!(
+        db.get_setting("theme").expect("get"),
+        Some("dark".to_string())
+    );
 }
 
 #[test]
 fn test_service_source_and_rule_crud() {
     let db = Database::open_in_memory().expect("db");
     let svc = SiemService::new(db);
-    let sid = svc.add_source("app-logs", "file", "/var/log/app.log").expect("source");
+    let sid = svc
+        .add_source("app-logs", "file", "/var/log/app.log")
+        .expect("source");
     assert!(sid > 0);
     let rid = svc.add_rule("Error spike", "error", "panic").expect("rule");
     assert!(rid > 0);
