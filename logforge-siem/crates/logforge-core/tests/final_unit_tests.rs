@@ -13,7 +13,7 @@ fn test_export_csv_escapes_quotes() {
         timestamp_utc: "2026-11-21T00:00:00Z".to_string(),
         received_at: "2026-11-21T00:00:00Z".to_string(),
         severity: "info".to_string(),
-        host: "h1".to_string(),
+        host: "host,\"quoted\"".to_string(),
         service: "s1".to_string(),
         message: "say \"hi\"".to_string(),
         raw_line: "raw".to_string(),
@@ -23,6 +23,8 @@ fn test_export_csv_escapes_quotes() {
     };
     let csv = export_events_csv(&[ev]);
     assert!(csv.contains("\"say \"\"hi\"\"\""));
+    assert!(csv.contains("\"host,\"\"quoted\"\"\""));
+    assert!(csv.contains("source_id,timestamp_utc,received_at"));
 }
 
 #[test]
