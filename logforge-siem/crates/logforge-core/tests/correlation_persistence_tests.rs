@@ -1,4 +1,6 @@
-use logforge_core::correlation_state::{evaluate_sequence, evaluate_threshold, PendingEvent, SequenceSpec};
+use logforge_core::correlation_state::{
+    evaluate_sequence, evaluate_threshold, PendingEvent, SequenceSpec,
+};
 use logforge_core::Database;
 
 #[test]
