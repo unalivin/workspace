@@ -10,6 +10,7 @@ pub mod dedup_cache;
 pub mod diagnostics;
 pub mod export;
 pub mod ingest;
+pub mod intake_queue;
 pub mod leef_parser;
 pub mod model;
 pub mod notifier;
