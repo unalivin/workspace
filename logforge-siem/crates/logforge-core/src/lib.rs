@@ -14,6 +14,7 @@ pub mod leef_parser;
 pub mod model;
 pub mod notifier;
 pub mod parser_suite;
+pub mod query_language;
 pub mod query_parser;
 pub mod retention;
 pub mod rule_engine;

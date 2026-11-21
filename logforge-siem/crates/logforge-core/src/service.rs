@@ -181,15 +181,22 @@ impl SiemService {
             return rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from);
         }
 
+        let compiled = crate::query_language::compile_query(trimmed)
+            .map_err(|_| DbError::Sqlite(rusqlite::Error::InvalidQuery))?;
+        let fts = (!compiled.fts_match.is_empty()).then_some(compiled.fts_match);
         let mut stmt = self.db.conn().prepare(
             "SELECT e.id, e.source_id, e.timestamp_utc, e.received_at, e.severity, e.host, e.service, e.message, e.raw_line, e.dedup_hash, e.redacted, e.fields_json
              FROM events e
-             JOIN events_fts f ON f.rowid = e.id
-             WHERE events_fts MATCH ?1
+             LEFT JOIN events_fts f ON f.rowid = e.id
+             WHERE (?1 IS NULL OR events_fts MATCH ?1)
+               AND (?2 IS NULL OR e.timestamp_utc >= ?2)
+               AND (?3 IS NULL OR e.timestamp_utc <= ?3)
+               AND (?4 IS NULL OR lower(e.severity) = ?4)
+               AND (?5 IS NULL OR e.host = ?5)
              ORDER BY e.timestamp_utc DESC
-             LIMIT ?2",
+             LIMIT ?6",
         )?;
-        let rows = stmt.query_map(params![trimmed, limit_i64], map_event)?;
+        let rows = stmt.query_map(params![fts, compiled.lower_timestamp, compiled.upper_timestamp, compiled.severity, compiled.host, limit_i64], map_event)?;
         rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
     }
 
