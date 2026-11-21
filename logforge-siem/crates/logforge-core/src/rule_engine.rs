@@ -175,7 +175,7 @@ mod tests {
             "login denied"
         )
         .unwrap());
-        assert!(!evaluate_rule(&rule("not:contains:allowed", true), "login denied").unwrap());
+        assert!(evaluate_rule(&rule("not:contains:allowed", true), "login denied").unwrap());
     }
 
     #[test]
