@@ -18,9 +18,13 @@ use std::time::Duration;
 pub enum TuiTab {
     Overview,
     Search,
-    Alerts,
+    SavedQueries,
     Sources,
-    Rules,
+    Schema,
+    Detections,
+    Alerts,
+    Retention,
+    Audit,
     About,
     Settings,
 }
@@ -30,9 +34,13 @@ impl TuiTab {
         &[
             TuiTab::Overview,
             TuiTab::Search,
-            TuiTab::Alerts,
+            TuiTab::SavedQueries,
             TuiTab::Sources,
-            TuiTab::Rules,
+            TuiTab::Schema,
+            TuiTab::Detections,
+            TuiTab::Alerts,
+            TuiTab::Retention,
+            TuiTab::Audit,
             TuiTab::About,
             TuiTab::Settings,
         ]
@@ -42,11 +50,15 @@ impl TuiTab {
         match self {
             TuiTab::Overview => "1 Overview",
             TuiTab::Search => "2 Search",
-            TuiTab::Alerts => "3 Alerts",
+            TuiTab::SavedQueries => "3 Saved Queries",
             TuiTab::Sources => "4 Sources",
-            TuiTab::Rules => "5 Rules",
-            TuiTab::About => "6 About",
-            TuiTab::Settings => "7 Settings",
+            TuiTab::Schema => "5 Schema",
+            TuiTab::Detections => "6 Detections",
+            TuiTab::Alerts => "7 Alerts",
+            TuiTab::Retention => "8 Retention",
+            TuiTab::Audit => "9 Audit",
+            TuiTab::About => "0 About",
+            TuiTab::Settings => "s Settings",
         }
     }
 }
@@ -113,6 +125,13 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                     .map(|e| format!("{} [{}] {}: {}", e.timestamp_utc, e.severity, e.host, e.message))
                     .collect::<Vec<_>>()
                     .join("\n"),
+                TuiTab::SavedQueries => service
+                    .list_saved_queries()
+                    .unwrap_or_default()
+                    .iter()
+                    .map(|q| format!("{}: {}", q.name, q.query))
+                    .collect::<Vec<_>>()
+                    .join("\n"),
                 TuiTab::Alerts => alerts
                     .iter()
                     .map(|a| format!("#{} [{}] {} ({})", a.id, a.severity, a.title, a.status))
@@ -125,13 +144,16 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                     .map(|s| format!("{} ({}) - {}", s.name, s.kind, s.location))
                     .collect::<Vec<_>>()
                     .join("\n"),
-                TuiTab::Rules => service
+                TuiTab::Schema => "Normalized fields: timestamp_utc, severity, host, service, message, dedup_hash, redacted".to_string(),
+                TuiTab::Detections => service
                     .list_rules()
                     .unwrap_or_default()
                     .iter()
                     .map(|r| format!("{} [{}] pattern={}", r.name, r.severity, r.pattern))
                     .collect::<Vec<_>>()
                     .join("\n"),
+                TuiTab::Retention => "Default retention: 90 days / 1,000,000 events".to_string(),
+                TuiTab::Audit => "Hash-chained audit log active.".to_string(),
                 TuiTab::About => "LogForge-SIEM v0.1.0-dev\nCopyright (c) 2026 Sonix Devs\nRepository: https://github.com/sonix-devs/logforge-siem".to_string(),
                 TuiTab::Settings => "Theme: dark | Accent: amber | Density: compact\nUse `logforge-siem config theme set <theme>` to change.".to_string(),
             };
@@ -150,11 +172,15 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                     KeyCode::Char('q') | KeyCode::Esc => break,
                     KeyCode::Char('1') => active_tab = TuiTab::Overview,
                     KeyCode::Char('2') => active_tab = TuiTab::Search,
-                    KeyCode::Char('3') => active_tab = TuiTab::Alerts,
+                    KeyCode::Char('3') => active_tab = TuiTab::SavedQueries,
                     KeyCode::Char('4') => active_tab = TuiTab::Sources,
-                    KeyCode::Char('5') => active_tab = TuiTab::Rules,
-                    KeyCode::Char('6') => active_tab = TuiTab::About,
-                    KeyCode::Char('7') => active_tab = TuiTab::Settings,
+                    KeyCode::Char('5') => active_tab = TuiTab::Schema,
+                    KeyCode::Char('6') => active_tab = TuiTab::Detections,
+                    KeyCode::Char('7') => active_tab = TuiTab::Alerts,
+                    KeyCode::Char('8') => active_tab = TuiTab::Retention,
+                    KeyCode::Char('9') => active_tab = TuiTab::Audit,
+                    KeyCode::Char('0') => active_tab = TuiTab::About,
+                    KeyCode::Char('s') => active_tab = TuiTab::Settings,
                     _ => {}
                 }
             }

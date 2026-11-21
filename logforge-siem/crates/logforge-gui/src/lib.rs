@@ -5,9 +5,13 @@ use logforge-core::SiemService;
 pub enum GuiTab {
     Overview,
     Search,
-    Alerts,
+    SavedQueries,
     Sources,
-    Rules,
+    Schema,
+    Detections,
+    Alerts,
+    Retention,
+    Audit,
     About,
     Settings,
 }
@@ -49,9 +53,13 @@ impl eframe::App for LogForgeApp {
                 ui.separator();
                 ui.selectable_value(&mut self.active_tab, GuiTab::Overview, "Overview");
                 ui.selectable_value(&mut self.active_tab, GuiTab::Search, "Search");
-                ui.selectable_value(&mut self.active_tab, GuiTab::Alerts, "Alerts");
+                ui.selectable_value(&mut self.active_tab, GuiTab::SavedQueries, "Saved Queries");
                 ui.selectable_value(&mut self.active_tab, GuiTab::Sources, "Sources");
-                ui.selectable_value(&mut self.active_tab, GuiTab::Rules, "Rules");
+                ui.selectable_value(&mut self.active_tab, GuiTab::Schema, "Schema");
+                ui.selectable_value(&mut self.active_tab, GuiTab::Detections, "Detections");
+                ui.selectable_value(&mut self.active_tab, GuiTab::Alerts, "Alerts");
+                ui.selectable_value(&mut self.active_tab, GuiTab::Retention, "Retention");
+                ui.selectable_value(&mut self.active_tab, GuiTab::Audit, "Audit");
                 ui.separator();
                 ui.selectable_value(&mut self.active_tab, GuiTab::About, "About");
                 ui.selectable_value(&mut self.active_tab, GuiTab::Settings, "Settings");
@@ -100,6 +108,34 @@ impl eframe::App for LogForgeApp {
                         });
                     }
                 }
+                GuiTab::SavedQueries => {
+                    ui.heading("Saved Queries");
+                    if let Ok(queries) = self.service.list_saved_queries() {
+                        for q in queries {
+                            ui.label(format!("{}: {}", q.name, q.query));
+                        }
+                    }
+                }
+                GuiTab::Schema => {
+                    ui.heading("Schema");
+                    ui.label("Normalized fields: timestamp_utc, severity, host, service, message, dedup_hash, redacted");
+                }
+                GuiTab::Detections => {
+                    ui.heading("Detection Rules");
+                    if let Ok(rules) = self.service.list_rules() {
+                        for r in rules {
+                            ui.label(format!("{} [{}] pattern={}", r.name, r.severity, r.pattern));
+                        }
+                    }
+                }
+                GuiTab::Retention => {
+                    ui.heading("Retention");
+                    ui.label("Default retention: 90 days / 1,000,000 events");
+                }
+                GuiTab::Audit => {
+                    ui.heading("Audit Log");
+                    ui.label("Hash-chained audit log active.");
+                }
                 GuiTab::Alerts => {
                     ui.heading("Alerts");
                     if let Ok(alerts) = self.service.list_alerts(None) {
@@ -113,14 +149,6 @@ impl eframe::App for LogForgeApp {
                     if let Ok(sources) = self.service.list_sources() {
                         for s in sources {
                             ui.label(format!("{} ({}) - {}", s.name, s.kind, s.location));
-                        }
-                    }
-                }
-                GuiTab::Rules => {
-                    ui.heading("Detection Rules");
-                    if let Ok(rules) = self.service.list_rules() {
-                        for r in rules {
-                            ui.label(format!("{} [{}] pattern={}", r.name, r.severity, r.pattern));
                         }
                     }
                 }
