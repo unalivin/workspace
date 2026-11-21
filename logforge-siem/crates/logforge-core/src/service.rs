@@ -97,8 +97,14 @@ impl SiemService {
             ) {
                 Ok(ev) => ev,
                 Err(IngestError::Empty) => continue,
-                Err(_) => {
+                Err(error) => {
                     summary.malformed += 1;
+                    let (safe_line, _) = crate::ingest::redact_secrets(raw);
+                    let (safe_reason, _) = crate::ingest::redact_secrets(&error.to_string());
+                    self.db.conn().execute(
+                        "INSERT INTO malformed_events (source_id, received_at, raw_line, reason) VALUES (?1, ?2, ?3, ?4)",
+                        params![source_id, now, safe_line, safe_reason],
+                    )?;
                     continue;
                 }
             };
@@ -397,13 +403,20 @@ mod tests {
         let lines = [
             "2026-11-21T09:00:00Z web-01 sshd: Failed password for root",
             "2026-11-21T09:00:00Z web-01 sshd: Failed password for root",
-            "bad line",
+            "bad line password=malformed-secret",
         ];
         let summary = svc.ingest_lines(src_id, &lines).expect("ingest");
         assert_eq!(summary.received, 1);
         assert_eq!(summary.deduplicated, 1);
         assert_eq!(summary.malformed, 1);
         assert_eq!(summary.alerts_created, 1);
+        let (malformed_count, malformed_raw): (i64, String) = svc.db().conn().query_row(
+            "SELECT COUNT(*), raw_line FROM malformed_events WHERE source_id = ?1",
+            params![src_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        ).expect("malformed event persisted");
+        assert_eq!(malformed_count, 1);
+        assert!(!malformed_raw.contains("malformed-secret"));
 
         let hits = svc.search_events("Failed", 10).expect("search");
         assert_eq!(hits.len(), 1);
