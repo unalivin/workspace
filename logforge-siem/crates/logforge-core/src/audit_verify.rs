@@ -89,11 +89,14 @@ pub fn query_audit_log(db: &Database, filter: &AuditFilter) -> Result<Vec<AuditE
         return Err(invalid_audit_query());
     }
     let validate_time = |value: &Option<String>| -> Result<Option<String>, DbError> {
-        value.as_deref().map(|text| {
-            chrono::DateTime::parse_from_rfc3339(text)
-                .map(|time| time.with_timezone(&chrono::Utc).to_rfc3339())
-                .map_err(|_| invalid_audit_query())
-        }).transpose()
+        value
+            .as_deref()
+            .map(|text| {
+                chrono::DateTime::parse_from_rfc3339(text)
+                    .map(|time| time.with_timezone(&chrono::Utc).to_rfc3339())
+                    .map_err(|_| invalid_audit_query())
+            })
+            .transpose()
     };
     let from = validate_time(&filter.from_utc)?;
     let to = validate_time(&filter.to_utc)?;
@@ -104,11 +107,19 @@ pub fn query_audit_log(db: &Database, filter: &AuditFilter) -> Result<Vec<AuditE
     }
     let mut conditions = Vec::new();
     let mut values = Vec::new();
-    if let Some(actor) = filter.actor.as_ref().filter(|value| !value.trim().is_empty()) {
+    if let Some(actor) = filter
+        .actor
+        .as_ref()
+        .filter(|value| !value.trim().is_empty())
+    {
         values.push(rusqlite::types::Value::Text(actor.trim().to_string()));
         conditions.push(format!("actor = ?{}", values.len()));
     }
-    if let Some(action) = filter.action.as_ref().filter(|value| !value.trim().is_empty()) {
+    if let Some(action) = filter
+        .action
+        .as_ref()
+        .filter(|value| !value.trim().is_empty())
+    {
         values.push(rusqlite::types::Value::Text(action.trim().to_string()));
         conditions.push(format!("action = ?{}", values.len()));
     }

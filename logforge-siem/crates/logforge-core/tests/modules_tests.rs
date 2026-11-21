@@ -104,7 +104,9 @@ fn test_export_events_json_and_csv() {
     let json = export_events_json(&events).expect("json");
     assert!(json.contains("web-01"));
     let csv = export_events_csv(&events);
-    assert!(csv.starts_with("id,source_id,timestamp_utc,received_at,severity,host,service,message,redacted\r\n"));
+    assert!(csv.starts_with(
+        "id,source_id,timestamp_utc,received_at,severity,host,service,message,redacted\r\n"
+    ));
     let alerts = svc.list_alerts(None).expect("alerts");
     let ajson = export_alerts_json(&alerts).expect("ajson");
     assert!(ajson.contains("Failed SSH login"));
