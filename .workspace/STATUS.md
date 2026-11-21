@@ -6,7 +6,7 @@
 | Project | Language | Destination | State | Next step |
 |---|---|---|---|---|
 | logforge-siem | rust | sonix-devs | Complete | Extract Rust template to templates/rust/, then start netauto |
-| netauto | go | sonix-devs | In progress | Schema migrations and SQL tests |
+| netauto | go | sonix-devs | In progress | Domain and service layers with tests |
 | vulntrack | go | sonix-devs | Not started | Waiting on netauto |
 | forensicflow | rust | sonix-devs | Not started | Waiting on vulntrack |
 | ipam-pro | go | sonix-devs | Not started | Waiting on forensicflow |
