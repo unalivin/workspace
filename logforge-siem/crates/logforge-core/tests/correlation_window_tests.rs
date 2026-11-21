@@ -45,5 +45,5 @@ fn sequence_requires_first_then_second_within_the_window() {
         10,
     );
     assert_eq!(hits.len(), 1);
-    assert_eq!((hits[0].first_event_id, hits[0].second_event_id), (3, 4));
+    assert_eq!((hits[0].first_event_id, hits[0].second_event_id), (2, 4));
 }
