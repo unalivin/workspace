@@ -114,7 +114,9 @@ impl std::fmt::Display for RetentionPolicyError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::EmptyName => formatter.write_str("retention policy name must not be empty"),
-            Self::InvalidLimits => formatter.write_str("retention limits must be positive and bounded"),
+            Self::InvalidLimits => {
+                formatter.write_str("retention limits must be positive and bounded")
+            }
         }
     }
 }
@@ -146,7 +148,14 @@ pub fn update_default_policy(
         "UPDATE retention_policies \
          SET name = ?1, max_days = ?2, max_events = ?3, max_bytes = ?4, \
              enabled = ?5, updated_at = ?6 WHERE id = 1",
-        rusqlite::params![name, max_days, max_events, max_bytes, i64::from(enabled), now_utc],
+        rusqlite::params![
+            name,
+            max_days,
+            max_events,
+            max_bytes,
+            i64::from(enabled),
+            now_utc
+        ],
     )?;
     Ok(updated != 0)
 }

@@ -25,24 +25,8 @@ fn default_retention_policy_can_be_updated_with_valid_bounded_limits() {
 #[test]
 fn default_retention_policy_rejects_invalid_bounds_and_name() {
     let db = Database::open_in_memory().expect("database");
-    assert!(update_default_policy(
-        &db,
-        " ",
-        30,
-        100,
-        1000,
-        true,
-        "2026-11-21T00:00:00Z",
-    )
-    .is_err());
-    assert!(update_default_policy(
-        &db,
-        "policy",
-        0,
-        100,
-        1000,
-        true,
-        "2026-11-21T00:00:00Z",
-    )
-    .is_err());
+    assert!(update_default_policy(&db, " ", 30, 100, 1000, true, "2026-11-21T00:00:00Z",).is_err());
+    assert!(
+        update_default_policy(&db, "policy", 0, 100, 1000, true, "2026-11-21T00:00:00Z",).is_err()
+    );
 }
