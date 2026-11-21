@@ -18,13 +18,15 @@ pub struct LeefRecord {
 pub fn parse_leef_line(raw: &str) -> Result<NormalizedEvent, IngestError> {
     let record = parse_leef_record(raw)?;
     let attributes = &record.attributes;
-    let timestamp = attributes.get("devTime")
+    let timestamp = attributes
+        .get("devTime")
         .or_else(|| attributes.get("timestamp"))
         .or_else(|| attributes.get("rt"))
         .map(String::as_str);
     let timestamp_utc = parse_timestamp(timestamp)?;
     let host = first_attribute(attributes, &["devName", "hostname", "srcHostName"])
-        .unwrap_or(&record.vendor).to_string();
+        .unwrap_or(&record.vendor)
+        .to_string();
     let service = record.product.clone();
     let message = first_attribute(attributes, &["msg", "message", "cat"])
         .map(|text| format!("[{}] {}", record.event_id, text))
@@ -52,7 +54,9 @@ pub fn parse_leef_record(raw: &str) -> Result<LeefRecord, IngestError> {
     let (safe_line, _) = redact_secrets(raw.trim());
     let parts: Vec<&str> = safe_line.splitn(7, '|').collect();
     if parts.len() != 7 || !parts[0].starts_with("LEEF:") {
-        return Err(malformed("LEEF requires version, vendor, product, event, delimiter, and attributes"));
+        return Err(malformed(
+            "LEEF requires version, vendor, product, event, delimiter, and attributes",
+        ));
     }
     let version = parts[0].trim_start_matches("LEEF:");
     if !matches!(version, "1.0" | "2.0") {
@@ -109,25 +113,41 @@ fn parse_attributes(raw: &str, delimiter: char) -> Result<BTreeMap<String, Strin
     }
     pairs.push(pair);
     for pair in pairs {
-        if pair.is_empty() { continue; }
-        let (key, value) = pair.split_once('=').ok_or_else(|| malformed("LEEF attributes must be key=value pairs"))?;
+        if pair.is_empty() {
+            continue;
+        }
+        let (key, value) = pair
+            .split_once('=')
+            .ok_or_else(|| malformed("LEEF attributes must be key=value pairs"))?;
         let key = key.trim();
-        if key.is_empty() || !key.chars().all(|character| character.is_ascii_alphanumeric() || character == '_') {
+        if key.is_empty()
+            || !key
+                .chars()
+                .all(|character| character.is_ascii_alphanumeric() || character == '_')
+        {
             return Err(malformed("invalid LEEF attribute name"));
         }
-        if attributes.insert(key.to_string(), value.to_string()).is_some() {
+        if attributes
+            .insert(key.to_string(), value.to_string())
+            .is_some()
+        {
             return Err(malformed("duplicate LEEF attribute"));
         }
     }
     Ok(attributes)
 }
 
-fn first_attribute<'a>(attributes: &'a BTreeMap<String, String>, keys: &[&str]) -> Option<&'a String> {
+fn first_attribute<'a>(
+    attributes: &'a BTreeMap<String, String>,
+    keys: &[&str],
+) -> Option<&'a String> {
     keys.iter().find_map(|key| attributes.get(*key))
 }
 
 fn parse_timestamp(value: Option<&str>) -> Result<String, IngestError> {
-    let Some(value) = value else { return normalize_timestamp(None) };
+    let Some(value) = value else {
+        return normalize_timestamp(None);
+    };
     if let Ok(milliseconds) = value.parse::<i64>() {
         let seconds = milliseconds.div_euclid(1000);
         let nanos = milliseconds.rem_euclid(1000) as u32 * 1_000_000;
@@ -139,7 +159,11 @@ fn parse_timestamp(value: Option<&str>) -> Result<String, IngestError> {
 }
 
 fn leef_severity(value: Option<&String>) -> Severity {
-    match value.and_then(|severity| severity.parse::<u8>().ok()).unwrap_or(2).min(10) {
+    match value
+        .and_then(|severity| severity.parse::<u8>().ok())
+        .unwrap_or(2)
+        .min(10)
+    {
         0..=2 => Severity::Info,
         3..=4 => Severity::Warn,
         5..=7 => Severity::Error,
