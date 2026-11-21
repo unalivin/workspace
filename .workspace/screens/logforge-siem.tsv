@@ -1,0 +1,12 @@
+category	gui_symbol	tui_symbol
+Overview	GuiTab::Overview	TuiTab::Overview
+Search	GuiTab::Search	TuiTab::Search
+SavedQueries	GuiTab::SavedQueries	TuiTab::SavedQueries
+Sources	GuiTab::Sources	TuiTab::Sources
+Schema	GuiTab::Schema	TuiTab::Schema
+Detections	GuiTab::Detections	TuiTab::Detections
+Alerts	GuiTab::Alerts	TuiTab::Alerts
+Retention	GuiTab::Retention	TuiTab::Retention
+Audit	GuiTab::Audit	TuiTab::Audit
+About	GuiTab::About	TuiTab::About
+Settings	GuiTab::Settings	TuiTab::Settings
