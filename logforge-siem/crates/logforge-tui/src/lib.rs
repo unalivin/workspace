@@ -3,7 +3,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use logforge-core::SiemService;
+use logforge_core::SiemService;
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},

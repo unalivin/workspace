@@ -1,5 +1,5 @@
 use eframe::egui;
-use logforge-core::SiemService;
+use logforge_core::SiemService;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GuiTab {
