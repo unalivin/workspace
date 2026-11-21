@@ -142,7 +142,13 @@ impl eframe::App for LogForgeApp {
                     ui.separator();
                     ui.heading("Persistent Correlation Rules");
                     for rule in logforge_core::correlation_admin::list_rules(self.service.db(), false).unwrap_or_default() {
-                        ui.label(format!("#{} {} [{}] {} on {} within {}s threshold={} enabled={}", rule.id, rule.name, rule.severity, rule.kind, rule.entity_field, rule.window_seconds, rule.threshold, rule.enabled));
+                        ui.horizontal(|ui| {
+                            let mut enabled = rule.enabled;
+                            if ui.checkbox(&mut enabled, format!("#{} {}", rule.id, rule.name)).changed() {
+                                let _ = logforge_core::correlation_admin::set_enabled(self.service.db(), rule.id, enabled);
+                            }
+                            ui.label(format!("[{}] {} on {} within {}s threshold={}", rule.severity, rule.kind, rule.entity_field, rule.window_seconds, rule.threshold));
+                        });
                     }
                 }
                 GuiTab::Cases => {
