@@ -50,6 +50,8 @@ impl SiemService {
     }
 
     pub fn add_rule(&self, name: &str, severity: &str, pattern: &str) -> Result<i64, DbError> {
+        crate::rule_engine::validate_pattern(pattern)
+            .map_err(|_| DbError::Sqlite(rusqlite::Error::InvalidQuery))?;
         let now = Utc::now().to_rfc3339();
         self.db.conn().execute(
             "INSERT INTO detection_rules (name, severity, pattern, enabled, created_at)
@@ -180,9 +182,7 @@ impl SiemService {
             let event_id = self.db.conn().last_insert_rowid();
             summary.received += 1;
 
-            let msg_lower = parsed.message.to_ascii_lowercase();
-            for rule in &rules {
-                if rule.enabled && msg_lower.contains(&rule.pattern.to_ascii_lowercase()) {
+            for rule in crate::rule_engine::evaluate_rules(&rules, &parsed.message) {
                     self.db.conn().execute(
                         "INSERT INTO alerts (rule_id, event_id, severity, status, title, case_ref, created_at, updated_at)
                          VALUES (?1, ?2, ?3, 'open', ?4, '', ?5, ?5)",
