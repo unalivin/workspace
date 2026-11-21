@@ -55,10 +55,24 @@ func Open(path string) (*Database, error) {
 	}
 	if version < 2 {
 		tx, err := conn.Begin()
-		if err != nil { conn.Close(); return nil, fmt.Errorf("begin migration 2: %w", err) }
-		if _, err := tx.Exec(operationsMigration); err != nil { tx.Rollback(); conn.Close(); return nil, fmt.Errorf("apply migration 2: %w", err) }
-		if _, err := tx.Exec("PRAGMA user_version = 2"); err != nil { tx.Rollback(); conn.Close(); return nil, fmt.Errorf("set user_version 2: %w", err) }
-		if err := tx.Commit(); err != nil { conn.Close(); return nil, fmt.Errorf("commit migration 2: %w", err) }
+		if err != nil {
+			conn.Close()
+			return nil, fmt.Errorf("begin migration 2: %w", err)
+		}
+		if _, err := tx.Exec(operationsMigration); err != nil {
+			tx.Rollback()
+			conn.Close()
+			return nil, fmt.Errorf("apply migration 2: %w", err)
+		}
+		if _, err := tx.Exec("PRAGMA user_version = 2"); err != nil {
+			tx.Rollback()
+			conn.Close()
+			return nil, fmt.Errorf("set user_version 2: %w", err)
+		}
+		if err := tx.Commit(); err != nil {
+			conn.Close()
+			return nil, fmt.Errorf("commit migration 2: %w", err)
+		}
 	}
 	return &Database{Conn: conn}, nil
 }
