@@ -30,7 +30,9 @@ fn case_metrics_report_priority_ownership_and_sla_age() {
 
     let workload = case_workload_by_assignee(service.db()).expect("workload");
     assert_eq!(workload.len(), 2);
-    assert!(workload.iter().any(|entry| entry.assignee == "(unassigned)"));
+    assert!(workload
+        .iter()
+        .any(|entry| entry.assignee == "(unassigned)"));
     manager.set_status(first, "closed").expect("close case");
     let after_close = case_queue_metrics(service.db(), &now, 1).expect("metrics after close");
     assert_eq!(after_close.open_cases, 1);

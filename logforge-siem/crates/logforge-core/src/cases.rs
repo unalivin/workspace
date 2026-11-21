@@ -269,17 +269,19 @@ pub fn case_queue_metrics(
             SUM(CASE WHEN status <> 'closed' AND priority = 'critical' THEN 1 ELSE 0 END) \
          FROM cases",
         [],
-        |row| Ok((
-            row.get::<_, Option<i64>>(0)?.unwrap_or(0),
-            row.get::<_, Option<i64>>(1)?.unwrap_or(0),
-            row.get::<_, Option<i64>>(2)?.unwrap_or(0),
-            row.get::<_, Option<i64>>(3)?.unwrap_or(0),
-            row.get::<_, Option<i64>>(4)?.unwrap_or(0),
-        )),
+        |row| {
+            Ok((
+                row.get::<_, Option<i64>>(0)?.unwrap_or(0),
+                row.get::<_, Option<i64>>(1)?.unwrap_or(0),
+                row.get::<_, Option<i64>>(2)?.unwrap_or(0),
+                row.get::<_, Option<i64>>(3)?.unwrap_or(0),
+                row.get::<_, Option<i64>>(4)?.unwrap_or(0),
+            ))
+        },
     )?;
-    let mut statement = db.conn().prepare(
-        "SELECT created_at FROM cases WHERE status <> 'closed' ORDER BY created_at ASC",
-    )?;
+    let mut statement = db
+        .conn()
+        .prepare("SELECT created_at FROM cases WHERE status <> 'closed' ORDER BY created_at ASC")?;
     let rows = statement.query_map([], |row| row.get::<_, String>(0))?;
     let mut active_ages = Vec::new();
     let mut overdue_active = 0;
