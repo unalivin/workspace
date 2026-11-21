@@ -139,6 +139,11 @@ impl eframe::App for LogForgeApp {
                             ui.label(format!("{} [{}] pattern={}", r.name, r.severity, r.pattern));
                         }
                     }
+                    ui.separator();
+                    ui.heading("Persistent Correlation Rules");
+                    for rule in logforge_core::correlation_admin::list_rules(self.service.db(), false).unwrap_or_default() {
+                        ui.label(format!("#{} {} [{}] {} on {} within {}s threshold={} enabled={}", rule.id, rule.name, rule.severity, rule.kind, rule.entity_field, rule.window_seconds, rule.threshold, rule.enabled));
+                    }
                 }
                 GuiTab::Cases => {
                     ui.heading("Investigation Cases");

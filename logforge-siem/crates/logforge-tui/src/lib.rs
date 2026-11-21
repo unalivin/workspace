@@ -158,20 +158,21 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                     .collect::<Vec<_>>()
                     .join("\n"),
                 TuiTab::Schema => "Normalized fields: timestamp_utc, severity, host, service, message, dedup_hash, redacted".to_string(),
-                TuiTab::Detections => service
-                    .list_rules()
-                    .unwrap_or_default()
-                    .iter()
-                    .map(|r| format!("{} [{}] pattern={}", r.name, r.severity, r.pattern))
-                    .collect::<Vec<_>>()
-                    .join("\n"),
+                TuiTab::Detections => {
+                    let mut lines: Vec<String> = service.list_rules().unwrap_or_default().iter()
+                        .map(|rule| format!("{} [{}] pattern={}", rule.name, rule.severity, rule.pattern))
+                        .collect();
+                    lines.extend(logforge_core::correlation_admin::list_rules(service.db(), false).unwrap_or_default().iter()
+                        .map(|rule| format!("Correlation #{}: {} [{}] {} on {} window={}s threshold={} enabled={}", rule.id, rule.name, rule.severity, rule.kind, rule.entity_field, rule.window_seconds, rule.threshold, rule.enabled)));
+                    lines.join("\n")
+                },
                 TuiTab::Cases => logforge_core::cases::CaseManager::new(service.db())
                     .list(None)
                     .unwrap_or_default()
                     .iter()
                     .map(|case| format!("#{} [{}] {} — {} alerts, {}", case.id, case.status, case.title, case.alert_count, case.assignee))
                     .collect::<Vec<_>>()
-                    .join("\\n"),
+                    .join("\n"),
                 TuiTab::Retention => {
                     let pol = logforge_core::retention::get_default_policy(service.db());
                     let metrics = logforge_core::storage_metrics::collect_storage_metrics(service.db());
