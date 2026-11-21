@@ -1,3 +1,4 @@
+pub mod access_log;
 pub mod alert_workflow;
 pub mod audit_verify;
 pub mod case_links;
