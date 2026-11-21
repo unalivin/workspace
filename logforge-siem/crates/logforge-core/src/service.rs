@@ -1,0 +1,405 @@
+use crate::db::{Database, DbError};
+use crate::ingest::{parse_line, IngestError};
+use crate::model::{Alert, DetectionRule, LogEvent, OverviewCounts, SavedQuery, Source};
+use chrono::Utc;
+use rusqlite::params;
+use sha2::{Digest, Sha256};
+
+pub const MAX_BATCH_SIZE: usize = 5_000;
+
+pub struct SiemService {
+    db: Database,
+}
+
+impl SiemService {
+    pub fn new(db: Database) -> Self {
+        Self { db }
+    }
+
+    pub fn db(&self) -> &Database {
+        &self.db
+    }
+
+    pub fn add_source(&self, name: &str, kind: &str, location: &str) -> Result<i64, DbError> {
+        let now = Utc::now().to_rfc3339();
+        self.db.conn().execute(
+            "INSERT INTO sources (name, kind, location, enabled, created_at)
+             VALUES (?1, ?2, ?3, 1, ?4)",
+            params![name, kind, location, now],
+        )?;
+        let id = self.db.conn().last_insert_rowid();
+        self.record_audit("local", "add_source", name)?;
+        Ok(id)
+    }
+
+    pub fn list_sources(&self) -> Result<Vec<Source>, DbError> {
+        let mut stmt = self.db.conn().prepare(
+            "SELECT id, name, kind, location, enabled, created_at FROM sources ORDER BY name ASC",
+        )?;
+        let rows = stmt.query_map([], |r| {
+            Ok(Source {
+                id: r.get(0)?,
+                name: r.get(1)?,
+                kind: r.get(2)?,
+                location: r.get(3)?,
+                enabled: r.get::<_, i64>(4)? != 0,
+                created_at: r.get(5)?,
+            })
+        })?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
+    }
+
+    pub fn add_rule(&self, name: &str, severity: &str, pattern: &str) -> Result<i64, DbError> {
+        let now = Utc::now().to_rfc3339();
+        self.db.conn().execute(
+            "INSERT INTO detection_rules (name, severity, pattern, enabled, created_at)
+             VALUES (?1, ?2, ?3, 1, ?4)",
+            params![name, severity, pattern, now],
+        )?;
+        let id = self.db.conn().last_insert_rowid();
+        self.record_audit("local", "add_rule", name)?;
+        Ok(id)
+    }
+
+    pub fn list_rules(&self) -> Result<Vec<DetectionRule>, DbError> {
+        let mut stmt = self.db.conn().prepare(
+            "SELECT id, name, severity, pattern, enabled, created_at FROM detection_rules ORDER BY id ASC",
+        )?;
+        let rows = stmt.query_map([], |r| {
+            Ok(DetectionRule {
+                id: r.get(0)?,
+                name: r.get(1)?,
+                severity: r.get(2)?,
+                pattern: r.get(3)?,
+                enabled: r.get::<_, i64>(4)? != 0,
+                created_at: r.get(5)?,
+            })
+        })?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
+    }
+
+    pub fn ingest_lines(&self, source_id: i64, lines: &[&str]) -> Result<IngestSummary, DbError> {
+        let mut summary = IngestSummary::default();
+        let now = Utc::now().to_rfc3339();
+        let rules = self.list_rules()?;
+
+        let (to_process, dropped) = if lines.len() > MAX_BATCH_SIZE {
+            (&lines[..MAX_BATCH_SIZE], lines.len() - MAX_BATCH_SIZE)
+        } else {
+            (lines, 0)
+        };
+        summary.dropped = dropped;
+
+        for raw in to_process {
+            let parsed = match parse_line(raw) {
+                Ok(ev) => ev,
+                Err(IngestError::Empty) => continue,
+                Err(_) => {
+                    summary.malformed += 1;
+                    continue;
+                }
+            };
+
+            let exists: i64 = self.db.conn().query_row(
+                "SELECT COUNT(*) FROM events WHERE dedup_hash = ?1",
+                params![parsed.dedup_hash],
+                |r| r.get(0),
+            )?;
+            if exists > 0 {
+                summary.deduplicated += 1;
+                continue;
+            }
+
+            self.db.conn().execute(
+                "INSERT INTO events (source_id, timestamp_utc, received_at, severity, host, service, message, raw_line, dedup_hash, redacted, fields_json)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                params![
+                    source_id,
+                    parsed.timestamp_utc,
+                    now,
+                    parsed.severity.as_str(),
+                    parsed.host,
+                    parsed.service,
+                    parsed.message,
+                    parsed.raw_line,
+                    parsed.dedup_hash,
+                    if parsed.redacted { 1 } else { 0 },
+                    parsed.fields_json,
+                ],
+            )?;
+            let event_id = self.db.conn().last_insert_rowid();
+            summary.received += 1;
+
+            let msg_lower = parsed.message.to_ascii_lowercase();
+            for rule in &rules {
+                if rule.enabled && msg_lower.contains(&rule.pattern.to_ascii_lowercase()) {
+                    self.db.conn().execute(
+                        "INSERT INTO alerts (rule_id, event_id, severity, status, title, case_ref, created_at, updated_at)
+                         VALUES (?1, ?2, ?3, 'open', ?4, '', ?5, ?5)",
+                        params![
+                            rule.id,
+                            event_id,
+                            rule.severity,
+                            format!("{}: {}", rule.name, parsed.host),
+                            now,
+                        ],
+                    )?;
+                    summary.alerts_created += 1;
+                }
+            }
+        }
+
+        self.db.conn().execute(
+            "UPDATE ingestion_stats
+             SET received = received + ?1,
+                 deduplicated = deduplicated + ?2,
+                 dropped = dropped + ?3,
+                 malformed = malformed + ?4
+             WHERE id = 1",
+            params![
+                summary.received as i64,
+                summary.deduplicated as i64,
+                summary.dropped as i64,
+                summary.malformed as i64,
+            ],
+        )?;
+
+        Ok(summary)
+    }
+
+    pub fn search_events(&self, query: &str, limit: usize) -> Result<Vec<LogEvent>, DbError> {
+        let trimmed = query.trim();
+        let limit_i64 = limit.min(500) as i64;
+        if trimmed.is_empty() {
+            let mut stmt = self.db.conn().prepare(
+                "SELECT id, source_id, timestamp_utc, received_at, severity, host, service, message, raw_line, dedup_hash, redacted, fields_json
+                 FROM events
+                 ORDER BY timestamp_utc DESC
+                 LIMIT ?1",
+            )?;
+            let rows = stmt.query_map(params![limit_i64], map_event)?;
+            return rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from);
+        }
+
+        let mut stmt = self.db.conn().prepare(
+            "SELECT e.id, e.source_id, e.timestamp_utc, e.received_at, e.severity, e.host, e.service, e.message, e.raw_line, e.dedup_hash, e.redacted, e.fields_json
+             FROM events e
+             JOIN events_fts f ON f.rowid = e.id
+             WHERE events_fts MATCH ?1
+             ORDER BY e.timestamp_utc DESC
+             LIMIT ?2",
+        )?;
+        let rows = stmt.query_map(params![trimmed, limit_i64], map_event)?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
+    }
+
+    pub fn overview_counts(&self) -> Result<OverviewCounts, DbError> {
+        self.db
+            .conn()
+            .query_row(
+                "SELECT total_events, active_sources, open_alerts, stat_received, stat_deduplicated, stat_dropped, stat_malformed
+                 FROM v_overview_counts",
+                [],
+                |r| {
+                    Ok(OverviewCounts {
+                        total_events: r.get(0)?,
+                        active_sources: r.get(1)?,
+                        open_alerts: r.get(2)?,
+                        stat_received: r.get(3)?,
+                        stat_deduplicated: r.get(4)?,
+                        stat_dropped: r.get(5)?,
+                        stat_malformed: r.get(6)?,
+                    })
+                },
+            )
+            .map_err(DbError::from)
+    }
+
+    pub fn list_alerts(&self, status_filter: Option<&str>) -> Result<Vec<Alert>, DbError> {
+        let mut stmt = match status_filter {
+            Some(_) => self.db.conn().prepare(
+                "SELECT id, rule_id, event_id, severity, status, title, case_ref, created_at, updated_at
+                 FROM alerts WHERE status = ?1 ORDER BY id DESC",
+            )?,
+            None => self.db.conn().prepare(
+                "SELECT id, rule_id, event_id, severity, status, title, case_ref, created_at, updated_at
+                 FROM alerts ORDER BY id DESC",
+            )?,
+        };
+
+        let mapper = |r: &rusqlite::Row<'_>| {
+            Ok(Alert {
+                id: r.get(0)?,
+                rule_id: r.get(1)?,
+                event_id: r.get(2)?,
+                severity: r.get(3)?,
+                status: r.get(4)?,
+                title: r.get(5)?,
+                case_ref: r.get(6)?,
+                created_at: r.get(7)?,
+                updated_at: r.get(8)?,
+            })
+        };
+
+        let rows = match status_filter {
+            Some(st) => stmt.query_map(params![st], mapper)?,
+            None => stmt.query_map([], mapper)?,
+        };
+        rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
+    }
+
+    pub fn update_alert_status(&self, alert_id: i64, status: &str) -> Result<(), DbError> {
+        let now = Utc::now().to_rfc3339();
+        self.db.conn().execute(
+            "UPDATE alerts SET status = ?1, updated_at = ?2 WHERE id = ?3",
+            params![status, now, alert_id],
+        )?;
+        self.record_audit("local", "update_alert", &format!("alert:{alert_id}:{status}"))?;
+        Ok(())
+    }
+
+    pub fn save_query(&self, name: &str, query: &str) -> Result<i64, DbError> {
+        let now = Utc::now().to_rfc3339();
+        self.db.conn().execute(
+            "INSERT INTO saved_queries (name, query, created_at) VALUES (?1, ?2, ?3)
+             ON CONFLICT(name) DO UPDATE SET query = excluded.query",
+            params![name, query, now],
+        )?;
+        Ok(self.db.conn().last_insert_rowid())
+    }
+
+    pub fn list_saved_queries(&self) -> Result<Vec<SavedQuery>, DbError> {
+        let mut stmt = self
+            .db
+            .conn()
+            .prepare("SELECT id, name, query, created_at FROM saved_queries ORDER BY name ASC")?;
+        let rows = stmt.query_map([], |r| {
+            Ok(SavedQuery {
+                id: r.get(0)?,
+                name: r.get(1)?,
+                query: r.get(2)?,
+                created_at: r.get(3)?,
+            })
+        })?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
+    }
+
+    pub fn record_audit(&self, actor: &str, action: &str, target: &str) -> Result<(), DbError> {
+        let now = Utc::now().to_rfc3339();
+        let prev_hash: String = self
+            .db
+            .conn()
+            .query_row(
+                "SELECT entry_hash FROM audit_log ORDER BY id DESC LIMIT 1",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap_or_else(|_| "genesis".to_string());
+
+        let mut hasher = Sha256::new();
+        hasher.update(prev_hash.as_bytes());
+        hasher.update(actor.as_bytes());
+        hasher.update(action.as_bytes());
+        hasher.update(target.as_bytes());
+        hasher.update(now.as_bytes());
+        let entry_hash = format!("{:x}", hasher.finalize());
+
+        self.db.conn().execute(
+            "INSERT INTO audit_log (actor, action, target, created_at, prev_hash, entry_hash)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![actor, action, target, now, prev_hash, entry_hash],
+        )?;
+        Ok(())
+    }
+
+    pub fn seed_demo_data(&self) -> Result<(), DbError> {
+        if !self.list_sources()?.is_empty() {
+            return Ok(());
+        }
+        let src_id = self.add_source("demo-auth", "synthetic", "demo://auth.log")?;
+        self.add_rule("Failed SSH login", "warn", "Failed password")?;
+        self.add_rule("Privilege escalation", "critical", "sudo")?;
+        self.save_query("SSH failures", "Failed")?;
+
+        let demo_lines = [
+            "2026-11-21T08:00:00Z web-01 sshd: Failed password for invalid user admin",
+            "2026-11-21T08:01:00Z db-01 sudo: pam_unix(sudo:session): session opened for user root",
+            r#"{"timestamp":"2026-11-21T08:02:00Z","severity":"info","host":"api-01","service":"gateway","message":"Health check ok token=demo123"}"#,
+        ];
+        self.ingest_lines(src_id, &demo_lines)?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct IngestSummary {
+    pub received: usize,
+    pub deduplicated: usize,
+    pub dropped: usize,
+    pub malformed: usize,
+    pub alerts_created: usize,
+}
+
+fn map_event(r: &rusqlite::Row<'_>) -> rusqlite::Result<LogEvent> {
+    Ok(LogEvent {
+        id: r.get(0)?,
+        source_id: r.get(1)?,
+        timestamp_utc: r.get(2)?,
+        received_at: r.get(3)?,
+        severity: r.get(4)?,
+        host: r.get(5)?,
+        service: r.get(6)?,
+        message: r.get(7)?,
+        raw_line: r.get(8)?,
+        dedup_hash: r.get(9)?,
+        redacted: r.get::<_, i64>(10)? != 0,
+        fields_json: r.get(11)?,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ingest_deduplicates_redacts_and_triggers_alerts() {
+        let db = Database::open_in_memory().expect("open db");
+        let svc = SiemService::new(db);
+        let src_id = svc
+            .add_source("syslog", "file", "/var/log/auth.log")
+            .expect("add source");
+        svc.add_rule("SSH Brute Force", "warn", "Failed password")
+            .expect("add rule");
+
+        let lines = [
+            "2026-11-21T09:00:00Z web-01 sshd: Failed password for root",
+            "2026-11-21T09:00:00Z web-01 sshd: Failed password for root",
+            "bad line",
+        ];
+        let summary = svc.ingest_lines(src_id, &lines).expect("ingest");
+        assert_eq!(summary.received, 1);
+        assert_eq!(summary.deduplicated, 1);
+        assert_eq!(summary.malformed, 1);
+        assert_eq!(summary.alerts_created, 1);
+
+        let hits = svc.search_events("Failed", 10).expect("search");
+        assert_eq!(hits.len(), 1);
+
+        let alerts = svc.list_alerts(Some("open")).expect("alerts");
+        assert_eq!(alerts.len(), 1);
+        svc.update_alert_status(alerts[0].id, "resolved")
+            .expect("resolve");
+        assert_eq!(svc.list_alerts(Some("open")).expect("open").len(), 0);
+    }
+
+    #[test]
+    fn demo_seed_is_idempotent() {
+        let db = Database::open_in_memory().expect("open db");
+        let svc = SiemService::new(db);
+        svc.seed_demo_data().expect("seed 1");
+        svc.seed_demo_data().expect("seed 2");
+        let counts = svc.overview_counts().expect("counts");
+        assert_eq!(counts.total_events, 3);
+        assert_eq!(counts.open_alerts, 2);
+    }
+}
