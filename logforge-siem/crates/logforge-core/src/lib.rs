@@ -1,3 +1,4 @@
+pub mod case_links;
 pub mod category_colors;
 pub mod config;
 pub mod correlation;
@@ -11,6 +12,7 @@ pub mod query_parser;
 pub mod retention;
 pub mod schema_mapper;
 pub mod service;
+pub mod stats;
 pub mod theme;
 
 pub use db::{Database, DbError, Migration};
