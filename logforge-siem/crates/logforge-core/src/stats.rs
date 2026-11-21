@@ -55,11 +55,11 @@ pub fn top_sources(db: &Database) -> Result<Vec<SourceCount>, DbError> {
 /// Returns event volume by normalized severity, including zero-volume levels.
 pub fn events_by_severity(db: &Database) -> Result<Vec<SeverityCount>, DbError> {
     let mut statement = db.conn().prepare(
-        "SELECT severity, COUNT(e.id) FROM (\
-            SELECT 'debug' AS severity, 0 AS position UNION ALL\
-            SELECT 'info', 1 UNION ALL SELECT 'warn', 2 UNION ALL\
-            SELECT 'error', 3 UNION ALL SELECT 'critical', 4\
-        ) levels LEFT JOIN events e ON e.severity = levels.severity\
+        "SELECT severity, COUNT(e.id) FROM ( \
+            SELECT 'debug' AS severity, 0 AS position UNION ALL \
+            SELECT 'info', 1 UNION ALL SELECT 'warn', 2 UNION ALL \
+            SELECT 'error', 3 UNION ALL SELECT 'critical', 4 \
+        ) levels LEFT JOIN events e ON e.severity = levels.severity \
         GROUP BY levels.severity, levels.position ORDER BY levels.position",
     )?;
     let rows = statement.query_map([], |row| {
@@ -74,11 +74,11 @@ pub fn events_by_severity(db: &Database) -> Result<Vec<SeverityCount>, DbError> 
 /// Provides a snapshot of source activity without exposing raw event content.
 pub fn source_health(db: &Database) -> Result<Vec<SourceHealth>, DbError> {
     let mut statement = db.conn().prepare(
-        "SELECT s.id, s.name, s.kind, s.enabled, COUNT(e.id),\
-            MAX(e.timestamp_utc), MAX(e.received_at),\
-            SUM(CASE WHEN e.severity = 'critical' THEN 1 ELSE 0 END),\
-            SUM(CASE WHEN e.severity = 'error' THEN 1 ELSE 0 END)\
-         FROM sources s LEFT JOIN events e ON e.source_id = s.id\
+        "SELECT s.id, s.name, s.kind, s.enabled, COUNT(e.id), \
+            MAX(e.timestamp_utc), MAX(e.received_at), \
+            SUM(CASE WHEN e.severity = 'critical' THEN 1 ELSE 0 END), \
+            SUM(CASE WHEN e.severity = 'error' THEN 1 ELSE 0 END) \
+         FROM sources s LEFT JOIN events e ON e.source_id = s.id \
          GROUP BY s.id ORDER BY s.name COLLATE NOCASE, s.id",
     )?;
     let rows = statement.query_map([], |row| {
@@ -165,10 +165,10 @@ pub struct AlertSeverityCount {
 /// Returns all alert workflow states, including states with no matching alerts.
 pub fn alert_status_counts(db: &Database) -> Result<Vec<AlertStatusCount>, DbError> {
     let mut statement = db.conn().prepare(
-        "SELECT states.status, COUNT(a.id) FROM (\
-            SELECT 'open' AS status, 0 AS position UNION ALL\
-            SELECT 'acknowledged', 1 UNION ALL SELECT 'resolved', 2\
-        ) states LEFT JOIN alerts a ON a.status = states.status\
+        "SELECT states.status, COUNT(a.id) FROM ( \
+            SELECT 'open' AS status, 0 AS position UNION ALL \
+            SELECT 'acknowledged', 1 UNION ALL SELECT 'resolved', 2 \
+        ) states LEFT JOIN alerts a ON a.status = states.status \
         GROUP BY states.status, states.position ORDER BY states.position",
     )?;
     let rows = statement.query_map([], |row| {
@@ -183,14 +183,14 @@ pub fn alert_status_counts(db: &Database) -> Result<Vec<AlertStatusCount>, DbErr
 /// Produces a severity-by-workflow matrix in stable severity order.
 pub fn alert_severity_matrix(db: &Database) -> Result<Vec<AlertSeverityCount>, DbError> {
     let mut statement = db.conn().prepare(
-        "SELECT levels.severity,\
-            SUM(CASE WHEN a.status = 'open' THEN 1 ELSE 0 END),\
-            SUM(CASE WHEN a.status = 'acknowledged' THEN 1 ELSE 0 END),\
-            SUM(CASE WHEN a.status = 'resolved' THEN 1 ELSE 0 END)\
-         FROM (SELECT 'debug' AS severity, 0 AS position UNION ALL\
-            SELECT 'info', 1 UNION ALL SELECT 'warn', 2 UNION ALL\
-            SELECT 'error', 3 UNION ALL SELECT 'critical', 4) levels\
-         LEFT JOIN alerts a ON a.severity = levels.severity\
+        "SELECT levels.severity, \
+            SUM(CASE WHEN a.status = 'open' THEN 1 ELSE 0 END), \
+            SUM(CASE WHEN a.status = 'acknowledged' THEN 1 ELSE 0 END), \
+            SUM(CASE WHEN a.status = 'resolved' THEN 1 ELSE 0 END) \
+         FROM (SELECT 'debug' AS severity, 0 AS position UNION ALL \
+            SELECT 'info', 1 UNION ALL SELECT 'warn', 2 UNION ALL \
+            SELECT 'error', 3 UNION ALL SELECT 'critical', 4) levels \
+         LEFT JOIN alerts a ON a.severity = levels.severity \
          GROUP BY levels.severity, levels.position ORDER BY levels.position",
     )?;
     let rows = statement.query_map([], |row| {
@@ -205,11 +205,7 @@ pub fn alert_severity_matrix(db: &Database) -> Result<Vec<AlertSeverityCount>, D
 }
 
 /// Counts alerts opened in the half-open UTC interval [start, end).
-pub fn count_alerts_in_range(
-    db: &Database,
-    start_utc: &str,
-    end_utc: &str,
-) -> Result<i64, DbError> {
+pub fn count_alerts_in_range(db: &Database, start_utc: &str, end_utc: &str) -> Result<i64, DbError> {
     let start = chrono::DateTime::parse_from_rfc3339(start_utc)
         .map_err(|_| DbError::Sqlite(rusqlite::Error::InvalidQuery))?;
     let end = chrono::DateTime::parse_from_rfc3339(end_utc)
