@@ -130,11 +130,18 @@ impl eframe::App for LogForgeApp {
                 }
                 GuiTab::Retention => {
                     ui.heading("Retention");
-                    ui.label("Default retention: 90 days / 1,000,000 events");
+                    if let Ok(p) = logforge_core::retention::get_default_policy(self.service.db()) {
+                        ui.label(format!("Policy: {} ({} days, max {} events)", p.name, p.max_days, p.max_events));
+                    }
+                    if let Ok(m) = logforge_core::storage_metrics::collect_storage_metrics(self.service.db()) {
+                        ui.label(format!("Storage: {} bytes ({} events, {} alerts)", m.total_bytes, m.events_count, m.alerts_count));
+                    }
                 }
                 GuiTab::Audit => {
                     ui.heading("Audit Log");
-                    ui.label("Hash-chained audit log active.");
+                    if let Ok(res) = logforge_core::audit_verify::verify_audit_chain(self.service.db()) {
+                        ui.label(format!("Audit entries: {} | Chain valid: {}", res.total_entries, res.valid));
+                    }
                 }
                 GuiTab::Alerts => {
                     ui.heading("Alerts");

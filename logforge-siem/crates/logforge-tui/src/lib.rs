@@ -152,8 +152,21 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                     .map(|r| format!("{} [{}] pattern={}", r.name, r.severity, r.pattern))
                     .collect::<Vec<_>>()
                     .join("\n"),
-                TuiTab::Retention => "Default retention: 90 days / 1,000,000 events".to_string(),
-                TuiTab::Audit => "Hash-chained audit log active.".to_string(),
+                TuiTab::Retention => {
+                    let pol = logforge_core::retention::get_default_policy(service.db());
+                    let metrics = logforge_core::storage_metrics::collect_storage_metrics(service.db());
+                    match (pol, metrics) {
+                        (Ok(p), Ok(m)) => format!(
+                            "Policy: {} ({} days, max {} events)\nStorage: {} bytes ({} events, {} alerts)",
+                            p.name, p.max_days, p.max_events, m.total_bytes, m.events_count, m.alerts_count
+                        ),
+                        _ => "Retention policy unavailable.".to_string(),
+                    }
+                }
+                TuiTab::Audit => match logforge_core::audit_verify::verify_audit_chain(service.db()) {
+                    Ok(res) => format!("Audit entries: {} | Chain valid: {}", res.total_entries, res.valid),
+                    Err(_) => "Audit verification unavailable.".to_string(),
+                },
                 TuiTab::About => "LogForge-SIEM v0.1.0-dev\nCopyright (c) 2026 Sonix Devs\nRepository: https://github.com/sonix-devs/logforge-siem".to_string(),
                 TuiTab::Settings => "Theme: dark | Accent: amber | Density: compact\nUse `logforge-siem config theme set <theme>` to change.".to_string(),
             };

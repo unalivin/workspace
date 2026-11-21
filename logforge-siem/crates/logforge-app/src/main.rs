@@ -97,6 +97,16 @@ enum Commands {
         #[arg(value_enum)]
         action: NotifierAction,
     },
+    AuditVerify,
+    Diagnostics,
+    Retention {
+        #[arg(long)]
+        prune: Option<i64>,
+    },
+    Export {
+        #[arg(long, default_value = "json")]
+        format: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -197,6 +207,34 @@ fn main() {
                 NotifierAction::Uninstall => println!("notifier: per-user autostart removed"),
                 NotifierAction::Run => println!("notifier: checked open alerts (0 new)"),
             },
+            Commands::AuditVerify => {
+                let res = logforge_core::audit_verify::verify_audit_chain(service.db())
+                    .expect("verify audit");
+                println!("entries={} valid={}", res.total_entries, res.valid);
+            }
+            Commands::Diagnostics => {
+                let diag = logforge_core::diagnostics::collect_diagnostics(service.db())
+                    .expect("diagnostics");
+                println!("{}", serde_json::to_string_pretty(&diag).expect("json"));
+            }
+            Commands::Retention { prune } => {
+                let pol = logforge_core::retention::get_default_policy(service.db())
+                    .expect("policy");
+                println!("policy={} max_days={} max_events={}", pol.name, pol.max_days, pol.max_events);
+                if let Some(max_ev) = prune {
+                    let deleted = logforge_core::retention::prune_excess_events(service.db(), max_ev)
+                        .expect("prune");
+                    println!("pruned={deleted}");
+                }
+            }
+            Commands::Export { format } => {
+                let events = service.search_events("", 500).expect("events");
+                if format == "csv" {
+                    println!("{}", logforge_core::export::export_events_csv(&events));
+                } else {
+                    println!("{}", logforge_core::export::export_events_json(&events).expect("json"));
+                }
+            }
         }
         return;
     }
