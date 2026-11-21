@@ -33,7 +33,7 @@ pub fn assign_category_color(
         palette[count].to_string()
     } else {
         let hue = ((count as f64) * 137.508) % 360.0;
-        format!("hsl({:.1}, 65%, 52%)", hue)
+        format!("hsl({hue:.1}, 65%, 52%)")
     };
 
     db.conn().execute(

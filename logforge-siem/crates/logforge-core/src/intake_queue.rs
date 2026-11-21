@@ -94,4 +94,8 @@ impl<T> BoundedIntake<T> {
             .items
             .len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
