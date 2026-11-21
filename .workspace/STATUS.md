@@ -5,7 +5,7 @@
 
 | Project | Language | Destination | State | Next step |
 |---|---|---|---|---|
-| logforge-siem | rust | sonix-devs | In progress | Schema migrations and SQL tests |
+| logforge-siem | rust | sonix-devs | In progress | Domain and service layers with tests |
 | netauto | go | sonix-devs | Not started | Waiting on logforge-siem |
 | vulntrack | go | sonix-devs | Not started | Waiting on netauto |
 | forensicflow | rust | sonix-devs | Not started | Waiting on vulntrack |
