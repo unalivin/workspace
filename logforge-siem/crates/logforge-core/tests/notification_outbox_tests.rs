@@ -91,8 +91,12 @@ fn abandoned_claims_recover_and_dead_letters_can_be_manually_retried() {
 
     let db = Database::open_in_memory().expect("database");
     let service = SiemService::new(db);
-    let source = service.add_source("recover", "file", "memory").expect("source");
-    service.add_rule("failure", "error", "failed").expect("rule");
+    let source = service
+        .add_source("recover", "file", "memory")
+        .expect("source");
+    service
+        .add_rule("failure", "error", "failed")
+        .expect("rule");
     upsert_notification_rule(service.db(), "alert.created", "warn", true, 0, 0)
         .expect("notification rule");
     service
@@ -117,8 +121,7 @@ fn abandoned_claims_recover_and_dead_letters_can_be_manually_retried() {
         )
         .expect("simulate dead letter");
     assert_eq!(
-        retry_dead_notifications(service.db(), &[claimed[0].id], &now_text)
-            .expect("manual retry"),
+        retry_dead_notifications(service.db(), &[claimed[0].id], &now_text).expect("manual retry"),
         1
     );
     assert_eq!(outbox_counts(service.db()).expect("counts").queued, 1);

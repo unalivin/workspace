@@ -257,9 +257,7 @@ pub fn retry_dead_notifications(
     ids: &[i64],
     now_utc: &str,
 ) -> Result<usize, DbError> {
-    if chrono::DateTime::parse_from_rfc3339(now_utc).is_err()
-        || ids.iter().any(|id| *id <= 0)
-    {
+    if chrono::DateTime::parse_from_rfc3339(now_utc).is_err() || ids.iter().any(|id| *id <= 0) {
         return Err(DbError::Sqlite(rusqlite::Error::InvalidQuery));
     }
     if ids.is_empty() {
