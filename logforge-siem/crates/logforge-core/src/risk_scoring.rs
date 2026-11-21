@@ -129,20 +129,35 @@ fn explain_risk_factors(
 ) -> Vec<String> {
     let mut factors = Vec::new();
     if critical > 0 {
-        factors.push(format!("{critical} critical events (+{})", critical.saturating_mul(18)));
+        factors.push(format!(
+            "{critical} critical events (+{})",
+            critical.saturating_mul(18)
+        ));
     }
     if errors > 0 {
-        factors.push(format!("{errors} error events (+{})", errors.saturating_mul(12)));
+        factors.push(format!(
+            "{errors} error events (+{})",
+            errors.saturating_mul(12)
+        ));
     }
     if warnings > 0 {
-        factors.push(format!("{warnings} warning events (+{})", warnings.saturating_mul(5)));
+        factors.push(format!(
+            "{warnings} warning events (+{})",
+            warnings.saturating_mul(5)
+        ));
     }
     if open_alerts > 0 {
-        factors.push(format!("{open_alerts} unresolved alerts (+{})", open_alerts.saturating_mul(20)));
+        factors.push(format!(
+            "{open_alerts} unresolved alerts (+{})",
+            open_alerts.saturating_mul(20)
+        ));
     }
     if distinct_services > 1 {
         let extra = distinct_services - 1;
-        factors.push(format!("activity across {distinct_services} services (+{})", extra.saturating_mul(3)));
+        factors.push(format!(
+            "activity across {distinct_services} services (+{})",
+            extra.saturating_mul(3)
+        ));
     }
     factors
 }

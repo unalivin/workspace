@@ -207,9 +207,15 @@ pub fn plan_retention_with_reasons(
         let age = event_time < cutoff;
         let count = kept_count >= max_events.max(0);
         let size = bytes < 0 || kept_bytes.saturating_add(bytes) > max_bytes.max(0);
-        if age { age_expired += 1; }
-        if count { event_limit_exceeded += 1; }
-        if size { byte_limit_exceeded += 1; }
+        if age {
+            age_expired += 1;
+        }
+        if count {
+            event_limit_exceeded += 1;
+        }
+        if size {
+            byte_limit_exceeded += 1;
+        }
         if age || count || size {
             event_ids.push(id);
             bytes_to_free = bytes_to_free.saturating_add(bytes.max(0));

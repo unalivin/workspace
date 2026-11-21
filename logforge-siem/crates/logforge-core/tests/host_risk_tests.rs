@@ -12,7 +12,10 @@ fn host_risk_report_orders_hosts_by_alert_and_severity_signal() {
     assert!(report.hosts[0].score >= report.hosts[1].score);
     assert!(report.hosts.iter().all(|host| host.score <= 100));
     assert!(report.hosts.iter().all(|host| !host.band.is_empty()));
-    assert!(report.hosts.iter().any(|host| !host.risk_factors.is_empty()));
+    assert!(report
+        .hosts
+        .iter()
+        .any(|host| !host.risk_factors.is_empty()));
 }
 
 #[test]

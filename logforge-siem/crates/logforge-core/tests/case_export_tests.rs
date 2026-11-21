@@ -51,7 +51,9 @@ fn redacted_case_bundle_omits_raw_payload_and_has_a_valid_digest() {
     let service = SiemService::new(db);
     service.seed_demo_data().expect("seed");
     let manager = CaseManager::new(service.db());
-    let case_id = manager.create("Shareable case", "", "medium", "").expect("case");
+    let case_id = manager
+        .create("Shareable case", "", "medium", "")
+        .expect("case");
     let alert = service.list_alerts(None).expect("alerts").remove(0);
     manager.link_alert(case_id, alert.id).expect("link");
 

@@ -67,8 +67,8 @@ pub fn export_case_bundle(
         audit_chain: verify_audit_chain(db)?,
         content_sha256: String::new(),
     };
-    bundle.content_sha256 = compute_bundle_hash(&bundle)
-        .map_err(|_| DbError::Sqlite(rusqlite::Error::InvalidQuery))?;
+    bundle.content_sha256 =
+        compute_bundle_hash(&bundle).map_err(|_| DbError::Sqlite(rusqlite::Error::InvalidQuery))?;
     Ok(Some(bundle))
 }
 
@@ -87,8 +87,8 @@ pub fn export_case_bundle_redacted(
         event.fields_json = "{}".to_string();
         event.redacted = true;
     }
-    bundle.content_sha256 = compute_bundle_hash(&bundle)
-        .map_err(|_| DbError::Sqlite(rusqlite::Error::InvalidQuery))?;
+    bundle.content_sha256 =
+        compute_bundle_hash(&bundle).map_err(|_| DbError::Sqlite(rusqlite::Error::InvalidQuery))?;
     Ok(Some(bundle))
 }
 
