@@ -162,12 +162,18 @@ impl SiemService {
             }
             batch.push(line);
             if batch.len() == MAX_BATCH_SIZE {
-                add_summaries(&mut total, self.ingest_string_batch(source_id, &batch, format)?);
+                add_summaries(
+                    &mut total,
+                    self.ingest_string_batch(source_id, &batch, format)?,
+                );
                 batch.clear();
             }
         }
         if !batch.is_empty() {
-            add_summaries(&mut total, self.ingest_string_batch(source_id, &batch, format)?);
+            add_summaries(
+                &mut total,
+                self.ingest_string_batch(source_id, &batch, format)?,
+            );
         }
         Ok(total)
     }
@@ -179,7 +185,12 @@ impl SiemService {
         format: crate::parser_suite::LogFormat,
     ) -> Result<IngestSummary, DbError> {
         let lines: Vec<&str> = batch.iter().map(String::as_str).collect();
-        self.ingest_with_format(source_id, &lines, format, crate::intake_queue::FullPolicy::DropNewest)
+        self.ingest_with_format(
+            source_id,
+            &lines,
+            format,
+            crate::intake_queue::FullPolicy::DropNewest,
+        )
     }
 
     pub fn ingest_with_policy(
@@ -188,7 +199,12 @@ impl SiemService {
         lines: &[&str],
         policy: crate::intake_queue::FullPolicy,
     ) -> Result<IngestSummary, DbError> {
-        self.ingest_with_format(source_id, lines, crate::parser_suite::LogFormat::Auto, policy)
+        self.ingest_with_format(
+            source_id,
+            lines,
+            crate::parser_suite::LogFormat::Auto,
+            policy,
+        )
     }
 
     pub fn ingest_with_format(
@@ -209,8 +225,12 @@ impl SiemService {
                 while let Some(line) = queue.pop(std::time::Duration::ZERO) {
                     accepted.push(line);
                 }
-                summary =
-                    self.ingest_batch(source_id, &accepted, format, queue.counters().dropped as usize)?;
+                summary = self.ingest_batch(
+                    source_id,
+                    &accepted,
+                    format,
+                    queue.counters().dropped as usize,
+                )?;
             }
             crate::intake_queue::FullPolicy::BlockReader => {
                 for batch in lines.chunks(MAX_BATCH_SIZE) {
@@ -251,10 +271,7 @@ impl SiemService {
         summary.dropped = dropped;
 
         for raw in lines {
-            let parsed = match crate::parser_suite::parse_with_format(
-                raw,
-                format,
-            ) {
+            let parsed = match crate::parser_suite::parse_with_format(raw, format) {
                 Ok(ev) => ev,
                 Err(IngestError::Empty) => continue,
                 Err(error) => {

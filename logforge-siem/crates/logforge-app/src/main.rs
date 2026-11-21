@@ -306,13 +306,21 @@ fn main() {
                 let rules = service.list_rules().expect("rules");
                 println!("{}", serde_json::to_string_pretty(&rules).expect("json"));
             }
-            Commands::Ingest { source, file, format } => {
+            Commands::Ingest {
+                source,
+                file,
+                format,
+            } => {
                 let input = std::fs::File::open(&file).expect("open input file");
                 let src_id = service
                     .add_source(&source, "file", &file.display().to_string())
                     .unwrap_or(1);
                 let summary = service
-                    .ingest_reader_with_format(src_id, std::io::BufReader::new(input), format.into())
+                    .ingest_reader_with_format(
+                        src_id,
+                        std::io::BufReader::new(input),
+                        format.into(),
+                    )
                     .expect("ingest");
                 println!(
                     "received={} deduplicated={} dropped={} malformed={} alerts={}",

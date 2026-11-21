@@ -33,7 +33,10 @@ fn streaming_ingestion_accepts_explicit_format_selection() {
         )
         .unwrap();
     assert_eq!(result.received, 1);
-    assert_eq!(service.search_events("Blocked", 10).unwrap()[0].severity, "error");
+    assert_eq!(
+        service.search_events("Blocked", 10).unwrap()[0].severity,
+        "error"
+    );
 }
 
 #[test]
