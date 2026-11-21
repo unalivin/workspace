@@ -1,5 +1,7 @@
 use logforge_core::case_links::{link_alert_to_case, list_case_links};
-use logforge_core::stats::{count_events_in_range, events_by_severity, ingestion_stats, source_health, top_sources};
+use logforge_core::stats::{
+    count_events_in_range, events_by_severity, ingestion_stats, source_health, top_sources,
+};
 use logforge_core::{Database, SiemService};
 
 #[test]
@@ -54,18 +56,11 @@ fn ingestion_rates_are_zero_safe_and_time_ranges_are_half_open() {
     assert!(metrics.received >= metrics.accepted);
     assert!((0.0..=100.0).contains(&metrics.duplicate_rate_percent));
     assert_eq!(
-        count_events_in_range(
-            svc.db(),
-            "2000-01-01T00:00:00Z",
-            "2100-01-01T00:00:00Z"
-        )
-        .expect("range count"),
+        count_events_in_range(svc.db(), "2000-01-01T00:00:00Z", "2100-01-01T00:00:00Z")
+            .expect("range count"),
         3
     );
-    assert!(count_events_in_range(
-        svc.db(),
-        "2100-01-01T00:00:00Z",
-        "2000-01-01T00:00:00Z"
-    )
-    .is_err());
+    assert!(
+        count_events_in_range(svc.db(), "2100-01-01T00:00:00Z", "2000-01-01T00:00:00Z").is_err()
+    );
 }

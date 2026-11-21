@@ -124,7 +124,11 @@ pub fn ingestion_stats(db: &Database) -> Result<IngestionStats, DbError> {
 }
 
 /// Counts events received during a half-open RFC3339 time range [start, end).
-pub fn count_events_in_range(db: &Database, start_utc: &str, end_utc: &str) -> Result<i64, DbError> {
+pub fn count_events_in_range(
+    db: &Database,
+    start_utc: &str,
+    end_utc: &str,
+) -> Result<i64, DbError> {
     let start = chrono::DateTime::parse_from_rfc3339(start_utc)
         .map_err(|_| DbError::Sqlite(rusqlite::Error::InvalidQuery))?;
     let end = chrono::DateTime::parse_from_rfc3339(end_utc)
@@ -135,7 +139,10 @@ pub fn count_events_in_range(db: &Database, start_utc: &str, end_utc: &str) -> R
     db.conn()
         .query_row(
             "SELECT COUNT(*) FROM events WHERE timestamp_utc >= ?1 AND timestamp_utc < ?2",
-            rusqlite::params![start.with_timezone(&chrono::Utc).to_rfc3339(), end.with_timezone(&chrono::Utc).to_rfc3339()],
+            rusqlite::params![
+                start.with_timezone(&chrono::Utc).to_rfc3339(),
+                end.with_timezone(&chrono::Utc).to_rfc3339()
+            ],
             |row| row.get(0),
         )
         .map_err(DbError::from)
