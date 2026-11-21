@@ -102,6 +102,8 @@ enum Commands {
     Retention {
         #[arg(long)]
         prune: Option<i64>,
+        #[arg(long)]
+        dry_run: bool,
     },
     Export {
         #[arg(long, default_value = "json")]
@@ -217,13 +219,14 @@ fn main() {
                     .expect("diagnostics");
                 println!("{}", serde_json::to_string_pretty(&diag).expect("json"));
             }
-            Commands::Retention { prune } => {
-                let pol = logforge_core::retention::get_default_policy(service.db())
-                    .expect("policy");
-                println!("policy={} max_days={} max_events={}", pol.name, pol.max_days, pol.max_events);
-                if let Some(max_ev) = prune {
-                    let deleted = logforge_core::retention::prune_excess_events(service.db(), max_ev)
-                        .expect("prune");
+            Commands::Retention { prune, dry_run } => {
+                let pol = logforge_core::retention::get_default_policy(service.db()).expect("policy");
+                let max_events = prune.unwrap_or(pol.max_events);
+                let plan = logforge_core::retention::plan_retention(service.db(), pol.max_days, max_events, &chrono::Utc::now().to_rfc3339()).expect("plan");
+                println!("policy={} max_days={} max_events={} candidates={}", pol.name, pol.max_days, max_events, plan.count);
+                for id in &plan.event_ids { println!("event_id={id}"); }
+                if dry_run { println!("dry_run=true"); } else {
+                    let deleted = logforge_core::retention::apply_retention_plan(service.db(), &plan).expect("prune");
                     println!("pruned={deleted}");
                 }
             }

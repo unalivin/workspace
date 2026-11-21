@@ -15,3 +15,4 @@ logforge-core = { path = "../logforge-core" }
 logforge-gui = { path = "../logforge-gui", optional = true }
 logforge-tui = { path = "../logforge-tui" }
 serde_json = "1.0"
+chrono = "0.4"
