@@ -146,3 +146,23 @@ fn outbox_health_distinguishes_due_from_delayed_messages() {
     assert_eq!(health.counts.queued, 1);
     assert!(health.oldest_queued_at.is_some());
 }
+
+#[test]
+fn outbox_listing_paginates_metadata_without_returning_payload() {
+    use logforge_core::notifier::list_outbox_records;
+
+    let db = Database::open_in_memory().expect("database");
+    let service = SiemService::new(db);
+    let source = service.add_source("listing", "file", "memory").expect("source");
+    service.add_rule("failure", "error", "failed").expect("rule");
+    upsert_notification_rule(service.db(), "alert.created", "warn", true, 0, 0)
+        .expect("notification rule");
+    service
+        .ingest_lines(source, &["2026-11-21T10:00:00Z host app: failed request"])
+        .expect("ingest");
+    let records = list_outbox_records(service.db(), Some("queued"), None, 10)
+        .expect("outbox records");
+    assert_eq!(records.len(), 1);
+    assert_eq!(records[0].state, "queued");
+    assert!(list_outbox_records(service.db(), Some("invalid"), None, 10).is_err());
+}

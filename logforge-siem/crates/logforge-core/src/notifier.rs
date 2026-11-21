@@ -325,3 +325,72 @@ pub fn outbox_health(db: &Database, now_utc: &str) -> Result<NotificationOutboxH
         oldest_dead_at,
     })
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct NotificationRecord {
+    pub id: i64,
+    pub alert_id: i64,
+    pub event_type: String,
+    pub severity: String,
+    pub state: String,
+    pub attempt_count: i64,
+    pub next_attempt_at: String,
+    pub last_error: String,
+    pub created_at: String,
+    pub delivered_at: Option<String>,
+}
+
+/// Lists operational queue metadata without returning notification payloads,
+/// which may contain event data that should not be exposed in routine status views.
+pub fn list_outbox_records(
+    db: &Database,
+    state: Option<&str>,
+    before_id: Option<i64>,
+    limit: usize,
+) -> Result<Vec<NotificationRecord>, DbError> {
+    if limit == 0
+        || limit > 500
+        || state.is_some_and(|value| !["queued", "claimed", "delivered", "dead"].contains(&value))
+        || before_id.is_some_and(|id| id <= 0)
+    {
+        return Err(DbError::Sqlite(rusqlite::Error::InvalidQuery));
+    }
+    let mut conditions = Vec::new();
+    let mut values = Vec::new();
+    if let Some(state) = state {
+        values.push(rusqlite::types::Value::Text(state.to_string()));
+        conditions.push(format!("state = ?{}", values.len()));
+    }
+    if let Some(before_id) = before_id {
+        values.push(rusqlite::types::Value::Integer(before_id));
+        conditions.push(format!("id < ?{}", values.len()));
+    }
+    values.push(rusqlite::types::Value::Integer(limit as i64));
+    let where_clause = if conditions.is_empty() {
+        String::new()
+    } else {
+        format!(" WHERE {}", conditions.join(" AND "))
+    };
+    let sql = format!(
+        "SELECT id, alert_id, event_type, severity, state, attempt_count, next_attempt_at, last_error, created_at, delivered_at \
+         FROM notification_outbox{where_clause} ORDER BY id DESC LIMIT ?{}",
+        values.len()
+    );
+    let mut statement = db.conn().prepare(&sql)?;
+    let rows = statement.query_map(rusqlite::params_from_iter(values.iter()), |row| {
+        let last_error: String = row.get(7)?;
+        Ok(NotificationRecord {
+            id: row.get(0)?,
+            alert_id: row.get(1)?,
+            event_type: row.get(2)?,
+            severity: row.get(3)?,
+            state: row.get(4)?,
+            attempt_count: row.get(5)?,
+            next_attempt_at: row.get(6)?,
+            last_error: crate::ingest::redact_secrets(&last_error).0,
+            created_at: row.get(8)?,
+            delivered_at: row.get(9)?,
+        })
+    })?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
+}

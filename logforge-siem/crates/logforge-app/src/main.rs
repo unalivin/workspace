@@ -138,6 +138,14 @@ enum Commands {
         #[arg(value_enum)]
         action: NotifierAction,
     },
+    Outbox {
+        #[arg(long)]
+        state: Option<String>,
+        #[arg(long, default_value_t = 100)]
+        limit: usize,
+        #[arg(long)]
+        before_id: Option<i64>,
+    },
     AuditVerify,
     AuditLog {
         #[arg(long)]
@@ -506,6 +514,20 @@ fn main() {
                     );
                 }
             },
+            Commands::Outbox {
+                state,
+                limit,
+                before_id,
+            } => {
+                let records = logforge_core::notifier::list_outbox_records(
+                    service.db(),
+                    state.as_deref(),
+                    before_id,
+                    limit,
+                )
+                .expect("outbox records");
+                println!("{}", serde_json::to_string_pretty(&records).expect("json"));
+            }
             Commands::AuditVerify => {
                 let res = logforge_core::audit_verify::verify_audit_chain(service.db())
                     .expect("verify audit");
