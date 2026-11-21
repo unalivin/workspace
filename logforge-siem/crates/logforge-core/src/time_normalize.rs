@@ -12,9 +12,12 @@ pub fn normalize_source_timestamp(
     if let Ok(result) = normalize_timestamp(Some(raw)) {
         return Ok(result);
     }
-    let local = NaiveDateTime::parse_from_str(raw, "%b %e %H:%M:%S")
-        .or_else(|_| NaiveDateTime::parse_from_str(raw, "%b %d %H:%M:%S"))
-        .map_err(|_| IngestError::Malformed(format!("invalid timestamp: {raw}")))?;
+    let local = NaiveDateTime::parse_from_str(
+        &format!("{} {raw}", now.year()),
+        "%Y %b %e %H:%M:%S",
+    )
+    .or_else(|_| NaiveDateTime::parse_from_str(&format!("{} {raw}", now.year()), "%Y %b %d %H:%M:%S"))
+    .map_err(|_| IngestError::Malformed(format!("invalid timestamp: {raw}")))?;
     let offset = FixedOffset::east_opt(source_offset_seconds).ok_or_else(|| {
         IngestError::Malformed("source timezone offset is out of range".to_string())
     })?;

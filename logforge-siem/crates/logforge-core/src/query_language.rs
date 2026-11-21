@@ -54,6 +54,9 @@ pub fn compile_query(input: &str) -> Result<CompiledQuery, IngestError> {
             }
             value
         };
+        if token.ends_with('\\') {
+            return Err(IngestError::Malformed("unfinished escape in query token".into()));
+        }
         if token.eq_ignore_ascii_case("AND")
             || token.eq_ignore_ascii_case("OR")
             || token.eq_ignore_ascii_case("NOT")

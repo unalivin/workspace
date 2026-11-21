@@ -190,8 +190,7 @@ impl SiemService {
         let mut stmt = self.db.conn().prepare(
             "SELECT e.id, e.source_id, e.timestamp_utc, e.received_at, e.severity, e.host, e.service, e.message, e.raw_line, e.dedup_hash, e.redacted, e.fields_json
              FROM events e
-             LEFT JOIN events_fts f ON f.rowid = e.id
-             WHERE (?1 IS NULL OR events_fts MATCH ?1)
+             WHERE (?1 IS NULL OR e.id IN (SELECT rowid FROM events_fts WHERE events_fts MATCH ?1))
                AND (?2 IS NULL OR e.timestamp_utc >= ?2)
                AND (?3 IS NULL OR e.timestamp_utc <= ?3)
                AND (?4 IS NULL OR lower(e.severity) = ?4)
