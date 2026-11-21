@@ -92,10 +92,10 @@ pub fn event_rate_series(
         let bucket_start = DateTime::from_timestamp(cursor_seconds, 0)
             .ok_or(DbError::Sqlite(rusqlite::Error::InvalidQuery))?;
         let next = bucket_start + Duration::seconds(step);
-        let start_text = bucket_start.to_rfc3339_opts(SecondsFormat::Secs, true);
-        let next_text = next.to_rfc3339_opts(SecondsFormat::Secs, true);
+        let start_text = bucket_start.to_rfc3339_opts(SecondsFormat::Secs, false);
+        let next_text = next.to_rfc3339_opts(SecondsFormat::Secs, false);
         let (events, alerts, critical, errors): (i64, i64, i64, i64) = db.conn().query_row(
-            "SELECT COUNT(e.id), COUNT(a.id), SUM(CASE WHEN e.severity = 'critical' THEN 1 ELSE 0 END), SUM(CASE WHEN e.severity = 'error' THEN 1 ELSE 0 END)
+            "SELECT COUNT(DISTINCT e.id), COUNT(a.id), COUNT(DISTINCT CASE WHEN e.severity = 'critical' THEN e.id END), COUNT(DISTINCT CASE WHEN e.severity = 'error' THEN e.id END)
              FROM events e LEFT JOIN alerts a ON a.event_id = e.id
              WHERE e.timestamp_utc >= ?1 AND e.timestamp_utc < ?2",
             params![start_text, next_text],
@@ -142,12 +142,11 @@ fn parse_bound(input: &str) -> Result<DateTime<Utc>, DbError> {
 }
 
 fn top_values(db: &Database, column: &str, limit: usize) -> Result<Vec<ValueCount>, DbError> {
-    let (query, alert_join) = match column {
-        "host" => ("SELECT e.host, COUNT(DISTINCT e.id), COUNT(DISTINCT a.id) FROM events e LEFT JOIN alerts a ON a.event_id = e.id GROUP BY e.host ORDER BY COUNT(DISTINCT e.id) DESC, e.host ASC LIMIT ?1", true),
-        "service" => ("SELECT e.service, COUNT(DISTINCT e.id), COUNT(DISTINCT a.id) FROM events e LEFT JOIN alerts a ON a.event_id = e.id GROUP BY e.service ORDER BY COUNT(DISTINCT e.id) DESC, e.service ASC LIMIT ?1", true),
+    let query = match column {
+        "host" => "SELECT e.host, COUNT(DISTINCT e.id), COUNT(DISTINCT a.id) FROM events e LEFT JOIN alerts a ON a.event_id = e.id GROUP BY e.host ORDER BY COUNT(DISTINCT e.id) DESC, e.host ASC LIMIT ?1",
+        "service" => "SELECT e.service, COUNT(DISTINCT e.id), COUNT(DISTINCT a.id) FROM events e LEFT JOIN alerts a ON a.event_id = e.id GROUP BY e.service ORDER BY COUNT(DISTINCT e.id) DESC, e.service ASC LIMIT ?1",
         _ => return Err(DbError::Sqlite(rusqlite::Error::InvalidQuery)),
     };
-    let _ = alert_join;
     let mut statement = db.conn().prepare(query)?;
     let rows = statement.query_map(params![limit.clamp(1, 100) as i64], |row| {
         Ok(ValueCount {

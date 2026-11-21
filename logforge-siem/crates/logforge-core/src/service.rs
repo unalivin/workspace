@@ -196,6 +196,13 @@ impl SiemService {
                     )?;
                 summary.alerts_created += 1;
             }
+            summary.alerts_created += self.evaluate_correlations(
+                event_id,
+                &parsed.timestamp_utc,
+                &parsed.host,
+                &parsed.service,
+                &parsed.message,
+            )?;
         }
 
         self.db.conn().execute(
@@ -214,6 +221,126 @@ impl SiemService {
         )?;
 
         Ok(summary)
+    }
+
+    pub fn add_threshold_correlation(
+        &self,
+        detection_rule_id: i64,
+        entity_field: &str,
+        window_seconds: i64,
+        threshold: usize,
+    ) -> Result<i64, DbError> {
+        if !matches!(entity_field, "host" | "service" | "global")
+            || !(1..=2_592_000).contains(&window_seconds)
+            || !(1..=100_000).contains(&threshold)
+        {
+            return Err(DbError::Sqlite(rusqlite::Error::InvalidQuery));
+        }
+        let pattern: String = self.db.conn().query_row(
+            "SELECT pattern FROM detection_rules WHERE id = ?1",
+            params![detection_rule_id],
+            |row| row.get(0),
+        )?;
+        let now = Utc::now().to_rfc3339();
+        self.db.conn().execute(
+            "INSERT INTO correlation_rules (detection_rule_id, kind, entity_field, window_seconds, threshold, first_pattern, second_pattern, created_at)
+             VALUES (?1, 'threshold', ?2, ?3, ?4, ?5, '', ?6)",
+            params![detection_rule_id, entity_field, window_seconds, threshold as i64, pattern, now],
+        )?;
+        Ok(self.db.conn().last_insert_rowid())
+    }
+
+    pub fn add_sequence_correlation(
+        &self,
+        detection_rule_id: i64,
+        entity_field: &str,
+        window_seconds: i64,
+        first_pattern: &str,
+        second_pattern: &str,
+    ) -> Result<i64, DbError> {
+        if !matches!(entity_field, "host" | "service" | "global")
+            || !(1..=2_592_000).contains(&window_seconds)
+            || first_pattern.trim().is_empty()
+            || second_pattern.trim().is_empty()
+        {
+            return Err(DbError::Sqlite(rusqlite::Error::InvalidQuery));
+        }
+        let now = Utc::now().to_rfc3339();
+        self.db.conn().execute(
+            "INSERT INTO correlation_rules (detection_rule_id, kind, entity_field, window_seconds, threshold, first_pattern, second_pattern, created_at)
+             VALUES (?1, 'sequence', ?2, ?3, 1, ?4, ?5, ?6)",
+            params![detection_rule_id, entity_field, window_seconds, first_pattern.trim(), second_pattern.trim(), now],
+        )?;
+        Ok(self.db.conn().last_insert_rowid())
+    }
+
+    fn evaluate_correlations(
+        &self,
+        event_id: i64,
+        timestamp_utc: &str,
+        host: &str,
+        service: &str,
+        message: &str,
+    ) -> Result<usize, DbError> {
+        let mut statement = self.db.conn().prepare(
+            "SELECT cr.detection_rule_id, cr.kind, cr.entity_field, cr.window_seconds, cr.threshold, cr.first_pattern, cr.second_pattern, dr.name, dr.severity
+             FROM correlation_rules cr JOIN detection_rules dr ON dr.id = cr.detection_rule_id
+             WHERE cr.enabled = 1 AND dr.enabled = 1 ORDER BY cr.id",
+        )?;
+        let configs = statement.query_map([], |row| Ok((
+            row.get::<_, i64>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?,
+            row.get::<_, i64>(3)?, row.get::<_, i64>(4)?, row.get::<_, String>(5)?,
+            row.get::<_, String>(6)?, row.get::<_, String>(7)?, row.get::<_, String>(8)?,
+        )))?.collect::<Result<Vec<_>, _>>()?;
+        drop(statement);
+        let mut created = 0;
+        for (rule_id, kind, field, window, threshold, first_pattern, second_pattern, name, severity) in configs {
+            let key = match field.as_str() {
+                "host" => host,
+                "service" => service,
+                _ => "global",
+            };
+            let lower = message.to_lowercase();
+            let action = if lower.contains(&first_pattern.to_lowercase()) {
+                Some("first")
+            } else if kind == "sequence" && lower.contains(&second_pattern.to_lowercase()) {
+                Some("second")
+            } else {
+                None
+            };
+            let Some(action) = action else { continue };
+            let incoming = [crate::correlation_state::PendingEvent {
+                event_id,
+                timestamp_utc: timestamp_utc.to_string(),
+                action: action.to_string(),
+            }];
+            let now = Utc::now().to_rfc3339();
+            let result = if kind == "threshold" {
+                crate::correlation_state::evaluate_threshold(
+                    &self.db, &format!("rule:{rule_id}"), key, window, threshold as usize, &incoming, &now,
+                )?
+            } else {
+                crate::correlation_state::evaluate_sequence(
+                    &self.db,
+                    &format!("rule:{rule_id}"),
+                    key,
+                    crate::correlation_state::SequenceSpec {
+                        first_action: "first", second_action: "second", window_seconds: window,
+                    },
+                    &incoming,
+                    &now,
+                )?
+            };
+            if result.emitted {
+                self.db.conn().execute(
+                    "INSERT INTO alerts (rule_id, event_id, severity, status, title, case_ref, created_at, updated_at)
+                     VALUES (?1, ?2, ?3, 'open', ?4, '', ?5, ?5)",
+                    params![rule_id, event_id, severity, format!("Correlation: {name} on {key}"), now],
+                )?;
+                created += 1;
+            }
+        }
+        Ok(created)
     }
 
     pub fn search_events(&self, query: &str, limit: usize) -> Result<Vec<LogEvent>, DbError> {
