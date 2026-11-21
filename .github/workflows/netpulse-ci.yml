@@ -33,11 +33,11 @@ jobs:
           go-version: '1.27.4'
       - name: Format source
         run: |
-          gofmt -w .
-          if ! git diff --quiet -- 'netpulse'; then
+          ../scripts/ci-check.sh 'format source' bash -c 'find . -name "*.go" -type f -print0 | xargs -0 gofmt -w'
+          if [[ "$RUNNER_OS" == Linux ]] && ! git diff --quiet -- .; then
             git config user.name Unalivin
             git config user.email automation
-            git add 'netpulse'
+            git add .
             git commit -m 'style(netpulse): format'
             git push
           fi
