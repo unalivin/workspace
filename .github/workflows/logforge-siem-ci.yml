@@ -5,10 +5,14 @@ on:
     paths:
       - 'logforge-siem/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/logforge-siem-ci.yml'
+      - 'templates/workflows/rust-ci.yml'
   pull_request:
     paths:
       - 'logforge-siem/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/logforge-siem-ci.yml'
+      - 'templates/workflows/rust-ci.yml'
 
 permissions:
   contents: write

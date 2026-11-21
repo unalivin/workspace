@@ -5,10 +5,14 @@ on:
     paths:
       - 'sbom-navigator/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/sbom-navigator-ci.yml'
+      - 'templates/workflows/rust-ci.yml'
   pull_request:
     paths:
       - 'sbom-navigator/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/sbom-navigator-ci.yml'
+      - 'templates/workflows/rust-ci.yml'
 
 permissions:
   contents: write

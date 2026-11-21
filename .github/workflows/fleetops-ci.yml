@@ -5,10 +5,14 @@ on:
     paths:
       - 'fleetops/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/fleetops-ci.yml'
+      - 'templates/workflows/go-ci.yml'
   pull_request:
     paths:
       - 'fleetops/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/fleetops-ci.yml'
+      - 'templates/workflows/go-ci.yml'
 
 permissions:
   contents: write

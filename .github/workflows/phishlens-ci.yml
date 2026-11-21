@@ -5,10 +5,14 @@ on:
     paths:
       - 'phishlens/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/phishlens-ci.yml'
+      - 'templates/workflows/rust-ci.yml'
   pull_request:
     paths:
       - 'phishlens/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/phishlens-ci.yml'
+      - 'templates/workflows/rust-ci.yml'
 
 permissions:
   contents: write

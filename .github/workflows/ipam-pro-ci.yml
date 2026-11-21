@@ -5,10 +5,14 @@ on:
     paths:
       - 'ipam-pro/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/ipam-pro-ci.yml'
+      - 'templates/workflows/go-ci.yml'
   pull_request:
     paths:
       - 'ipam-pro/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/ipam-pro-ci.yml'
+      - 'templates/workflows/go-ci.yml'
 
 permissions:
   contents: write

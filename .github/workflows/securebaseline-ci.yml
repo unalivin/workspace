@@ -5,10 +5,14 @@ on:
     paths:
       - 'securebaseline/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/securebaseline-ci.yml'
+      - 'templates/workflows/cpp-ci.yml'
   pull_request:
     paths:
       - 'securebaseline/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/securebaseline-ci.yml'
+      - 'templates/workflows/cpp-ci.yml'
 
 permissions:
   contents: read

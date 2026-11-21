@@ -5,10 +5,14 @@ on:
     paths:
       - 'netauto/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/netauto-ci.yml'
+      - 'templates/workflows/go-ci.yml'
   pull_request:
     paths:
       - 'netauto/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/netauto-ci.yml'
+      - 'templates/workflows/go-ci.yml'
 
 permissions:
   contents: write

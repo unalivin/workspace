@@ -5,10 +5,14 @@ on:
     paths:
       - '{{PROJECT}}/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/{{PROJECT}}-ci.yml'
+      - 'templates/workflows/go-ci.yml'
   pull_request:
     paths:
       - '{{PROJECT}}/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/{{PROJECT}}-ci.yml'
+      - 'templates/workflows/go-ci.yml'
 
 permissions:
   contents: write

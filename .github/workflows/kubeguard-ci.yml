@@ -5,10 +5,14 @@ on:
     paths:
       - 'kubeguard/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/kubeguard-ci.yml'
+      - 'templates/workflows/go-ci.yml'
   pull_request:
     paths:
       - 'kubeguard/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/kubeguard-ci.yml'
+      - 'templates/workflows/go-ci.yml'
 
 permissions:
   contents: write

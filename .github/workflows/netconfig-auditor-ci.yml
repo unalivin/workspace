@@ -5,10 +5,14 @@ on:
     paths:
       - 'netconfig-auditor/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/netconfig-auditor-ci.yml'
+      - 'templates/workflows/rust-ci.yml'
   pull_request:
     paths:
       - 'netconfig-auditor/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/netconfig-auditor-ci.yml'
+      - 'templates/workflows/rust-ci.yml'
 
 permissions:
   contents: write

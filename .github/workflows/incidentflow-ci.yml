@@ -5,10 +5,14 @@ on:
     paths:
       - 'incidentflow/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/incidentflow-ci.yml'
+      - 'templates/workflows/go-ci.yml'
   pull_request:
     paths:
       - 'incidentflow/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/incidentflow-ci.yml'
+      - 'templates/workflows/go-ci.yml'
 
 permissions:
   contents: write

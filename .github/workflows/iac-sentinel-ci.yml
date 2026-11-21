@@ -5,10 +5,14 @@ on:
     paths:
       - 'iac-sentinel/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/iac-sentinel-ci.yml'
+      - 'templates/workflows/rust-ci.yml'
   pull_request:
     paths:
       - 'iac-sentinel/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/iac-sentinel-ci.yml'
+      - 'templates/workflows/rust-ci.yml'
 
 permissions:
   contents: write

@@ -5,10 +5,14 @@ on:
     paths:
       - 'pipelineshield/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/pipelineshield-ci.yml'
+      - 'templates/workflows/go-ci.yml'
   pull_request:
     paths:
       - 'pipelineshield/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/pipelineshield-ci.yml'
+      - 'templates/workflows/go-ci.yml'
 
 permissions:
   contents: write

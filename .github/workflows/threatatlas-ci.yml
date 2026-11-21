@@ -5,10 +5,14 @@ on:
     paths:
       - 'threatatlas/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/threatatlas-ci.yml'
+      - 'templates/workflows/go-ci.yml'
   pull_request:
     paths:
       - 'threatatlas/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/threatatlas-ci.yml'
+      - 'templates/workflows/go-ci.yml'
 
 permissions:
   contents: write

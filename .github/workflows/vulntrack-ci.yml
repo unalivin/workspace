@@ -5,10 +5,14 @@ on:
     paths:
       - 'vulntrack/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/vulntrack-ci.yml'
+      - 'templates/workflows/go-ci.yml'
   pull_request:
     paths:
       - 'vulntrack/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/vulntrack-ci.yml'
+      - 'templates/workflows/go-ci.yml'
 
 permissions:
   contents: write

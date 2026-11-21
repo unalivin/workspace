@@ -5,10 +5,14 @@ on:
     paths:
       - 'netgraph/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/netgraph-ci.yml'
+      - 'templates/workflows/cpp-ci.yml'
   pull_request:
     paths:
       - 'netgraph/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/netgraph-ci.yml'
+      - 'templates/workflows/cpp-ci.yml'
 
 permissions:
   contents: read

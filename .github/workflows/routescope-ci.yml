@@ -5,10 +5,14 @@ on:
     paths:
       - 'routescope/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/routescope-ci.yml'
+      - 'templates/workflows/cpp-ci.yml'
   pull_request:
     paths:
       - 'routescope/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/routescope-ci.yml'
+      - 'templates/workflows/cpp-ci.yml'
 
 permissions:
   contents: read

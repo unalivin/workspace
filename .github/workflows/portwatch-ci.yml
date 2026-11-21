@@ -5,10 +5,14 @@ on:
     paths:
       - 'portwatch/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/portwatch-ci.yml'
+      - 'templates/workflows/go-ci.yml'
   pull_request:
     paths:
       - 'portwatch/**'
       - 'scripts/ci-check.sh'
+      - '.github/workflows/portwatch-ci.yml'
+      - 'templates/workflows/go-ci.yml'
 
 permissions:
   contents: write
