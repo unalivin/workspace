@@ -36,7 +36,9 @@ impl std::fmt::Display for CaseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::InvalidStatus => f.write_str("case status must be open, in_progress, or closed"),
-            Self::InvalidPriority => f.write_str("case priority must be low, medium, high, or critical"),
+            Self::InvalidPriority => {
+                f.write_str("case priority must be low, medium, high, or critical")
+            }
             Self::EmptyTitle => f.write_str("case title must not be empty"),
         }
     }
@@ -53,9 +55,17 @@ impl<'a> CaseManager<'a> {
         Self { db }
     }
 
-    pub fn create(&self, title: &str, description: &str, priority: &str, assignee: &str) -> Result<i64, Box<dyn std::error::Error>> {
+    pub fn create(
+        &self,
+        title: &str,
+        description: &str,
+        priority: &str,
+        assignee: &str,
+    ) -> Result<i64, Box<dyn std::error::Error>> {
         let title = title.trim();
-        if title.is_empty() { return Err(Box::new(CaseError::EmptyTitle)); }
+        if title.is_empty() {
+            return Err(Box::new(CaseError::EmptyTitle));
+        }
         if !matches!(priority, "low" | "medium" | "high" | "critical") {
             return Err(Box::new(CaseError::InvalidPriority));
         }
@@ -89,7 +99,11 @@ impl<'a> CaseManager<'a> {
         rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
     }
 
-    pub fn set_status(&self, case_id: i64, status: &str) -> Result<bool, Box<dyn std::error::Error>> {
+    pub fn set_status(
+        &self,
+        case_id: i64,
+        status: &str,
+    ) -> Result<bool, Box<dyn std::error::Error>> {
         if !matches!(status, "open" | "in_progress" | "closed") {
             return Err(Box::new(CaseError::InvalidStatus));
         }
@@ -112,18 +126,33 @@ impl<'a> CaseManager<'a> {
     pub fn link_alert(&self, case_id: i64, alert_id: i64) -> Result<(), DbError> {
         let tx = self.db.conn().unchecked_transaction()?;
         let now = Utc::now().to_rfc3339();
-        tx.execute("INSERT INTO case_alerts (case_id, alert_id, linked_at) VALUES (?1, ?2, ?3)", params![case_id, alert_id, now])?;
-        tx.execute("UPDATE alerts SET case_ref = CAST(?1 AS TEXT), updated_at = ?2 WHERE id = ?3", params![case_id, now, alert_id])?;
-        tx.execute("UPDATE cases SET updated_at = ?1 WHERE id = ?2", params![now, case_id])?;
+        tx.execute(
+            "INSERT INTO case_alerts (case_id, alert_id, linked_at) VALUES (?1, ?2, ?3)",
+            params![case_id, alert_id, now],
+        )?;
+        tx.execute(
+            "UPDATE alerts SET case_ref = CAST(?1 AS TEXT), updated_at = ?2 WHERE id = ?3",
+            params![case_id, now, alert_id],
+        )?;
+        tx.execute(
+            "UPDATE cases SET updated_at = ?1 WHERE id = ?2",
+            params![now, case_id],
+        )?;
         tx.commit()?;
         Ok(())
     }
 
     pub fn unlink_alert(&self, case_id: i64, alert_id: i64) -> Result<bool, DbError> {
         let tx = self.db.conn().unchecked_transaction()?;
-        let changed = tx.execute("DELETE FROM case_alerts WHERE case_id = ?1 AND alert_id = ?2", params![case_id, alert_id])?;
+        let changed = tx.execute(
+            "DELETE FROM case_alerts WHERE case_id = ?1 AND alert_id = ?2",
+            params![case_id, alert_id],
+        )?;
         if changed != 0 {
-            tx.execute("UPDATE alerts SET case_ref = '', updated_at = ?1 WHERE id = ?2 AND case_ref = ?3", params![Utc::now().to_rfc3339(), alert_id, case_id.to_string()])?;
+            tx.execute(
+                "UPDATE alerts SET case_ref = '', updated_at = ?1 WHERE id = ?2 AND case_ref = ?3",
+                params![Utc::now().to_rfc3339(), alert_id, case_id.to_string()],
+            )?;
         }
         tx.commit()?;
         Ok(changed != 0)
@@ -131,32 +160,65 @@ impl<'a> CaseManager<'a> {
 
     pub fn add_note(&self, case_id: i64, author: &str, body: &str) -> Result<i64, DbError> {
         let body = body.trim();
-        if body.is_empty() { return Err(DbError::Sqlite(rusqlite::Error::InvalidQuery)); }
+        if body.is_empty() {
+            return Err(DbError::Sqlite(rusqlite::Error::InvalidQuery));
+        }
         let now = Utc::now().to_rfc3339();
-        self.db.conn().execute("INSERT INTO case_notes (case_id, author, body, created_at) VALUES (?1, ?2, ?3, ?4)", params![case_id, author.trim(), body, now])?;
-        self.db.conn().execute("UPDATE cases SET updated_at = ?1 WHERE id = ?2", params![now, case_id])?;
+        self.db.conn().execute(
+            "INSERT INTO case_notes (case_id, author, body, created_at) VALUES (?1, ?2, ?3, ?4)",
+            params![case_id, author.trim(), body, now],
+        )?;
+        self.db.conn().execute(
+            "UPDATE cases SET updated_at = ?1 WHERE id = ?2",
+            params![now, case_id],
+        )?;
         Ok(self.db.conn().last_insert_rowid())
     }
 
     pub fn notes(&self, case_id: i64) -> Result<Vec<CaseNote>, DbError> {
         let mut statement = self.db.conn().prepare("SELECT id, case_id, author, body, created_at FROM case_notes WHERE case_id = ?1 ORDER BY id")?;
-        let rows = statement.query_map(params![case_id], |row| Ok(CaseNote {
-            id: row.get(0)?, case_id: row.get(1)?, author: row.get(2)?, body: row.get(3)?, created_at: row.get(4)?,
-        }))?;
+        let rows = statement.query_map(params![case_id], |row| {
+            Ok(CaseNote {
+                id: row.get(0)?,
+                case_id: row.get(1)?,
+                author: row.get(2)?,
+                body: row.get(3)?,
+                created_at: row.get(4)?,
+            })
+        })?;
         rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
     }
 
     pub fn alerts(&self, case_id: i64) -> Result<Vec<crate::model::Alert>, DbError> {
         let mut statement = self.db.conn().prepare("SELECT a.id, a.rule_id, a.event_id, a.severity, a.status, a.title, a.case_ref, a.created_at, a.updated_at FROM alerts a JOIN case_alerts ca ON ca.alert_id = a.id WHERE ca.case_id = ?1 ORDER BY a.created_at DESC, a.id DESC")?;
-        let rows = statement.query_map(params![case_id], |r| Ok(crate::model::Alert {
-            id: r.get(0)?, rule_id: r.get(1)?, event_id: r.get(2)?, severity: r.get(3)?, status: r.get(4)?, title: r.get(5)?, case_ref: r.get(6)?, created_at: r.get(7)?, updated_at: r.get(8)?,
-        }))?;
+        let rows = statement.query_map(params![case_id], |r| {
+            Ok(crate::model::Alert {
+                id: r.get(0)?,
+                rule_id: r.get(1)?,
+                event_id: r.get(2)?,
+                severity: r.get(3)?,
+                status: r.get(4)?,
+                title: r.get(5)?,
+                case_ref: r.get(6)?,
+                created_at: r.get(7)?,
+                updated_at: r.get(8)?,
+            })
+        })?;
         rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
     }
 }
 
 fn map_case(row: &rusqlite::Row<'_>) -> rusqlite::Result<CaseRecord> {
     Ok(CaseRecord {
-        id: row.get(0)?, title: row.get(1)?, description: row.get(2)?, status: row.get(3)?, priority: row.get(4)?, assignee: row.get(5)?, created_at: row.get(6)?, updated_at: row.get(7)?, closed_at: row.get(8)?, alert_count: row.get(9)?,
+        id: row.get(0)?,
+        title: row.get(1)?,
+        description: row.get(2)?,
+        status: row.get(3)?,
+        priority: row.get(4)?,
+        assignee: row.get(5)?,
+        created_at: row.get(6)?,
+        updated_at: row.get(7)?,
+        closed_at: row.get(8)?,
+        alert_count: row.get(9)?,
     })
 }

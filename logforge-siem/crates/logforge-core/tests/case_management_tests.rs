@@ -7,12 +7,23 @@ fn manages_case_lifecycle_notes_assignment_and_alert_links_atomically() {
     let service = SiemService::new(db);
     let source = service.add_source("case-test", "file", "memory").unwrap();
     service.add_rule("failed login", "warn", "failed").unwrap();
-    service.ingest_lines(source, &["2026-11-21T10:00:00Z host sshd: failed login"]).unwrap();
+    service
+        .ingest_lines(source, &["2026-11-21T10:00:00Z host sshd: failed login"])
+        .unwrap();
     let alert = service.list_alerts(None).unwrap().remove(0);
     let cases = CaseManager::new(service.db());
-    let case_id = cases.create("Suspicious login burst", "Review related authentication events", "high", "analyst").unwrap();
+    let case_id = cases
+        .create(
+            "Suspicious login burst",
+            "Review related authentication events",
+            "high",
+            "analyst",
+        )
+        .unwrap();
     cases.link_alert(case_id, alert.id).unwrap();
-    cases.add_note(case_id, "analyst", "Correlate with VPN audit trail").unwrap();
+    cases
+        .add_note(case_id, "analyst", "Correlate with VPN audit trail")
+        .unwrap();
     assert_eq!(cases.get(case_id).unwrap().unwrap().alert_count, 1);
     assert_eq!(cases.alerts(case_id).unwrap().len(), 1);
     assert_eq!(cases.notes(case_id).unwrap()[0].author, "analyst");
