@@ -221,7 +221,11 @@ fn main() {
                     .expect("diagnostics");
                 println!("{}", serde_json::to_string_pretty(&diag).expect("json"));
             }
-            Commands::Retention { prune, max_bytes, dry_run } => {
+            Commands::Retention {
+                prune,
+                max_bytes,
+                dry_run,
+            } => {
                 let pol =
                     logforge_core::retention::get_default_policy(service.db()).expect("policy");
                 let max_events = prune.unwrap_or(pol.max_events);

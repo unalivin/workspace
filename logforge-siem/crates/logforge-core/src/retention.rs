@@ -31,7 +31,13 @@ pub fn get_default_policy(db: &Database) -> Result<RetentionPolicy, DbError> {
     ).map_err(DbError::from)
 }
 
-pub fn plan_retention(db: &Database, max_days: i64, max_events: i64, max_bytes: i64, now_utc: &str) -> Result<RetentionPlan, DbError> {
+pub fn plan_retention(
+    db: &Database,
+    max_days: i64,
+    max_events: i64,
+    max_bytes: i64,
+    now_utc: &str,
+) -> Result<RetentionPlan, DbError> {
     let now = chrono::DateTime::parse_from_rfc3339(now_utc)
         .map_err(|_| DbError::Sqlite(rusqlite::Error::InvalidQuery))?
         .with_timezone(&chrono::Utc);
@@ -39,7 +45,13 @@ pub fn plan_retention(db: &Database, max_days: i64, max_events: i64, max_bytes: 
     let mut statement = db.conn().prepare(
         "SELECT id, timestamp_utc, length(raw_line) + length(message) + length(fields_json) FROM events ORDER BY timestamp_utc DESC, id DESC",
     )?;
-    let rows = statement.query_map([], |row| Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?, row.get::<_, i64>(2)?)))?;
+    let rows = statement.query_map([], |row| {
+        Ok((
+            row.get::<_, i64>(0)?,
+            row.get::<_, String>(1)?,
+            row.get::<_, i64>(2)?,
+        ))
+    })?;
     let mut kept_count = 0i64;
     let mut kept_bytes = 0i64;
     let mut event_ids = Vec::new();
@@ -61,7 +73,11 @@ pub fn plan_retention(db: &Database, max_days: i64, max_events: i64, max_bytes: 
         }
     }
     event_ids.sort_unstable();
-    Ok(RetentionPlan { count: event_ids.len(), event_ids, bytes_to_free })
+    Ok(RetentionPlan {
+        count: event_ids.len(),
+        event_ids,
+        bytes_to_free,
+    })
 }
 
 pub fn apply_retention_plan(db: &Database, plan: &RetentionPlan) -> Result<usize, DbError> {
@@ -75,8 +91,12 @@ pub fn apply_retention_plan(db: &Database, plan: &RetentionPlan) -> Result<usize
 }
 
 pub fn prune_excess_events(db: &Database, max_events: i64) -> Result<usize, DbError> {
-    let total: i64 = db.conn().query_row("SELECT COUNT(*) FROM events", [], |row| row.get(0))?;
-    if total <= max_events { return Ok(0); }
+    let total: i64 = db
+        .conn()
+        .query_row("SELECT COUNT(*) FROM events", [], |row| row.get(0))?;
+    if total <= max_events {
+        return Ok(0);
+    }
     let to_delete = total - max_events;
     db.conn().execute(
         "DELETE FROM events WHERE id IN (SELECT id FROM events ORDER BY timestamp_utc ASC, id ASC LIMIT ?1)",

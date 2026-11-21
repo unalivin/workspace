@@ -23,7 +23,9 @@ fn age_policy_prunes_old_events_even_when_event_count_is_below_limit() {
 fn byte_cap_keeps_newest_records_and_lists_all_removals() {
     let db = Database::open_in_memory().unwrap();
     let service = SiemService::new(db);
-    let source = service.add_source("size-retention", "file", "memory").unwrap();
+    let source = service
+        .add_source("size-retention", "file", "memory")
+        .unwrap();
     let records = [
         "2026-11-20T00:00:00Z host app: alpha has a medium sized record",
         "2026-11-20T00:00:01Z host app: beta has a medium sized record",
