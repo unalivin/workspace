@@ -1,11 +1,12 @@
 use crate::db::{Database, DbError};
 use chrono::{DateTime, Utc};
-use rusqlite::{params, OptionalExtension};
+use rusqlite::{types::Value, OptionalExtension};
 use serde::Serialize;
 
 /// Fields that can be used for event-volume groupings. The enum, rather than a raw
 /// SQL identifier, keeps dynamic report queries restricted to known columns.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum EventDimension {
     Severity,
     Host,
@@ -113,21 +114,21 @@ pub fn event_volume_report(
     let dimension_sql = dimension.select_expression();
     let source_join = dimension.join_source();
     let mut conditions = Vec::new();
-    let mut values = Vec::new();
+    let mut values: Vec<Value> = Vec::new();
     if let Some(value) = from {
-        values.push(value);
+        values.push(Value::Text(value));
         conditions.push(format!("e.timestamp_utc >= ?{}", values.len()));
     }
     if let Some(value) = to {
-        values.push(value);
+        values.push(Value::Text(value));
         conditions.push(format!("e.timestamp_utc < ?{}", values.len()));
     }
     if let Some(source_id) = filter.source_id {
-        values.push(source_id);
+        values.push(Value::Integer(source_id));
         conditions.push(format!("e.source_id = ?{}", values.len()));
     }
     if let Some(severity) = &filter.severity {
-        values.push(severity.to_ascii_lowercase());
+        values.push(Value::Text(severity.to_ascii_lowercase()));
         conditions.push(format!("lower(e.severity) = ?{}", values.len()));
     }
     let where_sql = if conditions.is_empty() {
@@ -148,7 +149,7 @@ pub fn event_volume_report(
          GROUP BY {dimension_sql} ORDER BY event_count DESC, {dimension_sql} COLLATE NOCASE LIMIT ?{limit_index}"
     );
     let mut bucket_values = values.clone();
-    bucket_values.push(filter.limit as i64);
+    bucket_values.push(Value::Integer(filter.limit as i64));
     let mut statement = db.conn().prepare(&buckets_sql)?;
     let rows = statement.query_map(rusqlite::params_from_iter(bucket_values.iter()), |row| {
         Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))

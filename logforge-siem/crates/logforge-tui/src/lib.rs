@@ -26,6 +26,7 @@ pub enum TuiTab {
     Cases,
     Retention,
     Audit,
+    Health,
     About,
     Settings,
 }
@@ -43,6 +44,7 @@ impl TuiTab {
             TuiTab::Cases,
             TuiTab::Retention,
             TuiTab::Audit,
+            TuiTab::Health,
             TuiTab::About,
             TuiTab::Settings,
         ]
@@ -60,6 +62,7 @@ impl TuiTab {
             TuiTab::Cases => "c Cases",
             TuiTab::Retention => "8 Retention",
             TuiTab::Audit => "9 Audit",
+            TuiTab::Health => "h Health",
             TuiTab::About => "0 About",
             TuiTab::Settings => "s Settings",
         }
@@ -198,6 +201,19 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                     Ok(res) => format!("Audit entries: {} | Chain valid: {}", res.total_entries, res.valid),
                     Err(_) => "Audit verification unavailable.".to_string(),
                 },
+                TuiTab::Health => {
+                    let ingestion = logforge_core::stats::ingestion_stats(service.db());
+                    let sources = logforge_core::stats::source_health(service.db()).unwrap_or_default();
+                    let rules = logforge_core::query_report::alert_counts_by_rule(service.db()).unwrap_or_default();
+                    let mut lines = vec!["Operational health".to_string()];
+                    if let Ok(metrics) = ingestion {
+                        lines.push(format!("Received {} · accepted {} · duplicate {:.1}% · malformed {:.1}% · dropped {}", metrics.received, metrics.accepted, metrics.duplicate_rate_percent, metrics.malformed_rate_percent, metrics.dropped));
+                    }
+                    lines.extend(sources.iter().map(|source| format!("{} [{}] events={} critical={} errors={} last={}", source.name, if source.enabled { "enabled" } else { "disabled" }, source.total_events, source.critical_events, source.error_events, source.last_event_at.as_deref().unwrap_or("never"))));
+                    lines.push("Alerts by rule:".to_string());
+                    lines.extend(rules.iter().map(|rule| format!("{} total={} open={}", rule.rule_name, rule.total_alerts, rule.open_alerts)));
+                    lines.join("\\n")
+                }
                 TuiTab::About => "LogForge-SIEM v0.1.0-dev\nCopyright (c) 2026 Sonix Devs\nRepository: https://github.com/sonix-devs/logforge-siem".to_string(),
                 TuiTab::Settings => "Theme: dark | Accent: amber | Density: compact\nUse `logforge-siem config theme set <theme>` to change.".to_string(),
             };
@@ -224,6 +240,7 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                     KeyCode::Char('c') => active_tab = TuiTab::Cases,
                     KeyCode::Char('8') => active_tab = TuiTab::Retention,
                     KeyCode::Char('9') => active_tab = TuiTab::Audit,
+                    KeyCode::Char('h') => active_tab = TuiTab::Health,
                     KeyCode::Char('0') => active_tab = TuiTab::About,
                     KeyCode::Char('s') => active_tab = TuiTab::Settings,
                     _ => {}

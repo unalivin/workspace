@@ -13,6 +13,7 @@ pub enum GuiTab {
     Cases,
     Retention,
     Audit,
+    Health,
     About,
     Settings,
 }
@@ -64,6 +65,7 @@ impl eframe::App for LogForgeApp {
                 ui.selectable_value(&mut self.active_tab, GuiTab::Cases, "Cases");
                 ui.selectable_value(&mut self.active_tab, GuiTab::Retention, "Retention");
                 ui.selectable_value(&mut self.active_tab, GuiTab::Audit, "Audit");
+                ui.selectable_value(&mut self.active_tab, GuiTab::Health, "Health");
                 ui.separator();
                 ui.selectable_value(&mut self.active_tab, GuiTab::About, "About");
                 ui.selectable_value(&mut self.active_tab, GuiTab::Settings, "Settings");
@@ -203,6 +205,44 @@ impl eframe::App for LogForgeApp {
                             ui.label(format!("{} ({}) - {}", s.name, s.kind, s.location));
                         }
                     }
+                }
+                GuiTab::Health => {
+                    ui.heading("Operational Health");
+                    ui.label("Source activity and ingestion quality");
+                    if let Ok(metrics) = logforge_core::stats::ingestion_stats(self.service.db()) {
+                        ui.label(format!(
+                            "Received {} · accepted {} · duplicate {:.1}% · malformed {:.1}% · dropped {}",
+                            metrics.received, metrics.accepted, metrics.duplicate_rate_percent,
+                            metrics.malformed_rate_percent, metrics.dropped
+                        ));
+                    }
+                    ui.separator();
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        if let Ok(sources) = logforge_core::stats::source_health(self.service.db()) {
+                            for source in sources {
+                                ui.group(|ui| {
+                                    ui.horizontal(|ui| {
+                                        ui.strong(&source.name);
+                                        ui.label(if source.enabled { "enabled" } else { "disabled" });
+                                        ui.label(format!("{} events", source.total_events));
+                                    });
+                                    ui.label(format!(
+                                        "last event: {} · critical: {} · errors: {}",
+                                        source.last_event_at.as_deref().unwrap_or("never"),
+                                        source.critical_events, source.error_events
+                                    ));
+                                    ui.label(format!("last received: {}", source.last_received_at.as_deref().unwrap_or("never")));
+                                });
+                            }
+                        }
+                        ui.separator();
+                        if let Ok(alerts) = logforge_core::query_report::alert_counts_by_rule(self.service.db()) {
+                            ui.heading("Alert volume by rule");
+                            for rule in alerts {
+                                ui.label(format!("{}: {} total, {} open", rule.rule_name, rule.total_alerts, rule.open_alerts));
+                            }
+                        }
+                    });
                 }
                 GuiTab::About => {
                     ui.heading("About LogForge-SIEM");
