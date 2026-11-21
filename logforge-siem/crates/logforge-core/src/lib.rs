@@ -1,4 +1,5 @@
 pub mod alert_workflow;
+pub mod audit_verify;
 pub mod case_links;
 pub mod category_colors;
 pub mod cef_parser;
@@ -8,10 +9,12 @@ pub mod db;
 pub mod diagnostics;
 pub mod export;
 pub mod ingest;
+pub mod leef_parser;
 pub mod model;
 pub mod notifier;
 pub mod query_parser;
 pub mod retention;
+pub mod rule_engine;
 pub mod schema_mapper;
 pub mod service;
 pub mod stats;
