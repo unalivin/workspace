@@ -55,14 +55,21 @@ impl SiemService {
             params![i64::from(enabled), source_id],
         )?;
         if changed != 0 {
-            self.record_audit("local", "set_source_enabled", &format!("source:{source_id}:{}", enabled))?;
+            self.record_audit(
+                "local",
+                "set_source_enabled",
+                &format!("source:{source_id}:{}", enabled),
+            )?;
         }
         Ok(changed != 0)
     }
 
     pub fn remove_source(&self, source_id: i64) -> Result<bool, DbError> {
         let tx = self.db.conn().unchecked_transaction()?;
-        tx.execute("DELETE FROM alerts WHERE event_id IN (SELECT id FROM events WHERE source_id = ?1)", params![source_id])?;
+        tx.execute(
+            "DELETE FROM alerts WHERE event_id IN (SELECT id FROM events WHERE source_id = ?1)",
+            params![source_id],
+        )?;
         let removed = tx.execute("DELETE FROM sources WHERE id = ?1", params![source_id])?;
         tx.commit()?;
         if removed != 0 {
@@ -77,7 +84,11 @@ impl SiemService {
             params![i64::from(enabled), rule_id],
         )?;
         if changed != 0 {
-            self.record_audit("local", "set_rule_enabled", &format!("rule:{rule_id}:{}", enabled))?;
+            self.record_audit(
+                "local",
+                "set_rule_enabled",
+                &format!("rule:{rule_id}:{}", enabled),
+            )?;
         }
         Ok(changed != 0)
     }
@@ -162,11 +173,15 @@ impl SiemService {
         dropped: usize,
     ) -> Result<IngestSummary, DbError> {
         let mut summary = IngestSummary::default();
-        let enabled: Option<i64> = self.db.conn().query_row(
-            "SELECT enabled FROM sources WHERE id = ?1",
-            params![source_id],
-            |row| row.get(0),
-        ).optional()?;
+        let enabled: Option<i64> = self
+            .db
+            .conn()
+            .query_row(
+                "SELECT enabled FROM sources WHERE id = ?1",
+                params![source_id],
+                |row| row.get(0),
+            )
+            .optional()?;
         if enabled != Some(1) {
             return Err(DbError::Sqlite(rusqlite::Error::InvalidQuery));
         }
