@@ -20,6 +20,23 @@ fn streams_large_files_in_bounded_batches_without_loading_all_rows() {
 }
 
 #[test]
+fn streaming_ingestion_accepts_explicit_format_selection() {
+    let db = Database::open_in_memory().unwrap();
+    let service = SiemService::new(db);
+    let source = service.add_source("cef", "file", "memory").unwrap();
+    let record = "CEF:0|Vendor|Product|1.0|login|Blocked login|7|src=192.0.2.4\n";
+    let result = service
+        .ingest_reader_with_format(
+            source,
+            Cursor::new(record),
+            logforge_core::parser_suite::LogFormat::Cef,
+        )
+        .unwrap();
+    assert_eq!(result.received, 1);
+    assert_eq!(service.search_events("Blocked", 10).unwrap()[0].severity, "error");
+}
+
+#[test]
 fn streaming_bounds_oversized_records_and_reports_io_errors() {
     let db = Database::open_in_memory().unwrap();
     let service = SiemService::new(db);

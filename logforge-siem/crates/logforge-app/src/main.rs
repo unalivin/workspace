@@ -92,6 +92,8 @@ enum Commands {
     Ingest {
         source: String,
         file: PathBuf,
+        #[arg(long, value_enum, default_value = "auto")]
+        format: CliLogFormat,
     },
     Config {
         #[command(subcommand)]
@@ -171,6 +173,33 @@ enum ThemeAction {
     List,
     Show,
     Set { name: String },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum CliLogFormat {
+    Auto,
+    Json,
+    Rfc3164,
+    Rfc5424,
+    Nginx,
+    Apache,
+    Cef,
+    Leef,
+}
+
+impl From<CliLogFormat> for logforge_core::parser_suite::LogFormat {
+    fn from(format: CliLogFormat) -> Self {
+        match format {
+            CliLogFormat::Auto => Self::Auto,
+            CliLogFormat::Json => Self::Json,
+            CliLogFormat::Rfc3164 => Self::Rfc3164,
+            CliLogFormat::Rfc5424 => Self::Rfc5424,
+            CliLogFormat::Nginx => Self::Nginx,
+            CliLogFormat::Apache => Self::Apache,
+            CliLogFormat::Cef => Self::Cef,
+            CliLogFormat::Leef => Self::Leef,
+        }
+    }
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -277,13 +306,13 @@ fn main() {
                 let rules = service.list_rules().expect("rules");
                 println!("{}", serde_json::to_string_pretty(&rules).expect("json"));
             }
-            Commands::Ingest { source, file } => {
+            Commands::Ingest { source, file, format } => {
                 let input = std::fs::File::open(&file).expect("open input file");
                 let src_id = service
                     .add_source(&source, "file", &file.display().to_string())
                     .unwrap_or(1);
                 let summary = service
-                    .ingest_reader(src_id, std::io::BufReader::new(input))
+                    .ingest_reader_with_format(src_id, std::io::BufReader::new(input), format.into())
                     .expect("ingest");
                 println!(
                     "received={} deduplicated={} dropped={} malformed={} alerts={}",

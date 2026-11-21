@@ -136,7 +136,16 @@ impl SiemService {
     pub fn ingest_reader<R: BufRead>(
         &self,
         source_id: i64,
+        reader: R,
+    ) -> Result<IngestSummary, StreamIngestError> {
+        self.ingest_reader_with_format(source_id, reader, crate::parser_suite::LogFormat::Auto)
+    }
+
+    pub fn ingest_reader_with_format<R: BufRead>(
+        &self,
+        source_id: i64,
         mut reader: R,
+        format: crate::parser_suite::LogFormat,
     ) -> Result<IngestSummary, StreamIngestError> {
         let mut total = IngestSummary::default();
         let mut batch = Vec::with_capacity(MAX_BATCH_SIZE);
@@ -153,12 +162,12 @@ impl SiemService {
             }
             batch.push(line);
             if batch.len() == MAX_BATCH_SIZE {
-                add_summaries(&mut total, self.ingest_string_batch(source_id, &batch)?);
+                add_summaries(&mut total, self.ingest_string_batch(source_id, &batch, format)?);
                 batch.clear();
             }
         }
         if !batch.is_empty() {
-            add_summaries(&mut total, self.ingest_string_batch(source_id, &batch)?);
+            add_summaries(&mut total, self.ingest_string_batch(source_id, &batch, format)?);
         }
         Ok(total)
     }
@@ -167,15 +176,26 @@ impl SiemService {
         &self,
         source_id: i64,
         batch: &[String],
+        format: crate::parser_suite::LogFormat,
     ) -> Result<IngestSummary, DbError> {
         let lines: Vec<&str> = batch.iter().map(String::as_str).collect();
-        self.ingest_lines(source_id, &lines)
+        self.ingest_with_format(source_id, &lines, format, crate::intake_queue::FullPolicy::DropNewest)
     }
 
     pub fn ingest_with_policy(
         &self,
         source_id: i64,
         lines: &[&str],
+        policy: crate::intake_queue::FullPolicy,
+    ) -> Result<IngestSummary, DbError> {
+        self.ingest_with_format(source_id, lines, crate::parser_suite::LogFormat::Auto, policy)
+    }
+
+    pub fn ingest_with_format(
+        &self,
+        source_id: i64,
+        lines: &[&str],
+        format: crate::parser_suite::LogFormat,
         policy: crate::intake_queue::FullPolicy,
     ) -> Result<IngestSummary, DbError> {
         let mut summary = IngestSummary::default();
@@ -190,11 +210,11 @@ impl SiemService {
                     accepted.push(line);
                 }
                 summary =
-                    self.ingest_batch(source_id, &accepted, queue.counters().dropped as usize)?;
+                    self.ingest_batch(source_id, &accepted, format, queue.counters().dropped as usize)?;
             }
             crate::intake_queue::FullPolicy::BlockReader => {
                 for batch in lines.chunks(MAX_BATCH_SIZE) {
-                    let result = self.ingest_batch(source_id, batch, 0)?;
+                    let result = self.ingest_batch(source_id, batch, format, 0)?;
                     summary.received += result.received;
                     summary.deduplicated += result.deduplicated;
                     summary.malformed += result.malformed;
@@ -210,6 +230,7 @@ impl SiemService {
         &self,
         source_id: i64,
         lines: &[&str],
+        format: crate::parser_suite::LogFormat,
         dropped: usize,
     ) -> Result<IngestSummary, DbError> {
         let mut summary = IngestSummary::default();
@@ -232,7 +253,7 @@ impl SiemService {
         for raw in lines {
             let parsed = match crate::parser_suite::parse_with_format(
                 raw,
-                crate::parser_suite::LogFormat::Auto,
+                format,
             ) {
                 Ok(ev) => ev,
                 Err(IngestError::Empty) => continue,
