@@ -141,9 +141,8 @@ pub fn bulk_update_alerts(
     ];
     all_values.extend(values);
     // Shift selector placeholders because the two update values occupy slots one and two.
-    let shifted_sql = shift_placeholders(&sql);
     let tx = db.conn().unchecked_transaction()?;
-    let updated = tx.execute(&shifted_sql, rusqlite::params_from_iter(all_values.iter()))?;
+    let updated = tx.execute(&sql, rusqlite::params_from_iter(all_values.iter()))?;
     tx.commit()?;
     Ok(updated)
 }
