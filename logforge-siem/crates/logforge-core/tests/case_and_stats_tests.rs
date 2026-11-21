@@ -1,6 +1,7 @@
 use logforge_core::case_links::{link_alert_to_case, list_case_links};
 use logforge_core::stats::{
-    count_events_in_range, events_by_severity, ingestion_stats, source_health, top_sources,
+    alert_severity_matrix, alert_status_counts, count_events_in_range, events_by_severity,
+    ingestion_stats, source_health, top_sources,
 };
 use logforge_core::{Database, SiemService};
 
@@ -62,5 +63,25 @@ fn ingestion_rates_are_zero_safe_and_time_ranges_are_half_open() {
     );
     assert!(
         count_events_in_range(svc.db(), "2100-01-01T00:00:00Z", "2000-01-01T00:00:00Z").is_err()
+    );
+}
+
+#[test]
+fn alert_statistics_include_empty_workflow_buckets() {
+    let db = Database::open_in_memory().expect("db");
+    let svc = SiemService::new(db);
+    svc.seed_demo_data().expect("seed");
+
+    let statuses = alert_status_counts(svc.db()).expect("status counts");
+    assert_eq!(statuses.len(), 3);
+    assert_eq!(statuses.iter().map(|item| item.alert_count).sum::<i64>(), 1);
+    let matrix = alert_severity_matrix(svc.db()).expect("severity matrix");
+    assert_eq!(matrix.len(), 5);
+    assert_eq!(
+        matrix
+            .iter()
+            .map(|item| item.open_count + item.acknowledged_count + item.resolved_count)
+            .sum::<i64>(),
+        1
     );
 }
