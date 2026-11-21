@@ -67,8 +67,8 @@ pub fn parse_cef_record(raw: &str) -> Result<CefRecord, IngestError> {
     }
     let (safe_line, _) = redact_secrets(trimmed);
     let mut fields = split_header(&safe_line)?;
-    if fields.len() != 7 {
-        return Err(malformed("CEF requires exactly seven pipe-delimited header fields"));
+    if fields.len() != 8 {
+        return Err(malformed("CEF requires seven header fields followed by extension data"));
     }
     let version = fields[0]
         .strip_prefix("CEF:")
