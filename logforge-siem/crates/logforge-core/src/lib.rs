@@ -1,4 +1,5 @@
 pub mod category_colors;
+pub mod config;
 pub mod correlation;
 pub mod db;
 pub mod diagnostics;
@@ -8,6 +9,7 @@ pub mod model;
 pub mod notifier;
 pub mod query_parser;
 pub mod retention;
+pub mod schema_mapper;
 pub mod service;
 pub mod theme;
 
