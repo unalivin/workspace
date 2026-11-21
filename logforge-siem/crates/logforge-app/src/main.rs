@@ -74,6 +74,16 @@ struct Cli {
 enum Commands {
     Overview,
     Stats,
+    Report {
+        #[arg(value_enum)]
+        dimension: ReportDimension,
+        #[arg(long)]
+        from: Option<String>,
+        #[arg(long)]
+        to: Option<String>,
+        #[arg(long, default_value_t = 20)]
+        limit: usize,
+    },
     Demo,
     Search {
         query: String,
@@ -118,6 +128,25 @@ enum Commands {
         #[arg(long, default_value = "json")]
         format: String,
     },
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum ReportDimension {
+    Severity,
+    Host,
+    Service,
+    Source,
+}
+
+impl From<ReportDimension> for logforge_core::query_report::EventDimension {
+    fn from(value: ReportDimension) -> Self {
+        match value {
+            ReportDimension::Severity => Self::Severity,
+            ReportDimension::Host => Self::Host,
+            ReportDimension::Service => Self::Service,
+            ReportDimension::Source => Self::Source,
+        }
+    }
 }
 
 #[derive(Subcommand)]
@@ -231,6 +260,25 @@ fn main() {
                     "alert_severity": logforge_core::stats::alert_severity_matrix(service.db()).expect("alert severity"),
                 });
                 println!("{}", serde_json::to_string_pretty(&stats).expect("json"));
+            }
+            Commands::Report {
+                dimension,
+                from,
+                to,
+                limit,
+            } => {
+                let report = logforge_core::query_report::event_volume_report(
+                    service.db(),
+                    dimension.into(),
+                    &logforge_core::query_report::EventReportFilter {
+                        from_utc: from,
+                        to_utc: to,
+                        limit,
+                        ..logforge_core::query_report::EventReportFilter::default()
+                    },
+                )
+                .expect("event report");
+                println!("{}", serde_json::to_string_pretty(&report).expect("json"));
             }
             Commands::Demo => {
                 service.seed_demo_data().expect("seed demo");
