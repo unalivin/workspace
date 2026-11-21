@@ -105,14 +105,18 @@ pub fn enqueue_alert_notification(
     let mut statement = db.conn().prepare(
         "SELECT id, event_type, min_severity, enabled, quiet_start_hour, quiet_end_hour FROM notification_rules WHERE event_type IN (?1, '*') ORDER BY id",
     )?;
-    let rules = statement.query_map(params![event_type], |row| Ok(NotificationRule {
-        id: row.get(0)?,
-        event_type: row.get(1)?,
-        min_severity: row.get(2)?,
-        enabled: row.get::<_, i64>(3)? != 0,
-        quiet_start_hour: row.get::<_, i64>(4)? as u8,
-        quiet_end_hour: row.get::<_, i64>(5)? as u8,
-    }))?.collect::<Result<Vec<_>, _>>()?;
+    let rules = statement
+        .query_map(params![event_type], |row| {
+            Ok(NotificationRule {
+                id: row.get(0)?,
+                event_type: row.get(1)?,
+                min_severity: row.get(2)?,
+                enabled: row.get::<_, i64>(3)? != 0,
+                quiet_start_hour: row.get::<_, i64>(4)? as u8,
+                quiet_end_hour: row.get::<_, i64>(5)? as u8,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
     if !rules.iter().any(|rule| should_notify(rule, severity, hour)) {
         return Ok(false);
     }
@@ -138,9 +142,18 @@ pub fn claim_due_notifications(
         "SELECT id, alert_id, event_type, severity, payload_json, attempt_count FROM notification_outbox
          WHERE state = 'queued' AND next_attempt_at <= ?1 ORDER BY id LIMIT ?2",
     )?;
-    let rows = statement.query_map(params![now_utc, limit.min(100) as i64], |row| Ok(PendingNotification {
-        id: row.get(0)?, alert_id: row.get(1)?, event_type: row.get(2)?, severity: row.get(3)?, payload_json: row.get(4)?, attempt_count: row.get(5)?,
-    }))?.collect::<Result<Vec<_>, _>>()?;
+    let rows = statement
+        .query_map(params![now_utc, limit.min(100) as i64], |row| {
+            Ok(PendingNotification {
+                id: row.get(0)?,
+                alert_id: row.get(1)?,
+                event_type: row.get(2)?,
+                severity: row.get(3)?,
+                payload_json: row.get(4)?,
+                attempt_count: row.get(5)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
     drop(statement);
     for notification in &rows {
         tx.execute(
@@ -161,12 +174,17 @@ pub fn finish_notification(
     let now = chrono::DateTime::parse_from_rfc3339(now_utc)
         .map_err(|_| DbError::Sqlite(rusqlite::Error::InvalidQuery))?
         .with_timezone(&Utc);
-    let attempts: Option<i64> = db.conn().query_row(
-        "SELECT attempt_count FROM notification_outbox WHERE id = ?1 AND state = 'claimed'",
-        params![id],
-        |row| row.get(0),
-    ).optional()?;
-    let Some(attempts) = attempts else { return Ok(false) };
+    let attempts: Option<i64> = db
+        .conn()
+        .query_row(
+            "SELECT attempt_count FROM notification_outbox WHERE id = ?1 AND state = 'claimed'",
+            params![id],
+            |row| row.get(0),
+        )
+        .optional()?;
+    let Some(attempts) = attempts else {
+        return Ok(false);
+    };
     match delivery_error {
         None => Ok(db.conn().execute(
             "UPDATE notification_outbox SET state = 'delivered', delivered_at = ?1, last_error = '' WHERE id = ?2 AND state = 'claimed'",

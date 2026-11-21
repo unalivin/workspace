@@ -324,7 +324,11 @@ impl SiemService {
                     params![rule.id, event_id, rule.severity, title, now],
                 )?;
                 self.queue_alert_notification(
-                    self.db.conn().last_insert_rowid(), event_id, rule.severity, &title, &now,
+                    self.db.conn().last_insert_rowid(),
+                    event_id,
+                    rule.severity,
+                    &title,
+                    &now,
                 )?;
                 summary.alerts_created += 1;
             }
@@ -370,7 +374,12 @@ impl SiemService {
             "title": title,
         });
         let _ = crate::notifier::enqueue_alert_notification(
-            &self.db, alert_id, "alert.created", severity, &payload, now_utc,
+            &self.db,
+            alert_id,
+            "alert.created",
+            severity,
+            &payload,
+            now_utc,
         )?;
         Ok(())
     }
@@ -520,7 +529,11 @@ impl SiemService {
                     params![rule_id, event_id, severity, title, now],
                 )?;
                 self.queue_alert_notification(
-                    self.db.conn().last_insert_rowid(), event_id, &severity, &title, &now,
+                    self.db.conn().last_insert_rowid(),
+                    event_id,
+                    &severity,
+                    &title,
+                    &now,
                 )?;
                 created += 1;
             }

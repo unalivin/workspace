@@ -355,15 +355,20 @@ fn main() {
             },
             Commands::Notifier { action } => match action {
                 NotifierAction::Status => {
-                    let counts = logforge_core::notifier::outbox_counts(service.db()).expect("outbox");
+                    let counts =
+                        logforge_core::notifier::outbox_counts(service.db()).expect("outbox");
                     println!("{}", serde_json::to_string_pretty(&counts).expect("json"));
-                },
+                }
                 NotifierAction::Install => println!("notifier: per-user autostart installed"),
                 NotifierAction::Uninstall => println!("notifier: per-user autostart removed"),
                 NotifierAction::Run => {
-                    let counts = logforge_core::notifier::outbox_counts(service.db()).expect("outbox");
-                    println!("delivery adapter not configured; queued={} claimed={} dead={}", counts.queued, counts.claimed, counts.dead);
-                },
+                    let counts =
+                        logforge_core::notifier::outbox_counts(service.db()).expect("outbox");
+                    println!(
+                        "delivery adapter not configured; queued={} claimed={} dead={}",
+                        counts.queued, counts.claimed, counts.dead
+                    );
+                }
             },
             Commands::AuditVerify => {
                 let res = logforge_core::audit_verify::verify_audit_chain(service.db())
