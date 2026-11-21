@@ -43,7 +43,10 @@ pub fn parse_timestamp(
     let (parsed, inferred_year) = if let Ok(offset) = DateTime::parse_from_rfc3339(text) {
         (offset.with_timezone(&Utc), false)
     } else if let Ok(naive) = NaiveDateTime::parse_from_str(text, "%Y-%m-%d %H:%M:%S") {
-        (resolve_local(context.local_timezone.from_local_datetime(&naive))?, false)
+        (
+            resolve_local(context.local_timezone.from_local_datetime(&naive))?,
+            false,
+        )
     } else if text.contains(':') {
         let mut pieces = text.split_whitespace();
         let month = pieces.next().ok_or(TimestampError::Invalid)?;
@@ -52,8 +55,8 @@ pub fn parse_timestamp(
         if pieces.next().is_some() {
             return Err(TimestampError::Invalid);
         }
-        let (month, day) = parse_syslog_day(&format!("{month} {day}"))
-            .ok_or(TimestampError::Invalid)?;
+        let (month, day) =
+            parse_syslog_day(&format!("{month} {day}")).ok_or(TimestampError::Invalid)?;
         let time = chrono::NaiveTime::parse_from_str(time_text, "%H:%M:%S")
             .map_err(|_| TimestampError::Invalid)?;
         let reference_date = context.reference_utc.with_timezone(&context.local_timezone);
