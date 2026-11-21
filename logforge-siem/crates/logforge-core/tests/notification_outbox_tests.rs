@@ -38,6 +38,14 @@ fn generated_alerts_enqueue_and_retry_notifications_with_backoff() {
         )
         .unwrap();
     assert!(!error.contains("secret"));
+    let deleted = logforge_core::notifier::prune_delivered_notifications(
+        service.db(),
+        "2100-01-01T00:00:00Z",
+        10,
+    )
+    .expect("prune delivered history");
+    assert_eq!(deleted, 1);
+    assert_eq!(outbox_counts(service.db()).unwrap().delivered, 0);
 }
 
 #[test]

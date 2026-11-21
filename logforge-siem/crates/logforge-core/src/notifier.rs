@@ -394,3 +394,30 @@ pub fn list_outbox_records(
     })?;
     rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
 }
+
+/// Deletes only successfully delivered entries older than the supplied UTC
+/// cutoff. Queued, claimed, and dead-letter records are never removed by this
+/// cleanup operation.
+pub fn prune_delivered_notifications(
+    db: &Database,
+    delivered_before_utc: &str,
+    limit: usize,
+) -> Result<usize, DbError> {
+    if chrono::DateTime::parse_from_rfc3339(delivered_before_utc).is_err()
+        || limit == 0
+        || limit > 10_000
+    {
+        return Err(DbError::Sqlite(rusqlite::Error::InvalidQuery));
+    }
+    let tx = db.conn().unchecked_transaction()?;
+    let deleted = tx.execute(
+        "DELETE FROM notification_outbox WHERE id IN ( \
+            SELECT id FROM notification_outbox \
+            WHERE state = 'delivered' AND delivered_at < ?1 \
+            ORDER BY delivered_at, id LIMIT ?2 \
+        )",
+        params![delivered_before_utc, limit as i64],
+    )?;
+    tx.commit()?;
+    Ok(deleted)
+}
