@@ -11,9 +11,17 @@ log_file="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/ci-check-$$.log"
 "$@" >"$log_file" 2>&1
 status=$?
 if [[ $status -ne 0 ]]; then
-  excerpt="$(tail -c 3000 "$log_file")"
-  encoded="$(printf '%s' "$excerpt" | sed -e 's/%/%25/g' -e ':a' -e 'N' -e '$!ba' -e 's/\n/%0A/g' -e 's/\r/%0D/g')"
-  printf '::error title=%s::%s\n' "$label" "$encoded"
+  first_excerpt="$(head -c 3000 "$log_file")"
+  last_excerpt="$(tail -c 3000 "$log_file")"
+  encode_annotation() {
+    printf '%s' "$1" | sed -e 's/%/%25/g' -e ':a' -e 'N' -e '$!ba' -e 's/\n/%0A/g' -e 's/\r/%0D/g'
+  }
+  first_encoded="$(encode_annotation "$first_excerpt")"
+  last_encoded="$(encode_annotation "$last_excerpt")"
+  printf '::error title=%s (beginning)::%s\n' "$label" "$first_encoded"
+  if [[ "$first_excerpt" != "$last_excerpt" ]]; then
+    printf '::error title=%s (last 3000 characters)::%s\n' "$label" "$last_encoded"
+  fi
   exit "$status"
 fi
 cat "$log_file"
