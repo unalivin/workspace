@@ -21,6 +21,35 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
             .request_repaint_after(std::time::Duration::from_millis(30));
         return;
     }
+    if tab == GuiTab::Retention {
+        match logforge_core::retention::get_default_policy(service.db()) {
+            Ok(policy) => match logforge_core::retention::plan_retention_with_reasons(
+                service.db(),
+                policy.max_days,
+                policy.max_events,
+                policy.max_bytes,
+                &chrono::Utc::now().to_rfc3339(),
+            ) {
+                Ok(plan) => {
+                    ui.label(format!(
+                        "Policy {} · max age {} days · max {} events · max {} bytes",
+                        policy.name, policy.max_days, policy.max_events, policy.max_bytes
+                    ));
+                    ui.label(format!(
+                        "Dry run: {} events, {} estimated bytes · expired={} · count-cap={} · storage-cap={}",
+                        plan.plan.count, plan.plan.bytes_to_free, plan.age_expired,
+                        plan.event_limit_exceeded, plan.byte_limit_exceeded
+                    ));
+                }
+                Err(error) => {
+                    ui.colored_label(egui::Color32::from_rgb(179, 38, 30), format!("Unable to plan retention: {error}"));
+                }
+            },
+            Err(error) => {
+                ui.colored_label(egui::Color32::from_rgb(179, 38, 30), format!("Unable to load retention policy: {error}"));
+            }
+        }
+    }
     let loaded = load(service, tab, &table.filter);
     match loaded {
         Ok((columns, rows)) => {
