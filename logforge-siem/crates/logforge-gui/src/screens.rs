@@ -43,6 +43,48 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
                     });
                 }
             }
+            if tab == GuiTab::Cases {
+                if let Some(record) = table.selected_record(&rows) {
+                    if let Some(case_id) = record.first().and_then(|value| value.parse::<i64>().ok()) {
+                        let manager = logforge_core::cases::CaseManager::new(service.db());
+                        if let Ok(Some(case)) = manager.get(case_id) {
+                            ui.collapsing(format!("Investigation details · case #{}", case.id), |ui| {
+                                ui.label(&case.description);
+                                ui.label(format!("Assignee: {}", if case.assignee.is_empty() { "unassigned" } else { &case.assignee }));
+                                if let Ok(notes) = manager.notes(case_id) {
+                                    for note in notes {
+                                        ui.label(format!("{} · {} · {}", note.created_at, note.author, note.body));
+                                    }
+                                }
+                                if let Ok(alerts) = manager.alerts(case_id) {
+                                    for alert in alerts {
+                                        ui.label(format!("Linked alert #{} · {} · {}", alert.id, alert.severity, alert.title));
+                                    }
+                                }
+                                let next_status = match case.status.as_str() {
+                                    "open" => "in_progress",
+                                    "in_progress" => "closed",
+                                    _ => "open",
+                                };
+                                if ui.button(format!("Move case to {next_status}")).clicked() {
+                                    match manager.set_status(case_id, next_status) {
+                                        Ok(true) => {
+                                            table.loading_frames = 1;
+                                            ui.ctx().request_repaint_after(std::time::Duration::from_millis(30));
+                                        }
+                                        Ok(false) => {
+                                            ui.colored_label(egui::Color32::from_rgb(179, 38, 30), "The selected case no longer exists.");
+                                        }
+                                        Err(error) => {
+                                            ui.colored_label(egui::Color32::from_rgb(179, 38, 30), format!("Unable to update case: {error}"));
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    }
+                }
+            }
             if tab == GuiTab::Alerts {
                 if let Some(record) = table.selected_record(&rows) {
                     if let (Some(id), Some(status)) = (
