@@ -22,10 +22,19 @@ cargo build --release -p logforge-app
 
 ## Use
 
+For source checkouts, run from the `logforge-siem` directory:
+
 ```bash
-logforge-app demo load
+cargo run -p logforge-app -- --version
+cargo run -p logforge-app -- demo load
+cargo run -p logforge-app -- overview
+cargo run -p logforge-app -- search "Failed"
+```
+
+The released binary also supports selecting the terminal interface directly:
+
+```bash
 logforge-app --ui tui
-logforge-app search "Failed"
 ```
 
 ## Documentation
