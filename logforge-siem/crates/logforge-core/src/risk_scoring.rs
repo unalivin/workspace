@@ -25,9 +25,6 @@ pub struct HostRiskReport {
     pub hosts: Vec<HostRisk>,
 }
 
-/// Produces an explainable host-risk ranking from recent event severity,
-/// unresolved alerts, and service diversity. This is an operational heuristic,
-/// not a replacement for deterministic detection rules.
 pub fn score_host_risk(
     db: &Database,
     since_utc: &str,

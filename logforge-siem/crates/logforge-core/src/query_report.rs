@@ -3,8 +3,6 @@ use chrono::{DateTime, Utc};
 use rusqlite::{types::Value, OptionalExtension};
 use serde::Serialize;
 
-/// Fields that can be used for event-volume groupings. The enum, rather than a raw
-/// SQL identifier, keeps dynamic report queries restricted to known columns.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EventDimension {
@@ -103,8 +101,6 @@ impl EventReportFilter {
     }
 }
 
-/// Builds a stable top-N report from normalized event fields. Buckets are
-/// ordered by count descending, then by value ascending for deterministic output.
 pub fn event_volume_report(
     db: &Database,
     dimension: EventDimension,
@@ -183,8 +179,6 @@ pub struct RuleAlertCount {
     pub latest_alert_at: Option<String>,
 }
 
-/// Groups alerts by their originating detection rule, retaining rules with no
-/// alert history so their zero-activity state is visible in operational reports.
 pub fn alert_counts_by_rule(db: &Database) -> Result<Vec<RuleAlertCount>, DbError> {
     let mut statement = db.conn().prepare(
         "SELECT r.id, r.name, COUNT(a.id), \
@@ -204,8 +198,6 @@ pub fn alert_counts_by_rule(db: &Database) -> Result<Vec<RuleAlertCount>, DbErro
     rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
 }
 
-/// Finds the timestamp of the latest received event, which can be used by
-/// dashboards to distinguish an idle source from an active one.
 pub fn latest_received_event(db: &Database) -> Result<Option<String>, DbError> {
     db.conn()
         .query_row("SELECT MAX(received_at) FROM events", [], |row| row.get(0))

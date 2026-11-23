@@ -52,7 +52,6 @@ pub fn top_sources(db: &Database) -> Result<Vec<SourceCount>, DbError> {
     rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
 }
 
-/// Returns event volume by normalized severity, including zero-volume levels.
 pub fn events_by_severity(db: &Database) -> Result<Vec<SeverityCount>, DbError> {
     let mut statement = db.conn().prepare(
         "SELECT levels.severity, COUNT(e.id) FROM ( \
@@ -71,7 +70,6 @@ pub fn events_by_severity(db: &Database) -> Result<Vec<SeverityCount>, DbError> 
     rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
 }
 
-/// Provides a snapshot of source activity without exposing raw event content.
 pub fn source_health(db: &Database) -> Result<Vec<SourceHealth>, DbError> {
     let mut statement = db.conn().prepare(
         "SELECT s.id, s.name, s.kind, s.enabled, COUNT(e.id), \
@@ -97,7 +95,6 @@ pub fn source_health(db: &Database) -> Result<Vec<SourceHealth>, DbError> {
     rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
 }
 
-/// Computes ingestion ratios defensively for empty or partially initialized databases.
 pub fn ingestion_stats(db: &Database) -> Result<IngestionStats, DbError> {
     let (received, deduplicated, dropped, malformed): (i64, i64, i64, i64) = db.conn().query_row(
         "SELECT received, deduplicated, dropped, malformed FROM ingestion_stats WHERE id = 1",
@@ -123,7 +120,6 @@ pub fn ingestion_stats(db: &Database) -> Result<IngestionStats, DbError> {
     })
 }
 
-/// Counts events received during a half-open RFC3339 time range [start, end).
 pub fn count_events_in_range(
     db: &Database,
     start_utc: &str,
@@ -162,7 +158,6 @@ pub struct AlertSeverityCount {
     pub resolved_count: i64,
 }
 
-/// Returns all alert workflow states, including states with no matching alerts.
 pub fn alert_status_counts(db: &Database) -> Result<Vec<AlertStatusCount>, DbError> {
     let mut statement = db.conn().prepare(
         "SELECT states.status, COUNT(a.id) FROM ( \
@@ -180,7 +175,6 @@ pub fn alert_status_counts(db: &Database) -> Result<Vec<AlertStatusCount>, DbErr
     rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
 }
 
-/// Produces a severity-by-workflow matrix in stable severity order.
 pub fn alert_severity_matrix(db: &Database) -> Result<Vec<AlertSeverityCount>, DbError> {
     let mut statement = db.conn().prepare(
         "SELECT levels.severity, \
@@ -204,7 +198,6 @@ pub fn alert_severity_matrix(db: &Database) -> Result<Vec<AlertSeverityCount>, D
     rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
 }
 
-/// Counts alerts opened in the half-open UTC interval [start, end).
 pub fn count_alerts_in_range(
     db: &Database,
     start_utc: &str,
@@ -259,9 +252,6 @@ pub struct SourceLivenessReport {
     pub sources: Vec<SourceLiveness>,
 }
 
-/// Evaluates source freshness using ingestion time, not event time, so delayed
-/// backfills do not make a source appear live. Disabled and never-seen sources
-/// remain separate from stale sources for clearer operator follow-up.
 pub fn source_liveness(
     db: &Database,
     checked_at_utc: &str,

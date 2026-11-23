@@ -222,9 +222,6 @@ pub fn outbox_counts(db: &Database) -> Result<OutboxCounts, DbError> {
     ).map_err(DbError::from)
 }
 
-/// Recovers claims abandoned by a crashed worker. A row is eligible once its
-/// recorded claim time is older than `stale_before_utc`; exhausted messages
-/// become dead letters rather than being retried forever.
 pub fn recover_stale_claims(
     db: &Database,
     stale_before_utc: &str,
@@ -250,8 +247,6 @@ pub fn recover_stale_claims(
     Ok(affected)
 }
 
-/// Manually requeues selected dead-letter notifications after operator review.
-/// Attempts are reset only for explicitly selected ids, and payloads are kept.
 pub fn retry_dead_notifications(
     db: &Database,
     ids: &[i64],
@@ -289,9 +284,6 @@ pub struct NotificationOutboxHealth {
     pub oldest_dead_at: Option<String>,
 }
 
-/// Gives workers and operators a time-aware view of queue pressure in addition
-/// to raw state counts. The caller supplies a UTC reference time for repeatable
-/// monitoring and tests.
 pub fn outbox_health(db: &Database, now_utc: &str) -> Result<NotificationOutboxHealth, DbError> {
     if chrono::DateTime::parse_from_rfc3339(now_utc).is_err() {
         return Err(DbError::Sqlite(rusqlite::Error::InvalidQuery));
@@ -342,8 +334,6 @@ pub struct NotificationRecord {
     pub delivered_at: Option<String>,
 }
 
-/// Lists operational queue metadata without returning notification payloads,
-/// which may contain event data that should not be exposed in routine status views.
 pub fn list_outbox_records(
     db: &Database,
     state: Option<&str>,
@@ -397,9 +387,6 @@ pub fn list_outbox_records(
     rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
 }
 
-/// Deletes only successfully delivered entries older than the supplied UTC
-/// cutoff. Queued, claimed, and dead-letter records are never removed by this
-/// cleanup operation.
 pub fn prune_delivered_notifications(
     db: &Database,
     delivered_before_utc: &str,

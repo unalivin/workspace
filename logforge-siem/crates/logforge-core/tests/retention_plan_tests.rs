@@ -15,6 +15,12 @@ fn age_policy_prunes_old_events_even_when_event_count_is_below_limit() {
     service.ingest_lines(source, &refs).unwrap();
     let plan = plan_retention(service.db(), 30, 100, 100_000, "2026-11-21T00:00:00Z").unwrap();
     assert_eq!(plan.count, 1);
+    assert_eq!(plan.event_ids, vec![1]);
+    assert_eq!(plan.bytes_to_free, {
+        let event = service.search_events("stale record", 10).unwrap();
+        let record = &event[0];
+        (record.raw_line.len() + record.message.len() + record.fields_json.len()) as i64
+    });
     assert_eq!(apply_retention_plan(service.db(), &plan).unwrap(), 1);
     assert_eq!(service.overview_counts().unwrap().total_events, 2);
 }

@@ -34,9 +34,6 @@ pub struct ParserValidationReport {
     pub error_samples: Vec<ParseErrorSample>,
 }
 
-/// Validates a sample stream without writing it to the database. Oversized
-/// records are drained to their line boundary and counted as malformed, while
-/// only a bounded number of explanatory errors are retained in the report.
 pub fn validate_reader<R: BufRead>(
     mut reader: R,
     format: LogFormat,

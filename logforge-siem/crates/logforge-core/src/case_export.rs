@@ -17,8 +17,6 @@ pub struct CaseExportBundle {
     pub content_sha256: String,
 }
 
-/// Collects a portable incident package containing only records associated
-/// with the selected case and a whole-database audit-chain integrity result.
 pub fn export_case_bundle(
     db: &Database,
     case_id: i64,
@@ -72,8 +70,6 @@ pub fn export_case_bundle(
     Ok(Some(bundle))
 }
 
-/// Builds a safer sharing copy that omits raw records and arbitrary extension
-/// fields while preserving normalized event context and a verifiable digest.
 pub fn export_case_bundle_redacted(
     db: &Database,
     case_id: i64,
@@ -92,7 +88,6 @@ pub fn export_case_bundle_redacted(
     Ok(Some(bundle))
 }
 
-/// Recomputes the evidence digest after deserialization or transport.
 pub fn verify_case_bundle(bundle: &CaseExportBundle) -> Result<bool, serde_json::Error> {
     Ok(compute_bundle_hash(bundle)? == bundle.content_sha256)
 }

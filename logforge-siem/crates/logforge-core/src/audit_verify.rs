@@ -82,8 +82,6 @@ pub struct AuditFilter {
     pub limit: usize,
 }
 
-/// Lists audit records in reverse chronological order for interactive review.
-/// Hash-chain verification remains a separate operation over the full chain.
 pub fn query_audit_log(db: &Database, filter: &AuditFilter) -> Result<Vec<AuditEntry>, DbError> {
     if filter.limit == 0 || filter.limit > 1000 || filter.before_id.is_some_and(|id| id <= 0) {
         return Err(invalid_audit_query());

@@ -123,7 +123,6 @@ impl std::fmt::Display for RetentionPolicyError {
 
 impl std::error::Error for RetentionPolicyError {}
 
-/// Updates the default retention policy with validated, bounded resource limits.
 pub fn update_default_policy(
     db: &Database,
     name: &str,
@@ -168,8 +167,6 @@ pub struct RetentionBreakdown {
     pub byte_limit_exceeded: usize,
 }
 
-/// Returns the same deterministic deletion plan together with independently
-/// counted reasons, allowing operators to explain why an event is a candidate.
 pub fn plan_retention_with_reasons(
     db: &Database,
     max_days: i64,

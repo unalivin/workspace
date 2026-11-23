@@ -152,8 +152,6 @@ fn outbox_health_distinguishes_due_from_delayed_messages() {
     service
         .ingest_lines(source, &["2026-11-21T10:00:00Z host app: failed request"])
         .expect("ingest");
-    // Ingestion timestamps queue records with the current UTC clock, so compare
-    // health against that same clock rather than the historical event timestamp.
     let now = chrono::Utc::now().to_rfc3339();
     let health = outbox_health(service.db(), &now).expect("outbox health");
     assert_eq!(health.due_now, 1);

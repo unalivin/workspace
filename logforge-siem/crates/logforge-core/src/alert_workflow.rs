@@ -49,8 +49,6 @@ impl std::fmt::Display for AlertWorkflowError {
 
 impl std::error::Error for AlertWorkflowError {}
 
-/// Atomically updates alerts selected by a validated filter. When explicit ids
-/// are supplied, other selector fields still apply as additional constraints.
 pub fn bulk_update_alerts(
     db: &Database,
     filter: &AlertBulkFilter,
@@ -140,7 +138,6 @@ pub fn bulk_update_alerts(
         rusqlite::types::Value::Text(now),
     ];
     all_values.extend(values);
-    // Shift selector placeholders because the two update values occupy slots one and two.
     let tx = db.conn().unchecked_transaction()?;
     let updated = tx.execute(&sql, rusqlite::params_from_iter(all_values.iter()))?;
     tx.commit()?;

@@ -42,9 +42,6 @@ pub struct RulePreviewReport {
     pub events: Vec<EventPreview>,
 }
 
-/// Evaluates active detection rules against stored events without creating
-/// alerts, updating event state, or writing to the audit trail. This lets an
-/// analyst estimate the impact of existing rules over a bounded query window.
 pub fn preview_detection_rules(
     service: &SiemService,
     filter: &EventFilter,

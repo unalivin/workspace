@@ -243,8 +243,6 @@ pub struct AssigneeWorkload {
     pub oldest_case_at: Option<String>,
 }
 
-/// Summarizes the current case queue against a configurable age target. The
-/// `as_of_utc` parameter makes dashboards and tests deterministic.
 pub fn case_queue_metrics(
     db: &Database,
     as_of_utc: &str,
@@ -311,8 +309,6 @@ pub fn case_queue_metrics(
     })
 }
 
-/// Returns assignment load sorted by active workload, with unassigned work
-/// represented explicitly instead of omitted by SQL's NULL grouping behavior.
 pub fn case_workload_by_assignee(db: &Database) -> Result<Vec<AssigneeWorkload>, DbError> {
     let mut statement = db.conn().prepare(
         "SELECT CASE WHEN trim(assignee) = '' THEN '(unassigned)' ELSE assignee END, \
