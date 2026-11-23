@@ -2,7 +2,7 @@
 
 - Date: 2026-11-21
 - Last commit: see `git log -1` on the active branch
-- LogForge-SIEM current-revision CI: pending; focused acceptance runner now emits explicit per-test result markers; README static checks pass, runtime smoke remains.
+- LogForge-SIEM current-revision CI: pending; focused acceptance runner emits test markers; strip script dry-run verified; post-strip smoke awaits all-platform green.
 
 | Project | Language | Destination | State | Next step |
 |---|---|---|---|---|
