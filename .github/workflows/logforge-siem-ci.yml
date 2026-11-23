@@ -17,7 +17,11 @@ on:
       - 'templates/workflows/rust-ci.yml'
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: logforge-siem-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:
@@ -43,16 +47,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libxkbcommon-dev libwayland-dev libgl1-mesa-dev libx11-dev libxi-dev libxrandr-dev libxcursor-dev
       - name: Format source
-        run: |
-          ../scripts/ci-check.sh 'format source' cargo fmt --all
-          if [[ "$RUNNER_OS" == Linux ]] && ! git diff --quiet -- .; then
-            git config user.name Unalivin
-            git config user.email automation
-            git add .
-            git commit -m 'style(logforge-siem): format'
-            git push
-          fi
-      - name: Format check
         run: ../scripts/ci-check.sh 'cargo fmt' cargo fmt --all -- --check
       - name: Clippy
         run: ../scripts/ci-check.sh clippy cargo clippy --workspace --all-targets -- -D warnings

@@ -5,7 +5,7 @@
 
 | Project | Language | Destination | State | Next step |
 |---|---|---|---|---|
-| logforge-siem | rust | sonix-devs | In progress | Measure PASS: 8318 lines, 185 tests, 11 screens, 8 migrations, 20 SQL tables; comment scan empty; Windows/Ubuntu PASS, macOS queued; step 1 focused tests added, step 3 in progress |
+| logforge-siem | rust | sonix-devs | In progress | Measure PASS: 8318 lines, 185 tests, 11 screens, 8 migrations, 20 SQL tables; comment scan empty; validation pending on current source; step 1 evidence CI pending, step 3 in progress |
 | netauto | go | sonix-devs | In progress | production lines, tests, screens, migrations, icon assets, diagrams below floors; implement and retest |
 | vulntrack | go | sonix-devs | In progress | production lines, tests, screens, migrations, tables, icon assets, diagrams below floors; implement and retest |
 | forensicflow | rust | sonix-devs | Not started | Create requirements, acceptance criteria, and threat model |
