@@ -43,6 +43,34 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
                     });
                 }
             }
+            if tab == GuiTab::Detections {
+                if let Some(record) = table.selected_record(&rows) {
+                    let kind = record.first().map(String::as_str).unwrap_or("");
+                    let id = record.get(1).and_then(|value| value.parse::<i64>().ok());
+                    let enabled = record.get(5).and_then(|value| value.parse::<bool>().ok());
+                    if let (Some(id), Some(enabled)) = (id, enabled) {
+                        if ui.button(if enabled { "Disable selected detection" } else { "Enable selected detection" }).clicked() {
+                            let result = if kind == "Pattern" {
+                                service.set_rule_enabled(id, !enabled)
+                            } else {
+                                logforge_core::correlation_admin::set_enabled(service.db(), id, !enabled)
+                            };
+                            match result {
+                                Ok(true) => {
+                                    table.loading_frames = 1;
+                                    ui.ctx().request_repaint_after(std::time::Duration::from_millis(30));
+                                }
+                                Ok(false) => {
+                                    ui.colored_label(egui::Color32::from_rgb(179, 38, 30), "The selected detection no longer exists.");
+                                }
+                                Err(error) => {
+                                    ui.colored_label(egui::Color32::from_rgb(179, 38, 30), format!("Unable to update detection: {error}"));
+                                }
+                            };
+                        }
+                    }
+                }
+            }
             if tab == GuiTab::Sources {
                 if let Some(record) = table.selected_record(&rows) {
                     if let (Some(id), Some(enabled)) = (
