@@ -47,6 +47,8 @@ jobs:
           fi
       - name: Format check
         run: ../scripts/ci-check.sh gofmt bash -c 'test -z "$(gofmt -l .)"'
+      - name: Resolve and verify modules
+        run: ../scripts/ci-check.sh 'module tidy' go mod tidy
       - name: Vet
         run: ../scripts/ci-check.sh vet go vet ./...
       - name: Build
