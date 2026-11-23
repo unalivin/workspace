@@ -73,6 +73,7 @@ func Open(path string) (*Database, error) {
 			conn.Close()
 			return nil, fmt.Errorf("commit migration 2: %w", err)
 		}
+
 	}
 	return &Database{Conn: conn}, nil
 }
