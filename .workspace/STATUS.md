@@ -2,7 +2,7 @@
 
 - Date: 2026-11-21
 - Last commit: see `git log -1` on the active branch
-- LogForge-SIEM current-revision CI: pending; format/audit updater is executable; README static file/command checks pass; runtime smoke remains.
+- LogForge-SIEM current-revision CI: pending; focused acceptance runner now emits explicit per-test result markers; README static checks pass, runtime smoke remains.
 
 | Project | Language | Destination | State | Next step |
 |---|---|---|---|---|

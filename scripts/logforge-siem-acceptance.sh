@@ -8,6 +8,7 @@ run_test() {
   local target="$1"
   local test_name="$2"
   cargo test -p logforge-core --test "$target" -- --exact "$test_name"
+  printf 'ACCEPTANCE_RESULT: test %s ... ok\n' "$test_name"
 }
 
 run_test source_lifecycle_tests disabling_source_blocks_new_ingest_without_removing_existing_data
