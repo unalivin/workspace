@@ -21,7 +21,7 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
             .request_repaint_after(std::time::Duration::from_millis(30));
         return;
     }
-    let loaded = load(service, tab);
+    let loaded = load(service, tab, &table.filter);
     match loaded {
         Ok((columns, rows)) => {
             if rows.is_empty() {
@@ -51,10 +51,13 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
 fn load(
     service: &SiemService,
     tab: GuiTab,
+    filter_text: &str,
 ) -> Result<(Vec<&'static str>, Vec<Vec<String>>), String> {
     match tab {
         GuiTab::Search => {
             let filter = EventFilter {
+                query: (!filter_text.trim().is_empty())
+                    .then(|| filter_text.trim().to_string()),
                 limit: 500,
                 ..EventFilter::default()
             };
