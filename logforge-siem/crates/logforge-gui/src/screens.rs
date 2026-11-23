@@ -21,6 +21,21 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
             .request_repaint_after(std::time::Duration::from_millis(30));
         return;
     }
+    if tab == GuiTab::Audit {
+        match logforge_core::audit_verify::verify_audit_chain(service.db()) {
+            Ok(result) => {
+                let message = format!("Audit chain {} · {} entries verified", if result.valid { "valid" } else { "INVALID" }, result.total_entries);
+                if result.valid {
+                    ui.label(message);
+                } else {
+                    ui.colored_label(egui::Color32::from_rgb(179, 38, 30), message);
+                }
+            }
+            Err(error) => {
+                ui.colored_label(egui::Color32::from_rgb(179, 38, 30), format!("Audit verification error: {error}"));
+            }
+        }
+    }
     if tab == GuiTab::Retention {
         match logforge_core::retention::get_default_policy(service.db()) {
             Ok(policy) => match logforge_core::retention::plan_retention_with_reasons(
