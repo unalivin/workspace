@@ -7,8 +7,8 @@ Exact output of `scripts/measure.sh logforge-siem` at source audit:
 ```text
 Project logforge-siem, language rust, size class L
 
-production lines                 8321  (need >= 7000)  PASS
-test functions                    185  (need >= 60)  PASS
+production lines                 8297  (need >= 7000)  PASS
+test functions                    186  (need >= 60)  PASS
 screens in GUI and TUI             11  (need >= 9)  PASS
 migrations                          8  (need >= 2)  PASS
 SQL tables                         20  (need >= 8)  PASS
@@ -39,7 +39,7 @@ The requested `build-prompt-final.md` and its Appendix B are not present in the 
 
 1. **Acceptance table: NOT COMPLETE.** The source Appendix B is missing. The traceability table above is explicitly provisional; fetch the specified prompt before mapping requirements or claiming acceptance.
 2. **Deterministic retention: IMPLEMENTED; aggregate CI PASS on Windows and Ubuntu.** `age_policy_prunes_old_events_even_when_event_count_is_below_limit` fixes time to `2026-11-21T00:00:00Z` and expects event IDs `[1]`; see `crates/logforge-core/tests/retention_plan_tests.rs`.
-3. **GUI screens: IN PROGRESS.** The Search screen now sends the active table filter into the service-layer `EventFilter`/SQLite search; its shared table also provides filter, sort, column chooser, detail, export and loading/empty/error/success states. The remaining operational screens and Overview use service-backed tables; full Appendix A parity and UI-level interaction tests remain to be verified. About and Settings are support views rather than counted operational screens.
+3. **GUI screens: IN PROGRESS.** Overview and Search have screen-specific service-backed tables with shared filter, sort, column chooser, detail, CSV export, and loading/empty/error/success states. Schema now queries live SQLite `PRAGMA table_info(events)` through `SiemService::event_schema`; `event_schema_is_read_from_the_migrated_sqlite_database` asserts the migrated schema fields. The remaining operational screens share the data-backed table renderer. Full Appendix A parity and UI-level interaction tests remain to be verified.
 4. **Source comments: PASS for Rust source scan.** `grep -RInE '^[[:space:]]*(//|/\\*|\\*|///|//!|# )' logforge-siem/crates --include='*.rs'` returned only Rust dereference expressions, not comments. Other source-language comment styles need audit before claiming repository-wide completion.
 5. **README: PARTIAL.** README has “How it works” text and embeds `docs/architecture.svg`, `docs/flow.svg`, and `docs/data-model.svg`; the SVGs have rendered QA previews in `.workspace/rendered/`. Linked files checked: docs/README.md, SECURITY.md, CONTRIBUTING.md, LICENSE, and all three SVGs exist. Commands still need execution-based verification; there is no local cargo executable.
 6. **CI/strip/shipped: NOT COMPLETE.** CI run `45190524538`: Windows **success**, Ubuntu **success**, macOS **queued** at time of this audit. These results predate the latest focused acceptance-test workflow and GUI overview table. To prevent format steps from pushing commits and multiplying queued matrix runs, CI now checks formatting without mutating/pushing the checkout and cancels superseded runs on this branch. The final source revision still needs green Ubuntu/Windows/macOS jobs. Do not strip until all three platforms are green. No smoke run or `scripts/measure.sh --shipped` has been recorded.

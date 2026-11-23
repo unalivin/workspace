@@ -8,6 +8,14 @@ use std::io::BufRead;
 
 pub const MAX_BATCH_SIZE: usize = 5_000;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EventSchemaField {
+    pub name: String,
+    pub data_type: String,
+    pub required: bool,
+    pub primary_key: bool,
+}
+
 pub struct SiemService {
     db: Database,
 }
@@ -19,6 +27,19 @@ impl SiemService {
 
     pub fn db(&self) -> &Database {
         &self.db
+    }
+
+    pub fn event_schema(&self) -> Result<Vec<EventSchemaField>, DbError> {
+        let mut statement = self.db.conn().prepare("PRAGMA table_info(events)")?;
+        let fields = statement.query_map([], |row| {
+            Ok(EventSchemaField {
+                name: row.get(1)?,
+                data_type: row.get(2)?,
+                required: row.get::<_, i64>(3)? != 0,
+                primary_key: row.get::<_, i64>(5)? != 0,
+            })
+        })?;
+        fields.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
     }
 
     pub fn add_source(&self, name: &str, kind: &str, location: &str) -> Result<i64, DbError> {

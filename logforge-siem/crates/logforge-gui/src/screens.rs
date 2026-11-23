@@ -120,63 +120,20 @@ fn load(
                 .collect(),
         )),
         GuiTab::Schema => Ok((
-            vec!["Field", "Type", "Meaning", "Indexed"],
-            vec![
-                vec![
-                    "timestamp_utc".into(),
-                    "RFC3339".into(),
-                    "Normalized event time".into(),
-                    "yes".into(),
-                ],
-                vec![
-                    "received_at".into(),
-                    "RFC3339".into(),
-                    "Local ingestion time".into(),
-                    "yes".into(),
-                ],
-                vec![
-                    "severity".into(),
-                    "enum".into(),
-                    "Normalized severity".into(),
-                    "yes".into(),
-                ],
-                vec![
-                    "host".into(),
-                    "text".into(),
-                    "Originating host".into(),
-                    "yes".into(),
-                ],
-                vec![
-                    "service".into(),
-                    "text".into(),
-                    "Process or service name".into(),
-                    "yes".into(),
-                ],
-                vec![
-                    "message".into(),
-                    "text".into(),
-                    "Redacted normalized message".into(),
-                    "yes".into(),
-                ],
-                vec![
-                    "raw_line".into(),
-                    "text".into(),
-                    "Redacted source record".into(),
-                    "no".into(),
-                ],
-                vec![
-                    "dedup_hash".into(),
-                    "SHA-256".into(),
-                    "Stable normalized record identity".into(),
-                    "unique".into(),
-                ],
-                vec![
-                    "fields_json".into(),
-                    "JSON".into(),
-                    "Parser-specific normalized fields".into(),
-                    "no".into(),
-                ],
-            ],
+            vec!["Column", "SQLite type", "Required", "Primary key"],
+            service
+                .event_schema()
+                .map_err(|error| error.to_string())?
+                .into_iter()
+                .map(|field| {
+                    vec![
+                        field.name,
+                        field.data_type,
+                        field.required.to_string(),
+                        field.primary_key.to_string(),
+                    ]
+                })
+                .collect(),
         )),
         GuiTab::Detections => {
             let mut rows = service
