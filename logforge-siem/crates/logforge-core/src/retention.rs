@@ -10,7 +10,7 @@ pub struct RetentionPolicy {
     pub enabled: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct RetentionPlan {
     pub event_ids: Vec<i64>,
     pub count: usize,
