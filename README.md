@@ -9,7 +9,7 @@
 <!-- PROJECTS_TABLE_START -->
 | Folder | App | Language | Description | Status | Docs |
 |---|---|---|---|---|---|
-| `logforge-siem` | LogForge-SIEM | rust | Local-first SIEM-style log platform: ingests files and events, normalizes and deduplicates them, offers full-text search, correlation rules, alerts and investigation timelines. Desktop GUI, terminal UI and CLI. Data stays in one SQLite file. | Not started | [docs](logforge-siem/docs/README.md) |
+| `logforge-siem` | LogForge-SIEM | rust | Local-first SIEM-style log platform: ingests files and events, normalizes and deduplicates them, offers full-text search, correlation rules, alerts and investigation timelines. Desktop GUI, terminal UI and CLI. Data stays in one SQLite file. | In progress | [docs](logforge-siem/docs/README.md) |
 | `netauto` | NetAuto | go | Local-first network automation tool: backs up device configurations, runs scheduled checks, applies approved change workflows and produces change reports with an audit trail. Desktop GUI, terminal UI and CLI. Nothing changes without approval. | Not started | [docs](netauto/docs/README.md) |
 | `vulntrack` | VulnTrack | go | Local-first vulnerability management: imports scan findings, correlates assets and CVEs, prioritizes remediation with explainable risk scores and tracks fixes through tickets. Desktop GUI, terminal UI and CLI. Imports results, runs no scans. | Not started | [docs](vulntrack/docs/README.md) |
 | `forensicflow` | ForensicFlow | rust | Local-first digital forensics case manager: records evidence metadata, cryptographic hashes and chain of custody, builds timelines and keeps investigation notes in one tamper-evident file. Desktop GUI, terminal UI and CLI. Never alters evidence. | Not started | - |

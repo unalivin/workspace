@@ -1,34 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" role="img" aria-label="LogForge-SIEM data flow from ingestion to search and alerts">
-  <style>
-    :root { --bg: #ffffff; --box: #f4f6f8; --stroke: #334155; --accent: #fef3c7; --accent-stroke: #d97706; --text: #0f172a; --line: #475569; }
-    @media (prefers-color-scheme: dark) {
-      :root { --bg: #0f172a; --box: #1e293b; --stroke: #94a3b8; --accent: #451a03; --accent-stroke: #f59e0b; --text: #f8fafc; --line: #cbd5e1; }
-    }
-    rect.bg { fill: var(--bg); }
-    rect.node { fill: var(--box); stroke: var(--stroke); stroke-width: 2; rx: 8; ry: 8; }
-    rect.end { fill: var(--accent); stroke: var(--accent-stroke); stroke-width: 2; rx: 8; ry: 8; }
-    text { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; fill: var(--text); text-anchor: middle; dominant-baseline: middle; }
-    line.arrow { stroke: var(--line); stroke-width: 2; marker-end: url(#arrow); }
-  </style>
-  <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="var(--line)" />
-    </marker>
-  </defs>
-  <rect class="bg" x="0" y="0" width="720" height="420" />
-  <rect class="node" x="160" y="20" width="400" height="48" />
-  <text x="360" y="44">1. Ingest: JSON lines / syslog (max 64 KB)</text>
-  <rect class="node" x="160" y="92" width="400" height="48" />
-  <text x="360" y="116">2. Redact &amp; Normalize: UTC timestamp, [REDACTED]</text>
-  <rect class="node" x="160" y="164" width="400" height="48" />
-  <text x="360" y="188">3. Deduplicate: SHA-256 hash check</text>
-  <rect class="node" x="160" y="236" width="400" height="48" />
-  <text x="360" y="260">4. Store &amp; Index: SQLite events + events_fts</text>
-  <rect class="end" x="160" y="308" width="400" height="72" />
-  <text x="360" y="332">5. Where it ends: Search, Alerts, GUI/TUI/CLI</text>
-  <text x="360" y="356">Stored locally in logforge-siem.db</text>
-  <line class="arrow" x1="360" y1="68" x2="360" y2="90" />
-  <line class="arrow" x1="360" y1="140" x2="360" y2="162" />
-  <line class="arrow" x1="360" y1="212" x2="360" y2="234" />
-  <line class="arrow" x1="360" y1="284" x2="360" y2="306" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 1060" role="img" aria-labelledby="title desc">
+<title id="title">One demo log line through LogForge-SIEM</title>
+<desc id="desc">A specific synthetic SSH failure line travels from the demo-auth source through logforge-app, logforge-core service, parser, timestamp normalization, secret redaction and deduplication. Accepted normalized event data is committed to SQLite and FTS5, then the rule engine matches Failed password and writes an alert and audit record.</desc>
+<defs><marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9z" fill="#1e293b"/></marker></defs>
+<rect width="420" height="1060" fill="#f8fafc"/>
+<text x="24" y="36" fill="#0B0F14" font-family="sans-serif" font-size="22" font-weight="700">One line, source to alert</text>
+<g font-family="sans-serif" text-anchor="middle">
+<rect x="24" y="58" width="372" height="104" rx="12" fill="#1e293b"/><text x="210" y="83" fill="#ffffff" font-size="15" font-weight="700">Demo source: demo-auth</text><text x="210" y="108" fill="#ffffff" font-size="13">synthetic line stream</text><text x="210" y="126" fill="#ffffff" font-size="10">2026-11-21T08:00:00Z web-01 sshd: Failed password</text><text x="210" y="142" fill="#ffffff" font-size="10">for invalid user admin</text>
+<path d="M360 162v8" stroke="#1e293b" stroke-width="3" marker-end="url(#arrow)"/><text x="34" y="169" text-anchor="start" fill="#0B0F14" font-size="10">line + source id</text>
+<rect x="24" y="176" width="372" height="76" rx="12" fill="#1e293b"/><text x="210" y="202" fill="#ffffff" font-size="15" font-weight="700">logforge-app / Ingest command</text><text x="210" y="228" fill="#ffffff" font-size="12">selects source and parser format</text>
+<path d="M360 252v28" stroke="#1e293b" stroke-width="3" marker-end="url(#arrow)"/><text x="36" y="273" text-anchor="start" fill="#0B0F14" font-size="10">bounded batch</text>
+<rect x="24" y="286" width="372" height="76" rx="12" fill="#1e293b"/><text x="210" y="312" fill="#ffffff" font-size="15" font-weight="700">logforge-core::service::ingest_batch</text><text x="210" y="338" fill="#ffffff" font-size="12">parses each record through parser_suite</text>
+<path d="M360 362v28" stroke="#1e293b" stroke-width="3" marker-end="url(#arrow)"/><text x="36" y="383" text-anchor="start" fill="#0B0F14" font-size="10">NormalizedEvent</text>
+<rect x="24" y="396" width="372" height="86" rx="12" fill="#1e293b"/><text x="210" y="422" fill="#ffffff" font-size="15" font-weight="700">parser_suite + timestamp + ingest</text><text x="210" y="448" fill="#ffffff" font-size="12">UTC timestamp; severity=warn; host=web-01;</text><text x="210" y="468" fill="#ffffff" font-size="12">service=sshd; secret redaction applied</text>
+<path d="M360 482v28" stroke="#1e293b" stroke-width="3" marker-end="url(#arrow)"/><text x="36" y="503" text-anchor="start" fill="#0B0F14" font-size="10">dedup hash + normalized fields</text>
+<rect x="24" y="516" width="372" height="76" rx="12" fill="#1e293b"/><text x="210" y="542" fill="#ffffff" font-size="15" font-weight="700">logforge-core::service + SQLite</text><text x="210" y="568" fill="#ffffff" font-size="12">dedup check, transaction, events + events_fts</text>
+<path d="M360 592v28" stroke="#1e293b" stroke-width="3" marker-end="url(#arrow)"/><text x="36" y="613" text-anchor="start" fill="#0B0F14" font-size="10">message + severity + event id</text>
+<rect x="24" y="626" width="372" height="76" rx="12" fill="#1e293b"/><text x="210" y="652" fill="#ffffff" font-size="15" font-weight="700">logforge-core::rule_engine</text><text x="210" y="678" fill="#ffffff" font-size="12">enabled rule “Failed SSH login” matches</text>
+<path d="M360 702v28" stroke="#1e293b" stroke-width="3" marker-end="url(#arrow)"/><text x="36" y="723" text-anchor="start" fill="#0B0F14" font-size="10">rule id + event id + title</text>
+<rect x="24" y="736" width="372" height="86" rx="12" fill="#f59e0b"/><text x="210" y="763" fill="#0B0F14" font-size="15" font-weight="700">alerts + audit_log in same ingest flow</text><text x="210" y="789" fill="#0B0F14" font-size="12">alert: warn · Failed SSH login: web-01</text><text x="210" y="809" fill="#0B0F14" font-size="12">event remains searchable and traceable</text>
+<path d="M360 822v28" stroke="#1e293b" stroke-width="3" marker-end="url(#arrow)"/><text x="230" y="843" fill="#0B0F14" font-size="11">query against committed records</text>
+<rect x="24" y="856" width="372" height="76" rx="12" fill="#1e293b"/><text x="210" y="882" fill="#ffffff" font-size="15" font-weight="700">Search, Alerts, Cases, Reports</text><text x="210" y="908" fill="#ffffff" font-size="12">GUI, TUI and CLI use the same service</text>
+<rect x="24" y="954" width="372" height="76" rx="12" fill="#f8fafc" stroke="#1e293b" stroke-width="2"/><text x="210" y="981" fill="#0B0F14" font-size="14" font-weight="700">Persistent records stay in logforge-siem.db</text><text x="210" y="1008" fill="#0B0F14" font-size="12">No external destination is needed.</text>
+</g>
 </svg>

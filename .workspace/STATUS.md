@@ -1,11 +1,11 @@
 # Workspace Status
 
 - Date: 2026-11-21
-- Last commit: pending initial commit
+- Last commit: a2266af
 
 | Project | Language | Destination | State | Next step |
 |---|---|---|---|---|
-| logforge-siem | rust | sonix-devs | In progress | production lines below floor (2000/7000); add production implementation |
+| logforge-siem | rust | sonix-devs | In progress | Floor PASS (7034/7000); audit brief, screens, source comments, proof, then strip and shipped smoke/measurement |
 | netauto | go | sonix-devs | In progress | production lines, tests, screens, migrations, icon assets, diagrams below floors; implement and retest |
 | vulntrack | go | sonix-devs | In progress | production lines, tests, screens, migrations, tables, icon assets, diagrams below floors; implement and retest |
 | forensicflow | rust | sonix-devs | Not started | Create requirements, acceptance criteria, and threat model |

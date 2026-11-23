@@ -1,22 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="LogForge-SIEM application icon">
-  <rect x="64" y="64" width="896" height="896" rx="192" fill="#0f172a" />
-  <rect x="128" y="128" width="768" height="768" rx="144" fill="#1e293b" />
-  <rect x="200" y="240" width="440" height="56" rx="28" fill="#94a3b8" />
-  <rect x="200" y="344" width="520" height="56" rx="28" fill="#94a3b8" />
-  <rect x="200" y="448" width="380" height="56" rx="28" fill="#94a3b8" />
-  <rect x="200" y="552" width="480" height="56" rx="28" fill="#94a3b8" />
-  <rect x="200" y="656" width="624" height="72" rx="36" fill="#f59e0b" />
-  <circle cx="752" cy="268" r="28" fill="#94a3b8" />
-  <circle cx="752" cy="476" r="28" fill="#f59e0b" />
-  <path d="M 680 268 L 724 268 M 620 476 L 724 476" stroke="#94a3b8" stroke-width="16" stroke-linecap="round" />
-  <path d="M 752 296 L 752 448" stroke="#f59e0b" stroke-width="16" stroke-linecap="round" />
-  <rect x="240" y="768" width="544" height="32" rx="16" fill="#334155" />
-  <rect x="240" y="768" width="272" height="32" rx="16" fill="#d97706" />
-  <rect x="200" y="180" width="220" height="24" rx="12" fill="#334155" />
-  <rect x="444" y="180" width="120" height="24" rx="12" fill="#475569" />
-  <rect x="588" y="180" width="236" height="24" rx="12" fill="#334155" />
-  <circle cx="800" cy="692" r="18" fill="#0f172a" />
-  <circle cx="736" cy="692" r="18" fill="#0f172a" />
-  <circle cx="672" cy="692" r="18" fill="#0f172a" />
-  <rect x="600" y="768" width="184" height="32" rx="16" fill="#475569" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="LogForge-SIEM log stream and detection alert icon">
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="#0f172a"/>
+  <rect x="13" y="13" width="102" height="102" rx="22" fill="#1e293b"/>
+  <path d="M30 38h8m-8 23h8m-8 23h8" stroke="#f59e0b" stroke-width="7" stroke-linecap="round"/>
+  <path d="M49 38h45M49 61h34M49 84h25" stroke="#f8fafc" stroke-width="7" stroke-linecap="round"/>
+  <path d="M93 71l15 26H78z" fill="#f59e0b"/>
+  <path d="M93 80v8m0 4v.5" stroke="#0f172a" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M21 102h46" stroke="#334155" stroke-width="3" stroke-linecap="round"/>
+  <g fill="#334155" opacity=".9">
+    <circle cx="81" cy="103" r="1.2"/><circle cx="87" cy="103" r="1.2"/><circle cx="93" cy="103" r="1.2"/><circle cx="99" cy="103" r="1.2"/><circle cx="105" cy="103" r="1.2"/>
+  </g>
+  <path d="M26 28h8m4 0h8" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+  <path d="M26 94h35" stroke="#334155" stroke-width="2" stroke-linecap="round"/>
+  <title>Logs enter, match a detection, and produce an alert</title>
+  <desc>Square LogForge-SIEM identity using the midnight navy base, slate brand panels, and amber highlight. Three white log rows flow toward an amber warning triangle. The repeated rows represent normalized events; the alert marker represents a detection-rule match. At small sizes, the amber event marker and stacked log strokes remain the primary silhouette.</desc>
 </svg>
