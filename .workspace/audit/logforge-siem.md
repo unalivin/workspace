@@ -7,7 +7,7 @@ Exact output of `scripts/measure.sh logforge-siem` at source audit:
 ```text
 Project logforge-siem, language rust, size class L
 
-production lines                 8239  (need >= 7000)  PASS
+production lines                 8257  (need >= 7000)  PASS
 test functions                    185  (need >= 60)  PASS
 screens in GUI and TUI             11  (need >= 9)  PASS
 migrations                          8  (need >= 2)  PASS
@@ -43,6 +43,17 @@ The requested `build-prompt-final.md` and its Appendix B are not present in the 
 4. **Source comments: PASS for Rust source scan.** `grep -RInE '^[[:space:]]*(//|/\\*|\\*|///|//!|# )' logforge-siem/crates --include='*.rs'` returned only Rust dereference expressions, not comments. Other source-language comment styles need audit before claiming repository-wide completion.
 5. **README: PARTIAL.** README has “How it works” text and embeds `docs/architecture.svg`, `docs/flow.svg`, and `docs/data-model.svg`; the SVGs have rendered QA previews in `.workspace/rendered/`. Linked files checked: docs/README.md, SECURITY.md, CONTRIBUTING.md, LICENSE, and all three SVGs exist. Commands still need execution-based verification; there is no local cargo executable.
 6. **CI/strip/shipped: NOT COMPLETE.** CI run `45190524538`: Windows **success**, Ubuntu **success**, macOS **queued** at time of this audit. Format check and Clippy passed on the Windows and Ubuntu jobs; both build and test (no-GUI/default) steps also passed. Do not strip until all three platforms are green. No smoke run or `scripts/measure.sh --shipped` has been recorded.
+
+## Step 4: source comment scan
+
+Command run from the repository root:
+
+```sh
+grep -RInE '^[[:space:]]*(//|///|//!|/\\*|\\*\\/)' logforge-siem/crates || true
+grep -nE '^[[:space:]]*(--|/\\*|\\*\\/)' logforge-siem/migrations/*.sql || true
+```
+
+Exact combined grep result: **empty (no matching comment lines)**.
 
 ## CI diagnostics and fixes
 

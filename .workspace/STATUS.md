@@ -1,11 +1,11 @@
 # Workspace Status
 
 - Date: 2026-11-21
-- Last commit: 8293fd4
+- Last commit: see `git log -1` on the active branch
 
 | Project | Language | Destination | State | Next step |
 |---|---|---|---|---|
-| logforge-siem | rust | sonix-devs | In progress | Floor PASS (7034/7000); audit brief, screens, source comments, proof, then strip and shipped smoke/measurement |
+| logforge-siem | rust | sonix-devs | In progress | Measure PASS: 8257 lines, 185 tests, 11 screens, 8 migrations, 20 SQL tables; CI Windows/Ubuntu PASS, macOS queued; steps 1, 3, 5, 6 remain |
 | netauto | go | sonix-devs | In progress | production lines, tests, screens, migrations, icon assets, diagrams below floors; implement and retest |
 | vulntrack | go | sonix-devs | In progress | production lines, tests, screens, migrations, tables, icon assets, diagrams below floors; implement and retest |
 | forensicflow | rust | sonix-devs | Not started | Create requirements, acceptance criteria, and threat model |
