@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use logforge_core::{Database, SiemService};
+use std::io::{self, IsTerminal, Write};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -8,7 +9,7 @@ pub enum UiMode {
     Tui,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LaunchDecision {
     Gui,
     Tui,
@@ -90,7 +91,10 @@ enum Commands {
         #[arg(long, default_value_t = 20)]
         limit: usize,
     },
-    Demo,
+    Demo {
+        #[command(subcommand)]
+        action: DemoAction,
+    },
     Search {
         query: String,
         #[arg(long, default_value_t = 50)]
@@ -182,9 +186,15 @@ enum Commands {
         dry_run: bool,
     },
     Export {
-        #[arg(long, default_value = "json")]
-        format: String,
+        #[arg(long, value_enum, default_value = "json")]
+        format: ExportFormat,
     },
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum ExportFormat {
+    Json,
+    Csv,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -245,6 +255,11 @@ enum CaseAction {
         id: i64,
         alert_id: i64,
     },
+}
+
+#[derive(Subcommand)]
+enum DemoAction {
+    Load,
 }
 
 #[derive(Subcommand)]
@@ -349,7 +364,9 @@ fn main() {
                 .expect("event report");
                 println!("{}", serde_json::to_string_pretty(&report).expect("json"));
             }
-            Commands::Demo => {
+            Commands::Demo {
+                action: DemoAction::Load,
+            } => {
                 service.seed_demo_data().expect("seed demo");
                 println!("Demo data loaded.");
             }
@@ -495,9 +512,17 @@ fn main() {
                 format,
             } => {
                 let input = std::fs::File::open(&file).expect("open input file");
-                let src_id = service
-                    .add_source(&source, "file", &file.display().to_string())
-                    .unwrap_or(1);
+                let existing = service
+                    .list_sources()
+                    .expect("list sources")
+                    .into_iter()
+                    .find(|item| item.name == source);
+                let src_id = match existing {
+                    Some(item) => item.id,
+                    None => service
+                        .add_source(&source, "file", &file.display().to_string())
+                        .expect("add ingestion source"),
+                };
                 let summary = service
                     .ingest_reader_with_format(
                         src_id,
@@ -530,7 +555,7 @@ fn main() {
                     ThemeAction::Set { name } => {
                         service
                             .db()
-                            .set_setting("theme", &name, "2026-11-21T00:00:00Z")
+                            .set_setting("theme", &name, &chrono::Utc::now().to_rfc3339())
                             .expect("set theme");
                         println!("Theme set to {name}");
                     }
@@ -650,13 +675,12 @@ fn main() {
             }
             Commands::Export { format } => {
                 let events = service.search_events("", 500).expect("events");
-                if format == "csv" {
-                    println!("{}", logforge_core::export::export_events_csv(&events));
-                } else {
-                    println!(
+                match format {
+                    ExportFormat::Csv => println!("{}", logforge_core::export::export_events_csv(&events)),
+                    ExportFormat::Json => println!(
                         "{}",
                         logforge_core::export::export_events_json(&events).expect("json")
-                    );
+                    ),
                 }
             }
         }
@@ -668,20 +692,65 @@ fn main() {
         || std::env::var_os("WAYLAND_DISPLAY").is_some()
         || cfg!(target_os = "windows")
         || cfg!(target_os = "macos");
+    let remembered = service
+        .db()
+        .get_setting("ui_mode")
+        .ok()
+        .flatten()
+        .and_then(|value| match value.as_str() {
+            "gui" => Some(UiMode::Gui),
+            "tui" => Some(UiMode::Tui),
+            _ => None,
+        });
+    let interactive = io::stdin().is_terminal() && io::stdout().is_terminal();
     let decision = decide_launch_mode(
         cli.ui,
         env_ui.as_deref(),
-        None,
+        remembered,
         cli.ask,
         cli.no_prompt,
-        true,
+        interactive,
         has_display,
     );
 
-    match decision {
-        LaunchDecision::Gui => launch_gui(service),
-        LaunchDecision::Tui | LaunchDecision::Prompt => {
-            logforge_tui::run_tui(&service).expect("run tui");
+    let mode = match decision {
+        LaunchDecision::Gui => UiMode::Gui,
+        LaunchDecision::Tui => UiMode::Tui,
+        LaunchDecision::Prompt => match prompt_ui_mode() {
+            Ok(mode) => mode,
+            Err(error) => {
+                eprintln!("UI selection failed: {error}");
+                return;
+            }
+        },
+    };
+    if decision == LaunchDecision::Prompt {
+        let value = match mode {
+            UiMode::Gui => "gui",
+            UiMode::Tui => "tui",
+        };
+        if let Err(error) = service.db().set_setting("ui_mode", value, &chrono::Utc::now().to_rfc3339()) {
+            eprintln!("Could not save UI preference: {error}");
+        }
+    }
+    match mode {
+        UiMode::Gui => launch_gui(service),
+        UiMode::Tui => logforge_tui::run_tui(&service).expect("run tui"),
+    }
+}
+
+fn prompt_ui_mode() -> io::Result<UiMode> {
+    loop {
+        print!("Choose interface: [g] graphical dashboard, [t] terminal dashboard: ");
+        io::stdout().flush()?;
+        let mut choice = String::new();
+        if io::stdin().read_line(&mut choice)? == 0 {
+            return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "no interface selected"));
+        }
+        match choice.trim().to_ascii_lowercase().as_str() {
+            "g" | "gui" => return Ok(UiMode::Gui),
+            "t" | "tui" | "" => return Ok(UiMode::Tui),
+            _ => println!("Enter g or t."),
         }
     }
 }
@@ -726,5 +795,11 @@ mod tests {
             decide_launch_mode(None, None, None, false, true, true, true),
             LaunchDecision::Tui
         );
+    }
+
+    #[test]
+    fn demo_load_is_a_supported_nested_command() {
+        assert!(Cli::try_parse_from(["logforge-siem", "demo", "load"]).is_ok());
+        assert!(Cli::try_parse_from(["logforge-siem", "demo", "unknown"]).is_err());
     }
 }
