@@ -1,4 +1,5 @@
 use eframe::egui;
+use crate::table::TableState;
 use logforge_core::{event_analytics::BucketSize, SiemService};
 
 pub fn metric_card(ui: &mut egui::Ui, label: &str, value: String) {
@@ -119,4 +120,63 @@ pub fn render_event_rate_chart(ui: &mut egui::Ui, service: &SiemService) {
             "■ Hours containing alerts",
         );
     });
+}
+
+pub fn render_overview_table(ui: &mut egui::Ui, service: &SiemService, table: &mut TableState) {
+    let title = "Overview";
+    if table.active_screen != Some(title) {
+        table.active_screen = Some(title);
+        table.loading_frames = 1;
+    }
+    if table.loading_frames > 0 {
+        table.loading_frames -= 1;
+        ui.label("Loading overview data…");
+        ui.ctx()
+            .request_repaint_after(std::time::Duration::from_millis(30));
+        return;
+    }
+    let now = chrono::Utc::now();
+    let start = now - chrono::Duration::hours(24);
+    let buckets = match logforge_core::event_analytics::event_rate_series(
+        service.db(),
+        &start.to_rfc3339(),
+        &now.to_rfc3339(),
+        BucketSize::Hour,
+    ) {
+        Ok(buckets) => buckets,
+        Err(error) => {
+            ui.colored_label(
+                egui::Color32::from_rgb(179, 38, 30),
+                format!("Error loading overview records: {error}"),
+            );
+            if ui.button("Retry overview").clicked() {
+                table.loading_frames = 1;
+            }
+            return;
+        }
+    };
+    let rows = buckets
+        .into_iter()
+        .map(|bucket| {
+            vec![
+                bucket.start_utc,
+                bucket.event_count.to_string(),
+                bucket.alert_count.to_string(),
+                bucket.critical_count.to_string(),
+                bucket.error_count.to_string(),
+            ]
+        })
+        .collect::<Vec<_>>();
+    if rows.is_empty() {
+        ui.label("Empty state: no hourly event records are available yet.");
+    } else {
+        ui.label(format!("Success: loaded {} hourly records.", rows.len()));
+    }
+    ui.heading("Hourly event records");
+    table.render(
+        ui,
+        title,
+        &["Hour UTC", "Events", "Alerts", "Critical", "Errors"],
+        &rows,
+    );
 }

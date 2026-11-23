@@ -7,7 +7,7 @@ Exact output of `scripts/measure.sh logforge-siem` at source audit:
 ```text
 Project logforge-siem, language rust, size class L
 
-production lines                 8257  (need >= 7000)  PASS
+production lines                 8318  (need >= 7000)  PASS
 test functions                    185  (need >= 60)  PASS
 screens in GUI and TUI             11  (need >= 9)  PASS
 migrations                          8  (need >= 2)  PASS
@@ -39,7 +39,7 @@ The requested `build-prompt-final.md` and its Appendix B are not present in the 
 
 1. **Acceptance table: NOT COMPLETE.** The source Appendix B is missing. The traceability table above is explicitly provisional; fetch the specified prompt before mapping requirements or claiming acceptance.
 2. **Deterministic retention: IMPLEMENTED; aggregate CI PASS on Windows and Ubuntu.** `age_policy_prunes_old_events_even_when_event_count_is_below_limit` fixes time to `2026-11-21T00:00:00Z` and expects event IDs `[1]`; see `crates/logforge-core/tests/retention_plan_tests.rs`.
-3. **GUI screens: NOT COMPLETE.** Shared data-backed screens, tables, filter/sort/chooser/detail/export interactions and service states were added for data tabs. Per-screen parity for all 11 Appendix A screens (including all four states) is not demonstrated; Overview is chart-focused and About/Settings are not data tables. The current GUI implementation still requires acceptance-driven review.
+3. **GUI screens: IN PROGRESS.** The 10 operational screens use service-backed tables with filter, sort, column chooser, detail, export and loading/empty/error/success handling. Overview now also shows a service-backed hourly table with the shared interactions and its own loading, empty, error/retry and success states. Full Appendix A parity and UI-level interaction tests remain to be verified; About and Settings are support views rather than counted operational screens.
 4. **Source comments: PASS for Rust source scan.** `grep -RInE '^[[:space:]]*(//|/\\*|\\*|///|//!|# )' logforge-siem/crates --include='*.rs'` returned only Rust dereference expressions, not comments. Other source-language comment styles need audit before claiming repository-wide completion.
 5. **README: PARTIAL.** README has “How it works” text and embeds `docs/architecture.svg`, `docs/flow.svg`, and `docs/data-model.svg`; the SVGs have rendered QA previews in `.workspace/rendered/`. Linked files checked: docs/README.md, SECURITY.md, CONTRIBUTING.md, LICENSE, and all three SVGs exist. Commands still need execution-based verification; there is no local cargo executable.
 6. **CI/strip/shipped: NOT COMPLETE.** CI run `45190524538`: Windows **success**, Ubuntu **success**, macOS **queued** at time of this audit. Format check and Clippy passed on the Windows and Ubuntu jobs; both build and test (no-GUI/default) steps also passed. Do not strip until all three platforms are green. No smoke run or `scripts/measure.sh --shipped` has been recorded.

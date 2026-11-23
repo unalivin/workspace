@@ -170,6 +170,8 @@ impl eframe::App for LogForgeApp {
                             ));
                             ui.separator();
                             overview::render_event_rate_chart(ui, &self.service);
+                            ui.separator();
+                            overview::render_overview_table(ui, &self.service, &mut self.table);
                         }
                         Err(error) => {
                             ui.colored_label(egui::Color32::from_rgb(179, 38, 30), format!("Error loading overview: {error}"));
