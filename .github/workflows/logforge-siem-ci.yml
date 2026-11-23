@@ -6,6 +6,7 @@ on:
       - 'logforge-siem/**'
       - 'scripts/ci-check.sh'
       - 'scripts/logforge-siem-acceptance.sh'
+      - 'scripts/update-logforge-audit.sh'
       - '.github/workflows/logforge-siem-ci.yml'
       - 'templates/workflows/rust-ci.yml'
   pull_request:
@@ -13,11 +14,12 @@ on:
       - 'logforge-siem/**'
       - 'scripts/ci-check.sh'
       - 'scripts/logforge-siem-acceptance.sh'
+      - 'scripts/update-logforge-audit.sh'
       - '.github/workflows/logforge-siem-ci.yml'
       - 'templates/workflows/rust-ci.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: logforge-siem-${{ github.ref }}
@@ -47,7 +49,22 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libxkbcommon-dev libwayland-dev libgl1-mesa-dev libx11-dev libxi-dev libxrandr-dev libxcursor-dev
       - name: Format source
-        run: ../scripts/ci-check.sh 'cargo fmt' cargo fmt --all -- --check
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" != push ]]; then
+            ../scripts/ci-check.sh 'cargo fmt' cargo fmt --all -- --check
+          else
+            ../scripts/ci-check.sh 'cargo fmt' cargo fmt --all
+            if [[ "$RUNNER_OS" == Linux ]] && ! git diff --quiet -- .; then
+              ../scripts/update-logforge-audit.sh
+              git config user.name Unalivin
+              git config user.email automation
+              git add . ../.workspace/STATUS.md ../.workspace/audit/logforge-siem.md
+              git commit -m 'style(logforge-siem): format and refresh audit'
+              git push origin "$GITHUB_REF_NAME"
+            fi
+          fi
+      - name: Format check
+        run: ../scripts/ci-check.sh 'cargo fmt check' cargo fmt --all -- --check
       - name: Clippy
         run: ../scripts/ci-check.sh clippy cargo clippy --workspace --all-targets -- -D warnings
       - name: Build

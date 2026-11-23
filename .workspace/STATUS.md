@@ -2,6 +2,7 @@
 
 - Date: 2026-11-21
 - Last commit: see `git log -1` on the active branch
+- LogForge-SIEM current-revision CI: pending; measure recorded in the project audit.
 
 | Project | Language | Destination | State | Next step |
 |---|---|---|---|---|
