@@ -43,6 +43,31 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
                     });
                 }
             }
+            if tab == GuiTab::Alerts {
+                if let Some(record) = table.selected_record(&rows) {
+                    if let (Some(id), Some(status)) = (
+                        record.first().and_then(|value| value.parse::<i64>().ok()),
+                        record.get(2).map(String::as_str),
+                    ) {
+                        let next_status = match status {
+                            "open" => "acknowledged",
+                            "acknowledged" => "resolved",
+                            _ => "open",
+                        };
+                        if ui.button(format!("Mark selected alert {next_status}")).clicked() {
+                            match service.update_alert_status(id, next_status) {
+                                Ok(()) => {
+                                    table.loading_frames = 1;
+                                    ui.ctx().request_repaint_after(std::time::Duration::from_millis(30));
+                                }
+                                Err(error) => {
+                                    ui.colored_label(egui::Color32::from_rgb(179, 38, 30), format!("Unable to update alert: {error}"));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             if tab == GuiTab::Detections {
                 if let Some(record) = table.selected_record(&rows) {
                     let kind = record.first().map(String::as_str).unwrap_or("");
