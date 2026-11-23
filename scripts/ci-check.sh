@@ -18,6 +18,9 @@ if [[ $status -ne 0 ]]; then
   }
   first_encoded="$(encode_annotation "$first_excerpt")"
   last_encoded="$(encode_annotation "$last_excerpt")"
+  diagnostics="$(grep -E 'error\[[A-Z][0-9]+\]|error:|could not compile|^[[:space:]]*--> ' "$log_file" | tail -n 80 || true)"
+  diagnostics_encoded="$(encode_annotation "$diagnostics")"
+  printf '::error title=%s (compiler diagnostics)::%s\n' "$label" "$diagnostics_encoded"
   printf '::error title=%s (beginning)::%s\n' "$label" "$first_encoded"
   if [[ "$first_excerpt" != "$last_excerpt" ]]; then
     printf '::error title=%s (last 3000 characters)::%s\n' "$label" "$last_encoded"

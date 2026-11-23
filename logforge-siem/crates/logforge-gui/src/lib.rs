@@ -390,7 +390,8 @@ impl eframe::App for LogForgeApp {
                                 }
                             });
                         if self.theme != previous {
-                            self.save_setting("theme", &self.theme);
+                            let value = self.theme.clone();
+                            self.save_setting("theme", &value);
                             identity::apply_theme(ctx, &self.theme, &self.accent);
                         }
                     });
@@ -445,7 +446,8 @@ impl eframe::App for LogForgeApp {
                     });
                     if self.accent != "amber" && ui.button("Reset to brand colours").clicked() {
                         self.accent = "amber".into();
-                        self.save_setting("accent", &self.accent);
+                        let value = self.accent.clone();
+                        self.save_setting("accent", &value);
                         identity::apply_theme(ctx, &self.theme, &self.accent);
                     }
                     if let Some(error) = &self.settings_error {
