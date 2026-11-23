@@ -35,6 +35,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.27.4'
+      - name: Install Linux GUI build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev
       - name: Format source
         run: |
           ../scripts/ci-check.sh 'format source' bash -c 'find . -name "*.go" -type f -print0 | xargs -0 gofmt -w'

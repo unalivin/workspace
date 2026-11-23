@@ -39,7 +39,7 @@ func TestDeviceDelete(t *testing.T) {
 	if e = s.DeleteDevice(id); e != nil {
 		t.Fatal(e)
 	}
-	if _, e = s.DeleteDevice(id); e == nil {
+	if e = s.DeleteDevice(id); e == nil {
 		t.Fatal("missing delete error")
 	}
 }
