@@ -146,6 +146,11 @@ impl TableState {
         }
     }
 
+    pub fn selected_record(&self, rows: &[Vec<String>]) -> Option<Vec<String>> {
+        let selected = self.selected?;
+        self.filtered_rows(rows).get(selected).cloned()
+    }
+
     fn filtered_rows(&self, rows: &[Vec<String>]) -> Vec<Vec<String>> {
         let filter = self.filter.trim().to_lowercase();
         let mut result: Vec<Vec<String>> = rows
@@ -212,6 +217,25 @@ mod tests {
     #[test]
     fn csv_escaping_quotes_and_newlines() {
         assert_eq!(csv_cell("hello, \"world\"\n"), "\"hello, \"\"world\"\"\n\"");
+    }
+
+    #[test]
+    fn selected_record_uses_the_filtered_sorted_rows() {
+        let mut state = TableState {
+            filter: "ssh".into(),
+            sort_column: 0,
+            ascending: true,
+            selected: Some(0),
+            ..TableState::default()
+        };
+        let rows = vec![
+            vec!["2".into(), "ssh query".into()],
+            vec!["1".into(), "ssh search".into()],
+            vec!["3".into(), "dns query".into()],
+        ];
+        assert_eq!(state.selected_record(&rows).unwrap()[0], "1");
+        state.selected = Some(1);
+        assert_eq!(state.selected_record(&rows).unwrap()[0], "2");
     }
 
     #[test]

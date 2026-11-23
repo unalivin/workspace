@@ -33,6 +33,16 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
                 ));
             }
             table.render(ui, title, &columns, &rows);
+            if tab == GuiTab::SavedQueries {
+                if let Some(record) = table.selected_record(&rows) {
+                    ui.horizontal(|ui| {
+                        ui.label(format!("Selected query: {}", record.get(1).map(String::as_str).unwrap_or("")));
+                        if ui.button("Copy query text").clicked() {
+                            ui.ctx().copy_text(record.get(2).cloned().unwrap_or_default());
+                        }
+                    });
+                }
+            }
         }
         Err(error) => {
             ui.colored_label(
