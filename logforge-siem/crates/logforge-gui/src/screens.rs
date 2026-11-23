@@ -21,6 +21,27 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
             .request_repaint_after(std::time::Duration::from_millis(30));
         return;
     }
+    if tab == GuiTab::Health {
+        match logforge_core::stats::ingestion_stats(service.db()) {
+            Ok(metrics) => ui.label(format!(
+                "Ingestion health · received {} · accepted {} · duplicates {:.1}% · malformed {:.1}% · dropped {}",
+                metrics.received, metrics.accepted, metrics.duplicate_rate_percent,
+                metrics.malformed_rate_percent, metrics.dropped
+            )),
+            Err(error) => ui.colored_label(egui::Color32::from_rgb(179, 38, 30), format!("Unable to load ingestion metrics: {error}")),
+        };
+        match logforge_core::stats::source_liveness(
+            service.db(),
+            &chrono::Utc::now().to_rfc3339(),
+            300,
+        ) {
+            Ok(liveness) => ui.label(format!(
+                "Source freshness · {} active · {} stale · {} never seen · {} disabled",
+                liveness.active, liveness.stale, liveness.never_seen, liveness.disabled
+            )),
+            Err(error) => ui.colored_label(egui::Color32::from_rgb(179, 38, 30), format!("Unable to load source freshness: {error}")),
+        };
+    }
     if tab == GuiTab::Audit {
         match logforge_core::audit_verify::verify_audit_chain(service.db()) {
             Ok(result) => {
