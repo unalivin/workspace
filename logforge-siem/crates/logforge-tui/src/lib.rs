@@ -8,11 +8,13 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    widgets::{Block, Borders, Cell, List, ListItem, Paragraph, Row, Table, TableState as WidgetTableState},
     Terminal,
 };
 use std::io;
 use std::time::Duration;
+
+mod table;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TuiTab {
@@ -78,6 +80,16 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     let mut active_tab = TuiTab::Overview;
+    let mut filter = String::new();
+    let mut filter_active = false;
+    let mut reverse_sort = false;
+    let mut page = 0usize;
+    let mut selected_row = 0usize;
+    let mut detail_open = true;
+    let mut columns_open = false;
+    let mut visible_columns = [true; 6];
+    let mut export_notice = String::new();
+    let mut export_requested = false;
     let accent = if no_color {
         Color::Reset
     } else {
@@ -270,35 +282,158 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                     lines.join("\\n")
                 }
                 TuiTab::About => "LogForge-SIEM v0.1.0-dev\nCopyright (c) 2026 Sonix Devs\nRepository: https://github.com/sonix-devs/logforge-siem".to_string(),
-                TuiTab::Settings => "Theme: dark | Accent: amber | Density: compact\nUse `logforge-siem config theme set <theme>` to change.".to_string(),
+                TuiTab::Settings => {
+                    let theme = service.db().get_setting("theme").ok().flatten().unwrap_or_else(|| "dark".into());
+                    let accent = service.db().get_setting("accent").ok().flatten().unwrap_or_else(|| "amber".into());
+                    let density = service.db().get_setting("density").ok().flatten().unwrap_or_else(|| "compact".into());
+                    let scale = service.db().get_setting("text_scale").ok().flatten().unwrap_or_else(|| "100".into());
+                    format!("Appearance settings\nTheme: {theme} (default: dark)\nAccent: {accent} (default: amber)\nDensity: {density} (default: compact)\nText scale: {scale}% (default: 100%)\nNetwork: disabled by default; no remote destination configured\nNotifications: local outbox; no delivery adapter configured\n\nPress t to switch dark/light, a to cycle accent, +/- to scale text.")
+                }
             };
 
-            let panel = Paragraph::new(body).block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(active_tab.label()),
-            );
-            frame.render_widget(panel, chunks[1]);
+            let mut records = body
+                .lines()
+                .map(str::trim)
+                .filter(|line| !line.is_empty())
+                .filter(|line| filter.is_empty() || line.to_lowercase().contains(&filter.to_lowercase()))
+                .map(str::to_string)
+                .collect::<Vec<_>>();
+            if reverse_sort {
+                records.sort_by_key(|line| line.to_lowercase());
+            }
+            if records.is_empty() {
+                selected_row = 0;
+                page = 0;
+            } else {
+                selected_row = selected_row.min(records.len() - 1);
+            }
+            let page_size = (chunks[1].height as usize).saturating_sub(11).max(1);
+            selected_row = selected_row.min(records.len().saturating_sub(1));
+            page = if records.is_empty() { 0 } else { selected_row / page_size };
+            let pages = records.len().div_ceil(page_size).max(1);
+            let first = page * page_size;
+            let last = (first + page_size).min(records.len());
+            let details_height = if detail_open { Constraint::Length(6) } else { Constraint::Length(0) };
+            let areas = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Length(3), Constraint::Min(3), details_height])
+                .split(chunks[1]);
+            let filter_label = if filter_active { "FILTER EDIT · type to search · Enter to finish" } else { "Filter: / · move: ↑↓ · page: ←→ · sort: S · columns: C · detail: D · export: E" };
+            let status = format!("{} · {} rows · page {}/{} · {} {}", filter_label, records.len(), page + 1, pages, if records.is_empty() { "Empty" } else { "Success" }, export_notice);
+            frame.render_widget(Paragraph::new(status).block(Block::default().borders(Borders::ALL)), areas[0]);
+            let table_rows = records[first..last]
+                .iter()
+                .enumerate()
+                .map(|(offset, record)| {
+                    let cells = table::split_record(record);
+                    let mut row = cells.iter().enumerate().filter(|(index, _)| visible_columns[*index]).map(|(_, value)| Cell::from(value.clone())).collect::<Vec<_>>();
+                    row.insert(0, Cell::from(format!("{}", first + offset + 1)));
+                    Row::new(row)
+                })
+                .collect::<Vec<_>>();
+            let max_columns = records[first..last].iter().map(|record| table::split_record(record).len()).max().unwrap_or(1).min(6);
+            let mut widths = vec![Constraint::Length(4)];
+            widths.extend((0..max_columns).filter(|index| visible_columns[*index]).map(|_| Constraint::Ratio(1, max_columns.max(1) as u32)));
+            let table = Table::new(table_rows, widths)
+                .header(Row::new(std::iter::once("#".to_string()).chain((0..max_columns).filter(|index| visible_columns[*index]).map(|index| format!("Field {}", index + 1))).collect::<Vec<_>>()).style(Style::default().fg(accent).add_modifier(Modifier::BOLD)))
+                .row_highlight_style(Style::default().fg(accent).add_modifier(Modifier::BOLD))
+                .highlight_symbol("▶ ")
+                .block(Block::default().borders(Borders::ALL).title(active_tab.label()));
+            let local_index = selected_row.saturating_sub(first).min(last.saturating_sub(first).saturating_sub(1));
+            let mut widget_state = WidgetTableState::default();
+            if first < last {
+                widget_state.select(Some(local_index));
+            }
+            frame.render_stateful_widget(table, areas[1], &mut widget_state);
+            let detail = records.get(selected_row).cloned().unwrap_or_else(|| "No records match this view. Load demo data or ingest a source.".to_string());
+            if detail_open {
+                frame.render_widget(Paragraph::new(detail).wrap(ratatui::widgets::Wrap { trim: true }).block(Block::default().borders(Borders::ALL).title("Selected record detail")), areas[2]);
+            }
+            if columns_open {
+                let chooser = visible_columns.iter().enumerate().map(|(index, visible)| format!("{}:{}", index + 1, if *visible { "shown" } else { "hidden" })).collect::<Vec<_>>().join(" · ");
+                frame.render_widget(Paragraph::new(chooser).block(Block::default().borders(Borders::ALL).title("Columns · press 1–6 to toggle")), areas[0]);
+            }
+            if export_requested {
+                let mut csv = String::from("record\n");
+                for record in &records {
+                    csv.push_str(&table::csv_cell(record));
+                    csv.push('\n');
+                }
+                export_notice = match std::fs::write("logforge-export.csv", csv) {
+                    Ok(()) => "Exported filtered rows to logforge-export.csv".to_string(),
+                    Err(error) => format!("Export failed: {error}"),
+                };
+                export_requested = false;
+            }
         })?;
 
         if event::poll(Duration::from_millis(250))? {
             if let Event::Key(key) = event::read()? {
-                match key.code {
-                    KeyCode::Char('q') | KeyCode::Esc => break,
-                    KeyCode::Char('1') => active_tab = TuiTab::Overview,
-                    KeyCode::Char('2') => active_tab = TuiTab::Search,
-                    KeyCode::Char('3') => active_tab = TuiTab::SavedQueries,
-                    KeyCode::Char('4') => active_tab = TuiTab::Sources,
-                    KeyCode::Char('5') => active_tab = TuiTab::Schema,
-                    KeyCode::Char('6') => active_tab = TuiTab::Detections,
-                    KeyCode::Char('7') => active_tab = TuiTab::Alerts,
-                    KeyCode::Char('c') => active_tab = TuiTab::Cases,
-                    KeyCode::Char('8') => active_tab = TuiTab::Retention,
-                    KeyCode::Char('9') => active_tab = TuiTab::Audit,
-                    KeyCode::Char('h') => active_tab = TuiTab::Health,
-                    KeyCode::Char('0') => active_tab = TuiTab::About,
-                    KeyCode::Char('s') => active_tab = TuiTab::Settings,
-                    _ => {}
+                if filter_active {
+                    match key.code {
+                        KeyCode::Esc | KeyCode::Enter => filter_active = false,
+                        KeyCode::Backspace => { filter.pop(); selected_row = 0; page = 0; }
+                        KeyCode::Char(value) => { filter.push(value); selected_row = 0; page = 0; }
+                        _ => {}
+                    }
+                } else if columns_open {
+                    match key.code {
+                        KeyCode::Char(value @ '1'..='6') => {
+                            let index = value.to_digit(10).unwrap_or(1) as usize - 1;
+                            if let Some(column) = visible_columns.get_mut(index) { *column = !*column; }
+                        }
+                        KeyCode::Esc | KeyCode::Char('C') => columns_open = false,
+                        _ => {}
+                    }
+                } else {
+                    match key.code {
+                        KeyCode::Char('t') if active_tab == TuiTab::Settings => {
+                            let current = service.db().get_setting("theme").ok().flatten().unwrap_or_else(|| "dark".into());
+                            let next = if current == "dark" { "light" } else { "dark" };
+                            let _ = service.db().set_setting("theme", next, &chrono::Utc::now().to_rfc3339());
+                        }
+                        KeyCode::Char('a') if active_tab == TuiTab::Settings => {
+                            let current = service.db().get_setting("accent").ok().flatten().unwrap_or_else(|| "amber".into());
+                            let next = match current.as_str() { "amber" => "blue", "blue" => "teal", _ => "amber" };
+                            let _ = service.db().set_setting("accent", next, &chrono::Utc::now().to_rfc3339());
+                        }
+                        KeyCode::Char('+') | KeyCode::Char('=') if active_tab == TuiTab::Settings => {
+                            let current = service.db().get_setting("text_scale").ok().flatten().and_then(|value| value.parse::<u8>().ok()).unwrap_or(100);
+                            let next = current.saturating_add(10).min(150);
+                            let _ = service.db().set_setting("text_scale", &next.to_string(), &chrono::Utc::now().to_rfc3339());
+                        }
+                        KeyCode::Char('-') if active_tab == TuiTab::Settings => {
+                            let current = service.db().get_setting("text_scale").ok().flatten().and_then(|value| value.parse::<u8>().ok()).unwrap_or(100);
+                            let next = current.saturating_sub(10).max(80);
+                            let _ = service.db().set_setting("text_scale", &next.to_string(), &chrono::Utc::now().to_rfc3339());
+                        }
+                        KeyCode::Char('q') => break,
+                        KeyCode::Esc if detail_open => detail_open = false,
+                        KeyCode::Esc => break,
+                        KeyCode::Char('/') => filter_active = true,
+                        KeyCode::Char('S') => reverse_sort = !reverse_sort,
+                        KeyCode::Char('C') => columns_open = true,
+                        KeyCode::Char('d') => detail_open = !detail_open,
+                        KeyCode::Char('e') => export_requested = true,
+                        KeyCode::Up => selected_row = selected_row.saturating_sub(1),
+                        KeyCode::Down => selected_row = selected_row.saturating_add(1),
+                        KeyCode::Left => { page = page.saturating_sub(1); selected_row = page.saturating_mul(20); }
+                        KeyCode::Right => { page = page.saturating_add(1); selected_row = page.saturating_mul(20); }
+                        KeyCode::Char('1') => { active_tab = TuiTab::Overview; page = 0; selected_row = 0; }
+                        KeyCode::Char('2') => { active_tab = TuiTab::Search; page = 0; selected_row = 0; }
+                        KeyCode::Char('3') => { active_tab = TuiTab::SavedQueries; page = 0; selected_row = 0; }
+                        KeyCode::Char('4') => { active_tab = TuiTab::Sources; page = 0; selected_row = 0; }
+                        KeyCode::Char('5') => { active_tab = TuiTab::Schema; page = 0; selected_row = 0; }
+                        KeyCode::Char('6') => { active_tab = TuiTab::Detections; page = 0; selected_row = 0; }
+                        KeyCode::Char('7') => { active_tab = TuiTab::Alerts; page = 0; selected_row = 0; }
+                        KeyCode::Char('c') => { active_tab = TuiTab::Cases; page = 0; selected_row = 0; }
+                        KeyCode::Char('8') => { active_tab = TuiTab::Retention; page = 0; selected_row = 0; }
+                        KeyCode::Char('9') => { active_tab = TuiTab::Audit; page = 0; selected_row = 0; }
+                        KeyCode::Char('h') => { active_tab = TuiTab::Health; page = 0; selected_row = 0; }
+                        KeyCode::Char('0') => { active_tab = TuiTab::About; page = 0; selected_row = 0; }
+                        KeyCode::Char('s') => { active_tab = TuiTab::Settings; page = 0; selected_row = 0; }
+                        _ => {}
+                    }
                 }
             }
         }
