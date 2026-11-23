@@ -29,3 +29,8 @@ if [[ $status -ne 0 ]]; then
   exit "$status"
 fi
 cat "$log_file"
+if [[ "$label" == "acceptance tests" ]]; then
+  while IFS= read -r result; do
+    printf '::notice title=acceptance test::%s\n' "$(encode_annotation "$result")"
+  done < <(grep -E '^test .+ \.\.\. ok$' "$log_file")
+fi

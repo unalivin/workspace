@@ -5,12 +5,14 @@ on:
     paths:
       - 'logforge-siem/**'
       - 'scripts/ci-check.sh'
+      - 'scripts/logforge-siem-acceptance.sh'
       - '.github/workflows/logforge-siem-ci.yml'
       - 'templates/workflows/rust-ci.yml'
   pull_request:
     paths:
       - 'logforge-siem/**'
       - 'scripts/ci-check.sh'
+      - 'scripts/logforge-siem-acceptance.sh'
       - '.github/workflows/logforge-siem-ci.yml'
       - 'templates/workflows/rust-ci.yml'
 
@@ -58,5 +60,7 @@ jobs:
         run: ../scripts/ci-check.sh build cargo build --workspace --no-default-features
       - name: Test (no-gui)
         run: ../scripts/ci-check.sh 'test no-gui' cargo test --workspace --no-default-features
+      - name: Acceptance evidence
+        run: ../scripts/ci-check.sh 'acceptance tests' bash ../scripts/logforge-siem-acceptance.sh
       - name: Test (default)
         run: ../scripts/ci-check.sh 'test default' cargo test --workspace

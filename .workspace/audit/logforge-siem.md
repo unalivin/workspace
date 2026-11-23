@@ -26,14 +26,14 @@ The requested `build-prompt-final.md` and its Appendix B are not present in the 
 
 | # | Appendix B criterion | Named test / expected evidence | Output |
 |---|---|---|---|
-| 1 | Unavailable: source text missing | `source_lifecycle_tests` (source lifecycle) | Aggregate workspace tests passed: Windows, Ubuntu; individual test output not retained |
-| 2 | Unavailable: source text missing | `event_query_tests` (event query) | Aggregate workspace tests passed: Windows, Ubuntu; individual test output not retained |
-| 3 | Unavailable: source text missing | `correlation_service_tests` (rule service) | Aggregate workspace tests passed: Windows, Ubuntu; individual test output not retained |
-| 4 | Unavailable: source text missing | `alert_bulk_workflow_tests` (alert workflow) | Aggregate workspace tests passed: Windows, Ubuntu; individual test output not retained |
-| 5 | Unavailable: source text missing | `case_management_tests` (case workflow) | Aggregate workspace tests passed: Windows, Ubuntu; individual test output not retained |
-| 6 | Unavailable: source text missing | `retention_plan_tests` (retention planning) | Aggregate workspace tests passed: Windows, Ubuntu; individual test output not retained |
-| 7 | Unavailable: source text missing | `audit_query_tests` (audit querying) | Aggregate workspace tests passed: Windows, Ubuntu; individual test output not retained |
-| 8 | Unavailable: source text missing | `notification_outbox_tests` (notification outbox) | Aggregate workspace tests passed: Windows, Ubuntu; individual test output not retained |
+| 1 | Unavailable: Appendix text missing; provisional source lifecycle | `disabling_source_blocks_new_ingest_without_removing_existing_data` | Pending focused CI annotation |
+| 2 | Unavailable: Appendix text missing; provisional event query | `filtered_search_supports_parameterized_facets_and_keyset_pages` | Pending focused CI annotation |
+| 3 | Unavailable: Appendix text missing; provisional detection correlation | `ingested_events_drive_persistent_threshold_correlation_alerts` | Pending focused CI annotation |
+| 4 | Unavailable: Appendix text missing; provisional alert workflow | `bulk_update_only_changes_alerts_matching_every_selector` | Pending focused CI annotation |
+| 5 | Unavailable: Appendix text missing; provisional case management | `manages_case_lifecycle_notes_assignment_and_alert_links_atomically` | Pending focused CI annotation |
+| 6 | Unavailable: Appendix text missing; provisional retention | `age_policy_prunes_old_events_even_when_event_count_is_below_limit` | Pending focused CI annotation |
+| 7 | Unavailable: Appendix text missing; provisional audit | `audit_queries_filter_page_and_preserve_chain_integrity` | Pending focused CI annotation |
+| 8 | Unavailable: Appendix text missing; provisional notifications | `generated_alerts_enqueue_and_retry_notifications_with_backoff` | Pending focused CI annotation |
 
 ## Required work steps
 
