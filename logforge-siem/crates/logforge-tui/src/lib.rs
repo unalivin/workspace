@@ -305,7 +305,6 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
             }
             if records.is_empty() {
                 selected_row = 0;
-                page = 0;
             } else {
                 selected_row = selected_row.min(records.len() - 1);
             }
