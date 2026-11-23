@@ -5,6 +5,9 @@ if [[ $# -lt 2 ]]; then
   printf 'Usage: ci-check.sh <step name> <command> [args...]\n' >&2
   exit 2
 fi
+encode_annotation() {
+  printf '%s' "$1" | sed -e 's/%/%25/g' -e ':a' -e 'N' -e '$!ba' -e 's/\n/%0A/g' -e 's/\r/%0D/g'
+}
 label="$1"
 shift
 log_file="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/ci-check-$$.log"
@@ -13,9 +16,6 @@ status=$?
 if [[ $status -ne 0 ]]; then
   first_excerpt="$(head -c 3000 "$log_file")"
   last_excerpt="$(tail -c 3000 "$log_file")"
-  encode_annotation() {
-    printf '%s' "$1" | sed -e 's/%/%25/g' -e ':a' -e 'N' -e '$!ba' -e 's/\n/%0A/g' -e 's/\r/%0D/g'
-  }
   first_encoded="$(encode_annotation "$first_excerpt")"
   last_encoded="$(encode_annotation "$last_excerpt")"
   clean_log="$(perl -pe 's/\e\[[0-9;]*[[:alpha:]]//g' "$log_file")"
