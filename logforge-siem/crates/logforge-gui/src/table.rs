@@ -125,7 +125,7 @@ impl TableState {
             {
                 self.page += 1;
             }
-            egui::ComboBox::from_id_source((name, "page-size"))
+            egui::ComboBox::from_id_salt((name, "page-size"))
                 .selected_text(format!("{} rows", self.page_size))
                 .show_ui(ui, |ui| {
                     for count in [25, 50, 100, 250] {

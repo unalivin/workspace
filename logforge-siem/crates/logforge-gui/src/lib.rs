@@ -382,7 +382,7 @@ impl eframe::App for LogForgeApp {
                     ui.horizontal(|ui| {
                         ui.label("Theme");
                         let previous = self.theme.clone();
-                        egui::ComboBox::from_id_source("theme-mode")
+                        egui::ComboBox::from_id_salt("theme-mode")
                             .selected_text(&self.theme)
                             .show_ui(ui, |ui| {
                                 for value in ["dark", "light", "system", "high-contrast"] {
@@ -398,7 +398,7 @@ impl eframe::App for LogForgeApp {
                     ui.horizontal(|ui| {
                         ui.label("Brand highlight");
                         let previous = self.accent.clone();
-                        egui::ComboBox::from_id_source("brand-accent")
+                        egui::ComboBox::from_id_salt("brand-accent")
                             .selected_text(&self.accent)
                             .show_ui(ui, |ui| {
                                 for value in ["amber", "blue", "teal"] {
@@ -414,7 +414,7 @@ impl eframe::App for LogForgeApp {
                     ui.horizontal(|ui| {
                         ui.label("Density");
                         let previous = self.density.clone();
-                        egui::ComboBox::from_id_source("density")
+                        egui::ComboBox::from_id_salt("density")
                             .selected_text(&self.density)
                             .show_ui(ui, |ui| {
                                 for value in ["compact", "comfortable"] {
