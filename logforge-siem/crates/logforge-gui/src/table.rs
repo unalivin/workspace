@@ -242,6 +242,29 @@ mod tests {
     use super::*;
 
     #[test]
+    fn filter_sort_and_visible_columns_apply_to_exported_rows() {
+        let mut state = TableState {
+            filter: "failed".into(),
+            sort_column: 0,
+            ascending: true,
+            visible: vec![true, false, true],
+            ..TableState::default()
+        };
+        let rows = vec![
+            vec!["2".into(), "hidden".into(), "failed login".into()],
+            vec!["1".into(), "hidden".into(), "failed password".into()],
+            vec!["3".into(), "hidden".into(), "accepted".into()],
+        ];
+        let csv = state.export_csv("Alerts", &["ID", "Private", "Message"], &rows);
+        assert!(csv.contains("\"ID\",\"Message\""));
+        assert!(csv.contains("\"1\",\"failed password\""));
+        assert!(csv.contains("\"2\",\"failed login\""));
+        assert!(!csv.contains("hidden"));
+        state.filter.clear();
+        assert_eq!(state.filtered_rows(&rows).len(), 3);
+    }
+
+    #[test]
     fn csv_escaping_quotes_and_newlines() {
         assert_eq!(csv_cell("hello, \"world\"\n"), "\"hello, \"\"world\"\"\n\"");
     }
