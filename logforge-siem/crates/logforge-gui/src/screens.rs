@@ -43,6 +43,29 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
                     });
                 }
             }
+            if tab == GuiTab::Sources {
+                if let Some(record) = table.selected_record(&rows) {
+                    if let (Some(id), Some(enabled)) = (
+                        record.first().and_then(|value| value.parse::<i64>().ok()),
+                        record.get(4).and_then(|value| value.parse::<bool>().ok()),
+                    ) {
+                        if ui.button(if enabled { "Disable selected source" } else { "Enable selected source" }).clicked() {
+                            match service.set_source_enabled(id, !enabled) {
+                                Ok(true) => {
+                                    table.loading_frames = 1;
+                                    ui.ctx().request_repaint_after(std::time::Duration::from_millis(30));
+                                }
+                                Ok(false) => {
+                                    ui.colored_label(egui::Color32::from_rgb(179, 38, 30), "The selected source no longer exists.");
+                                }
+                                Err(error) => {
+                                    ui.colored_label(egui::Color32::from_rgb(179, 38, 30), format!("Unable to update source: {error}"));
+                                }
+                            };
+                        }
+                    }
+                }
+            }
         }
         Err(error) => {
             ui.colored_label(
