@@ -12,6 +12,8 @@ pub struct TableState {
     pub columns_open: bool,
     pub active_screen: Option<&'static str>,
     pub loading_frames: u8,
+    pub export_path: String,
+    pub export_status: Option<String>,
 }
 
 impl TableState {
@@ -40,10 +42,35 @@ impl TableState {
             if ui.button("Columns").clicked() {
                 self.columns_open = !self.columns_open;
             }
+            ui.add_sized(
+                [170.0, 24.0],
+                egui::TextEdit::singleline(&mut self.export_path)
+                    .hint_text("CSV file path (optional)"),
+            );
             if ui.button("Export CSV").clicked() {
+                let default_path = format!(
+                    "logforge-{}.csv",
+                    name.to_ascii_lowercase().replace(' ', "-")
+                );
+                let path = if self.export_path.trim().is_empty() {
+                    default_path
+                } else {
+                    self.export_path.trim().to_string()
+                };
+                let csv = self.export_csv(name, columns, rows);
+                let result = std::fs::write(&path, csv);
+                self.export_status = Some(match result {
+                    Ok(()) => format!("Exported filtered rows to {path}"),
+                    Err(error) => format!("Export failed for {path}: {error}"),
+                });
+            }
+            if ui.button("Copy CSV").clicked() {
                 ui.ctx().copy_text(self.export_csv(name, columns, rows));
             }
         });
+        if let Some(status) = &self.export_status {
+            ui.label(status);
+        }
         if self.columns_open {
             ui.horizontal_wrapped(|ui| {
                 for (index, column) in columns.iter().enumerate() {
