@@ -8,7 +8,9 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    widgets::{Block, Borders, Cell, List, ListItem, Paragraph, Row, Table, TableState as WidgetTableState},
+    widgets::{
+        Block, Borders, Cell, List, ListItem, Paragraph, Row, Table, TableState as WidgetTableState,
+    },
     Terminal,
 };
 use std::io;
@@ -372,15 +374,25 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                 if filter_active {
                     match key.code {
                         KeyCode::Esc | KeyCode::Enter => filter_active = false,
-                        KeyCode::Backspace => { filter.pop(); selected_row = 0; page = 0; }
-                        KeyCode::Char(value) => { filter.push(value); selected_row = 0; page = 0; }
+                        KeyCode::Backspace => {
+                            filter.pop();
+                            selected_row = 0;
+                            page = 0;
+                        }
+                        KeyCode::Char(value) => {
+                            filter.push(value);
+                            selected_row = 0;
+                            page = 0;
+                        }
                         _ => {}
                     }
                 } else if columns_open {
                     match key.code {
                         KeyCode::Char(value @ '1'..='6') => {
                             let index = value.to_digit(10).unwrap_or(1) as usize - 1;
-                            if let Some(column) = visible_columns.get_mut(index) { *column = !*column; }
+                            if let Some(column) = visible_columns.get_mut(index) {
+                                *column = !*column;
+                            }
                         }
                         KeyCode::Esc | KeyCode::Char('C') => columns_open = false,
                         _ => {}
@@ -388,24 +400,68 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                 } else {
                     match key.code {
                         KeyCode::Char('t') if active_tab == TuiTab::Settings => {
-                            let current = service.db().get_setting("theme").ok().flatten().unwrap_or_else(|| "dark".into());
+                            let current = service
+                                .db()
+                                .get_setting("theme")
+                                .ok()
+                                .flatten()
+                                .unwrap_or_else(|| "dark".into());
                             let next = if current == "dark" { "light" } else { "dark" };
-                            let _ = service.db().set_setting("theme", next, &chrono::Utc::now().to_rfc3339());
+                            let _ = service.db().set_setting(
+                                "theme",
+                                next,
+                                &chrono::Utc::now().to_rfc3339(),
+                            );
                         }
                         KeyCode::Char('a') if active_tab == TuiTab::Settings => {
-                            let current = service.db().get_setting("accent").ok().flatten().unwrap_or_else(|| "amber".into());
-                            let next = match current.as_str() { "amber" => "blue", "blue" => "teal", _ => "amber" };
-                            let _ = service.db().set_setting("accent", next, &chrono::Utc::now().to_rfc3339());
+                            let current = service
+                                .db()
+                                .get_setting("accent")
+                                .ok()
+                                .flatten()
+                                .unwrap_or_else(|| "amber".into());
+                            let next = match current.as_str() {
+                                "amber" => "blue",
+                                "blue" => "teal",
+                                _ => "amber",
+                            };
+                            let _ = service.db().set_setting(
+                                "accent",
+                                next,
+                                &chrono::Utc::now().to_rfc3339(),
+                            );
                         }
-                        KeyCode::Char('+') | KeyCode::Char('=') if active_tab == TuiTab::Settings => {
-                            let current = service.db().get_setting("text_scale").ok().flatten().and_then(|value| value.parse::<u8>().ok()).unwrap_or(100);
+                        KeyCode::Char('+') | KeyCode::Char('=')
+                            if active_tab == TuiTab::Settings =>
+                        {
+                            let current = service
+                                .db()
+                                .get_setting("text_scale")
+                                .ok()
+                                .flatten()
+                                .and_then(|value| value.parse::<u8>().ok())
+                                .unwrap_or(100);
                             let next = current.saturating_add(10).min(150);
-                            let _ = service.db().set_setting("text_scale", &next.to_string(), &chrono::Utc::now().to_rfc3339());
+                            let _ = service.db().set_setting(
+                                "text_scale",
+                                &next.to_string(),
+                                &chrono::Utc::now().to_rfc3339(),
+                            );
                         }
                         KeyCode::Char('-') if active_tab == TuiTab::Settings => {
-                            let current = service.db().get_setting("text_scale").ok().flatten().and_then(|value| value.parse::<u8>().ok()).unwrap_or(100);
+                            let current = service
+                                .db()
+                                .get_setting("text_scale")
+                                .ok()
+                                .flatten()
+                                .and_then(|value| value.parse::<u8>().ok())
+                                .unwrap_or(100);
                             let next = current.saturating_sub(10).max(80);
-                            let _ = service.db().set_setting("text_scale", &next.to_string(), &chrono::Utc::now().to_rfc3339());
+                            let _ = service.db().set_setting(
+                                "text_scale",
+                                &next.to_string(),
+                                &chrono::Utc::now().to_rfc3339(),
+                            );
                         }
                         KeyCode::Char('q') => break,
                         KeyCode::Esc if detail_open => detail_open = false,
@@ -417,21 +473,79 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                         KeyCode::Char('e') => export_requested = true,
                         KeyCode::Up => selected_row = selected_row.saturating_sub(1),
                         KeyCode::Down => selected_row = selected_row.saturating_add(1),
-                        KeyCode::Left => { page = page.saturating_sub(1); selected_row = page.saturating_mul(20); }
-                        KeyCode::Right => { page = page.saturating_add(1); selected_row = page.saturating_mul(20); }
-                        KeyCode::Char('1') => { active_tab = TuiTab::Overview; page = 0; selected_row = 0; }
-                        KeyCode::Char('2') => { active_tab = TuiTab::Search; page = 0; selected_row = 0; }
-                        KeyCode::Char('3') => { active_tab = TuiTab::SavedQueries; page = 0; selected_row = 0; }
-                        KeyCode::Char('4') => { active_tab = TuiTab::Sources; page = 0; selected_row = 0; }
-                        KeyCode::Char('5') => { active_tab = TuiTab::Schema; page = 0; selected_row = 0; }
-                        KeyCode::Char('6') => { active_tab = TuiTab::Detections; page = 0; selected_row = 0; }
-                        KeyCode::Char('7') => { active_tab = TuiTab::Alerts; page = 0; selected_row = 0; }
-                        KeyCode::Char('c') => { active_tab = TuiTab::Cases; page = 0; selected_row = 0; }
-                        KeyCode::Char('8') => { active_tab = TuiTab::Retention; page = 0; selected_row = 0; }
-                        KeyCode::Char('9') => { active_tab = TuiTab::Audit; page = 0; selected_row = 0; }
-                        KeyCode::Char('h') => { active_tab = TuiTab::Health; page = 0; selected_row = 0; }
-                        KeyCode::Char('0') => { active_tab = TuiTab::About; page = 0; selected_row = 0; }
-                        KeyCode::Char('s') => { active_tab = TuiTab::Settings; page = 0; selected_row = 0; }
+                        KeyCode::Left => {
+                            page = page.saturating_sub(1);
+                            selected_row = page.saturating_mul(20);
+                        }
+                        KeyCode::Right => {
+                            page = page.saturating_add(1);
+                            selected_row = page.saturating_mul(20);
+                        }
+                        KeyCode::Char('1') => {
+                            active_tab = TuiTab::Overview;
+                            page = 0;
+                            selected_row = 0;
+                        }
+                        KeyCode::Char('2') => {
+                            active_tab = TuiTab::Search;
+                            page = 0;
+                            selected_row = 0;
+                        }
+                        KeyCode::Char('3') => {
+                            active_tab = TuiTab::SavedQueries;
+                            page = 0;
+                            selected_row = 0;
+                        }
+                        KeyCode::Char('4') => {
+                            active_tab = TuiTab::Sources;
+                            page = 0;
+                            selected_row = 0;
+                        }
+                        KeyCode::Char('5') => {
+                            active_tab = TuiTab::Schema;
+                            page = 0;
+                            selected_row = 0;
+                        }
+                        KeyCode::Char('6') => {
+                            active_tab = TuiTab::Detections;
+                            page = 0;
+                            selected_row = 0;
+                        }
+                        KeyCode::Char('7') => {
+                            active_tab = TuiTab::Alerts;
+                            page = 0;
+                            selected_row = 0;
+                        }
+                        KeyCode::Char('c') => {
+                            active_tab = TuiTab::Cases;
+                            page = 0;
+                            selected_row = 0;
+                        }
+                        KeyCode::Char('8') => {
+                            active_tab = TuiTab::Retention;
+                            page = 0;
+                            selected_row = 0;
+                        }
+                        KeyCode::Char('9') => {
+                            active_tab = TuiTab::Audit;
+                            page = 0;
+                            selected_row = 0;
+                        }
+                        KeyCode::Char('h') => {
+                            active_tab = TuiTab::Health;
+                            page = 0;
+                            selected_row = 0;
+                        }
+                        KeyCode::Char('0') => {
+                            active_tab = TuiTab::About;
+                            page = 0;
+                            selected_row = 0;
+                        }
+                        KeyCode::Char('s') => {
+                            active_tab = TuiTab::Settings;
+                            page = 0;
+                            selected_row = 0;
+                        }
                         _ => {}
                     }
                 }

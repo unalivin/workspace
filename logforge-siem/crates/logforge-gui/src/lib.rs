@@ -41,10 +41,32 @@ pub struct LogForgeApp {
 impl LogForgeApp {
     pub fn new(service: SiemService) -> Self {
         let last_data_version = service.db().data_version().unwrap_or(0);
-        let theme = service.db().get_setting("theme").ok().flatten().unwrap_or_else(|| "dark".into());
-        let accent = service.db().get_setting("accent").ok().flatten().unwrap_or_else(|| "amber".into());
-        let density = service.db().get_setting("density").ok().flatten().unwrap_or_else(|| "compact".into());
-        let text_scale = service.db().get_setting("text_scale").ok().flatten().and_then(|value| value.parse().ok()).filter(|value| logforge_core::config::validate_text_scale(*value)).unwrap_or(100);
+        let theme = service
+            .db()
+            .get_setting("theme")
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "dark".into());
+        let accent = service
+            .db()
+            .get_setting("accent")
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "amber".into());
+        let density = service
+            .db()
+            .get_setting("density")
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "compact".into());
+        let text_scale = service
+            .db()
+            .get_setting("text_scale")
+            .ok()
+            .flatten()
+            .and_then(|value| value.parse().ok())
+            .filter(|value| logforge_core::config::validate_text_scale(*value))
+            .unwrap_or(100);
         Self {
             service,
             active_tab: GuiTab::Overview,

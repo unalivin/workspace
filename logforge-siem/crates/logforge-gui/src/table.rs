@@ -15,7 +15,13 @@ pub struct TableState {
 }
 
 impl TableState {
-    pub fn render(&mut self, ui: &mut egui::Ui, name: &str, columns: &[&str], rows: &[Vec<String>]) {
+    pub fn render(
+        &mut self,
+        ui: &mut egui::Ui,
+        name: &str,
+        columns: &[&str],
+        rows: &[Vec<String>],
+    ) {
         if self.visible.len() != columns.len() {
             self.visible = vec![true; columns.len()];
         }
@@ -24,7 +30,9 @@ impl TableState {
         }
         ui.horizontal(|ui| {
             ui.label("Filter rows");
-            let response = ui.add(egui::TextEdit::singleline(&mut self.filter).hint_text("Search visible fields"));
+            let response = ui.add(
+                egui::TextEdit::singleline(&mut self.filter).hint_text("Search visible fields"),
+            );
             if response.changed() {
                 self.page = 0;
                 self.selected = None;
@@ -54,7 +62,12 @@ impl TableState {
         }
         let start = self.page.saturating_mul(self.page_size).min(filtered.len());
         let end = start.saturating_add(self.page_size).min(filtered.len());
-        ui.label(format!("{} records · showing {}–{}", filtered.len(), start + usize::from(start < end), end));
+        ui.label(format!(
+            "{} records · showing {}–{}",
+            filtered.len(),
+            start + usize::from(start < end),
+            end
+        ));
         egui::ScrollArea::both().max_height(420.0).show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.label("#");
@@ -65,7 +78,10 @@ impl TableState {
                         } else {
                             (*column).to_string()
                         };
-                        if ui.add_sized([150.0, 26.0], egui::Button::new(label)).clicked() {
+                        if ui
+                            .add_sized([150.0, 26.0], egui::Button::new(label))
+                            .clicked()
+                        {
                             if self.sort_column == index {
                                 self.ascending = !self.ascending;
                             } else {
@@ -80,7 +96,10 @@ impl TableState {
             for (absolute, row) in filtered.iter().enumerate().skip(start).take(end - start) {
                 let selected = self.selected == Some(absolute);
                 ui.horizontal(|ui| {
-                    if ui.selectable_label(selected, format!("{}", absolute + 1)).clicked() {
+                    if ui
+                        .selectable_label(selected, format!("{}", absolute + 1))
+                        .clicked()
+                    {
                         self.selected = Some(absolute);
                     }
                     for (index, cell) in row.iter().enumerate().take(columns.len()) {
@@ -92,12 +111,18 @@ impl TableState {
             }
         });
         ui.horizontal(|ui| {
-            if ui.add_enabled(self.page > 0, egui::Button::new("Previous")).clicked() {
+            if ui
+                .add_enabled(self.page > 0, egui::Button::new("Previous"))
+                .clicked()
+            {
                 self.page -= 1;
             }
             let pages = filtered.len().div_ceil(self.page_size).max(1);
             ui.label(format!("Page {} of {}", self.page + 1, pages));
-            if ui.add_enabled(self.page + 1 < pages, egui::Button::new("Next")).clicked() {
+            if ui
+                .add_enabled(self.page + 1 < pages, egui::Button::new("Next"))
+                .clicked()
+            {
                 self.page += 1;
             }
             egui::ComboBox::from_id_source((name, "page-size"))
@@ -125,25 +150,51 @@ impl TableState {
         let filter = self.filter.trim().to_lowercase();
         let mut result: Vec<Vec<String>> = rows
             .iter()
-            .filter(|row| filter.is_empty() || row.iter().any(|cell| cell.to_lowercase().contains(&filter)))
+            .filter(|row| {
+                filter.is_empty() || row.iter().any(|cell| cell.to_lowercase().contains(&filter))
+            })
             .cloned()
             .collect();
         result.sort_by(|left, right| {
             let a = left.get(self.sort_column).map(String::as_str).unwrap_or("");
-            let b = right.get(self.sort_column).map(String::as_str).unwrap_or("");
+            let b = right
+                .get(self.sort_column)
+                .map(String::as_str)
+                .unwrap_or("");
             let order = a.cmp(b);
-            if self.ascending { order } else { order.reverse() }
+            if self.ascending {
+                order
+            } else {
+                order.reverse()
+            }
         });
         result
     }
 
     fn export_csv(&self, name: &str, columns: &[&str], rows: &[Vec<String>]) -> String {
-        let indices: Vec<usize> = self.visible.iter().enumerate().filter_map(|(i, shown)| shown.then_some(i)).collect();
+        let indices: Vec<usize> = self
+            .visible
+            .iter()
+            .enumerate()
+            .filter_map(|(i, shown)| shown.then_some(i))
+            .collect();
         let mut output = format!("# {name}\n");
-        output.push_str(&indices.iter().map(|i| csv_cell(columns[i])).collect::<Vec<_>>().join(","));
+        output.push_str(
+            &indices
+                .iter()
+                .map(|i| csv_cell(columns[i]))
+                .collect::<Vec<_>>()
+                .join(","),
+        );
         output.push('\n');
         for row in self.filtered_rows(rows) {
-            output.push_str(&indices.iter().map(|i| csv_cell(row.get(*i).map(String::as_str).unwrap_or(""))).collect::<Vec<_>>().join(","));
+            output.push_str(
+                &indices
+                    .iter()
+                    .map(|i| csv_cell(row.get(*i).map(String::as_str).unwrap_or("")))
+                    .collect::<Vec<_>>()
+                    .join(","),
+            );
             output.push('\n');
         }
         output
