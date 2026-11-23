@@ -405,7 +405,8 @@ impl eframe::App for LogForgeApp {
                                 }
                             });
                         if self.accent != previous {
-                            self.save_setting("accent", &self.accent);
+                            let value = self.accent.clone();
+                            self.save_setting("accent", &value);
                             identity::apply_theme(ctx, &self.theme, &self.accent);
                         }
                     });
@@ -421,7 +422,8 @@ impl eframe::App for LogForgeApp {
                             });
                         ui.label(if self.density == "compact" { "default" } else { "override" });
                         if self.density != previous && logforge_core::config::validate_density(&self.density) {
-                            self.save_setting("density", &self.density);
+                            let value = self.density.clone();
+                            self.save_setting("density", &value);
                         }
                     });
                     ui.horizontal(|ui| {
