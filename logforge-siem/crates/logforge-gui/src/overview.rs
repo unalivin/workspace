@@ -1,5 +1,5 @@
-use eframe::egui;
 use crate::table::TableState;
+use eframe::egui;
 use logforge_core::{event_analytics::BucketSize, SiemService};
 
 pub fn metric_card(ui: &mut egui::Ui, label: &str, value: String) {
