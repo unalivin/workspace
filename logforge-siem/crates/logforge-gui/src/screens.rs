@@ -39,13 +39,20 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
                 "Source freshness · {} active · {} stale · {} never seen · {} disabled",
                 liveness.active, liveness.stale, liveness.never_seen, liveness.disabled
             )),
-            Err(error) => ui.colored_label(egui::Color32::from_rgb(179, 38, 30), format!("Unable to load source freshness: {error}")),
+            Err(error) => ui.colored_label(
+                egui::Color32::from_rgb(179, 38, 30),
+                format!("Unable to load source freshness: {error}"),
+            ),
         };
     }
     if tab == GuiTab::Audit {
         match logforge_core::audit_verify::verify_audit_chain(service.db()) {
             Ok(result) => {
-                let message = format!("Audit chain {} · {} entries verified", if result.valid { "valid" } else { "INVALID" }, result.total_entries);
+                let message = format!(
+                    "Audit chain {} · {} entries verified",
+                    if result.valid { "valid" } else { "INVALID" },
+                    result.total_entries
+                );
                 if result.valid {
                     ui.label(message);
                 } else {
@@ -53,7 +60,10 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
                 }
             }
             Err(error) => {
-                ui.colored_label(egui::Color32::from_rgb(179, 38, 30), format!("Audit verification error: {error}"));
+                ui.colored_label(
+                    egui::Color32::from_rgb(179, 38, 30),
+                    format!("Audit verification error: {error}"),
+                );
             }
         }
     }
@@ -78,11 +88,17 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
                     ));
                 }
                 Err(error) => {
-                    ui.colored_label(egui::Color32::from_rgb(179, 38, 30), format!("Unable to plan retention: {error}"));
+                    ui.colored_label(
+                        egui::Color32::from_rgb(179, 38, 30),
+                        format!("Unable to plan retention: {error}"),
+                    );
                 }
             },
             Err(error) => {
-                ui.colored_label(egui::Color32::from_rgb(179, 38, 30), format!("Unable to load retention policy: {error}"));
+                ui.colored_label(
+                    egui::Color32::from_rgb(179, 38, 30),
+                    format!("Unable to load retention policy: {error}"),
+                );
             }
         }
     }
@@ -101,51 +117,81 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
             if tab == GuiTab::SavedQueries {
                 if let Some(record) = table.selected_record(&rows) {
                     ui.horizontal(|ui| {
-                        ui.label(format!("Selected query: {}", record.get(1).map(String::as_str).unwrap_or("")));
+                        ui.label(format!(
+                            "Selected query: {}",
+                            record.get(1).map(String::as_str).unwrap_or("")
+                        ));
                         if ui.button("Copy query text").clicked() {
-                            ui.ctx().copy_text(record.get(2).cloned().unwrap_or_default());
+                            ui.ctx()
+                                .copy_text(record.get(2).cloned().unwrap_or_default());
                         }
                     });
                 }
             }
             if tab == GuiTab::Cases {
                 if let Some(record) = table.selected_record(&rows) {
-                    if let Some(case_id) = record.first().and_then(|value| value.parse::<i64>().ok()) {
+                    if let Some(case_id) =
+                        record.first().and_then(|value| value.parse::<i64>().ok())
+                    {
                         let manager = logforge_core::cases::CaseManager::new(service.db());
                         if let Ok(Some(case)) = manager.get(case_id) {
-                            ui.collapsing(format!("Investigation details · case #{}", case.id), |ui| {
-                                ui.label(&case.description);
-                                ui.label(format!("Assignee: {}", if case.assignee.is_empty() { "unassigned" } else { &case.assignee }));
-                                if let Ok(notes) = manager.notes(case_id) {
-                                    for note in notes {
-                                        ui.label(format!("{} · {} · {}", note.created_at, note.author, note.body));
-                                    }
-                                }
-                                if let Ok(alerts) = manager.alerts(case_id) {
-                                    for alert in alerts {
-                                        ui.label(format!("Linked alert #{} · {} · {}", alert.id, alert.severity, alert.title));
-                                    }
-                                }
-                                let next_status = match case.status.as_str() {
-                                    "open" => "in_progress",
-                                    "in_progress" => "closed",
-                                    _ => "open",
-                                };
-                                if ui.button(format!("Move case to {next_status}")).clicked() {
-                                    match manager.set_status(case_id, next_status) {
-                                        Ok(true) => {
-                                            table.loading_frames = 1;
-                                            ui.ctx().request_repaint_after(std::time::Duration::from_millis(30));
+                            ui.collapsing(
+                                format!("Investigation details · case #{}", case.id),
+                                |ui| {
+                                    ui.label(&case.description);
+                                    ui.label(format!(
+                                        "Assignee: {}",
+                                        if case.assignee.is_empty() {
+                                            "unassigned"
+                                        } else {
+                                            &case.assignee
                                         }
-                                        Ok(false) => {
-                                            ui.colored_label(egui::Color32::from_rgb(179, 38, 30), "The selected case no longer exists.");
-                                        }
-                                        Err(error) => {
-                                            ui.colored_label(egui::Color32::from_rgb(179, 38, 30), format!("Unable to update case: {error}"));
+                                    ));
+                                    if let Ok(notes) = manager.notes(case_id) {
+                                        for note in notes {
+                                            ui.label(format!(
+                                                "{} · {} · {}",
+                                                note.created_at, note.author, note.body
+                                            ));
                                         }
                                     }
-                                }
-                            });
+                                    if let Ok(alerts) = manager.alerts(case_id) {
+                                        for alert in alerts {
+                                            ui.label(format!(
+                                                "Linked alert #{} · {} · {}",
+                                                alert.id, alert.severity, alert.title
+                                            ));
+                                        }
+                                    }
+                                    let next_status = match case.status.as_str() {
+                                        "open" => "in_progress",
+                                        "in_progress" => "closed",
+                                        _ => "open",
+                                    };
+                                    if ui.button(format!("Move case to {next_status}")).clicked() {
+                                        match manager.set_status(case_id, next_status) {
+                                            Ok(true) => {
+                                                table.loading_frames = 1;
+                                                ui.ctx().request_repaint_after(
+                                                    std::time::Duration::from_millis(30),
+                                                );
+                                            }
+                                            Ok(false) => {
+                                                ui.colored_label(
+                                                    egui::Color32::from_rgb(179, 38, 30),
+                                                    "The selected case no longer exists.",
+                                                );
+                                            }
+                                            Err(error) => {
+                                                ui.colored_label(
+                                                    egui::Color32::from_rgb(179, 38, 30),
+                                                    format!("Unable to update case: {error}"),
+                                                );
+                                            }
+                                        }
+                                    }
+                                },
+                            );
                         }
                     }
                 }
@@ -161,14 +207,22 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
                             "acknowledged" => "resolved",
                             _ => "open",
                         };
-                        if ui.button(format!("Mark selected alert {next_status}")).clicked() {
+                        if ui
+                            .button(format!("Mark selected alert {next_status}"))
+                            .clicked()
+                        {
                             match service.update_alert_status(id, next_status) {
                                 Ok(()) => {
                                     table.loading_frames = 1;
-                                    ui.ctx().request_repaint_after(std::time::Duration::from_millis(30));
+                                    ui.ctx().request_repaint_after(
+                                        std::time::Duration::from_millis(30),
+                                    );
                                 }
                                 Err(error) => {
-                                    ui.colored_label(egui::Color32::from_rgb(179, 38, 30), format!("Unable to update alert: {error}"));
+                                    ui.colored_label(
+                                        egui::Color32::from_rgb(179, 38, 30),
+                                        format!("Unable to update alert: {error}"),
+                                    );
                                 }
                             }
                         }
@@ -181,22 +235,41 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
                     let id = record.get(1).and_then(|value| value.parse::<i64>().ok());
                     let enabled = record.get(5).and_then(|value| value.parse::<bool>().ok());
                     if let (Some(id), Some(enabled)) = (id, enabled) {
-                        if ui.button(if enabled { "Disable selected detection" } else { "Enable selected detection" }).clicked() {
+                        if ui
+                            .button(if enabled {
+                                "Disable selected detection"
+                            } else {
+                                "Enable selected detection"
+                            })
+                            .clicked()
+                        {
                             let result = if kind == "Pattern" {
                                 service.set_rule_enabled(id, !enabled)
                             } else {
-                                logforge_core::correlation_admin::set_enabled(service.db(), id, !enabled)
+                                logforge_core::correlation_admin::set_enabled(
+                                    service.db(),
+                                    id,
+                                    !enabled,
+                                )
                             };
                             match result {
                                 Ok(true) => {
                                     table.loading_frames = 1;
-                                    ui.ctx().request_repaint_after(std::time::Duration::from_millis(30));
+                                    ui.ctx().request_repaint_after(
+                                        std::time::Duration::from_millis(30),
+                                    );
                                 }
                                 Ok(false) => {
-                                    ui.colored_label(egui::Color32::from_rgb(179, 38, 30), "The selected detection no longer exists.");
+                                    ui.colored_label(
+                                        egui::Color32::from_rgb(179, 38, 30),
+                                        "The selected detection no longer exists.",
+                                    );
                                 }
                                 Err(error) => {
-                                    ui.colored_label(egui::Color32::from_rgb(179, 38, 30), format!("Unable to update detection: {error}"));
+                                    ui.colored_label(
+                                        egui::Color32::from_rgb(179, 38, 30),
+                                        format!("Unable to update detection: {error}"),
+                                    );
                                 }
                             };
                         }
@@ -209,17 +282,32 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
                         record.first().and_then(|value| value.parse::<i64>().ok()),
                         record.get(4).and_then(|value| value.parse::<bool>().ok()),
                     ) {
-                        if ui.button(if enabled { "Disable selected source" } else { "Enable selected source" }).clicked() {
+                        if ui
+                            .button(if enabled {
+                                "Disable selected source"
+                            } else {
+                                "Enable selected source"
+                            })
+                            .clicked()
+                        {
                             match service.set_source_enabled(id, !enabled) {
                                 Ok(true) => {
                                     table.loading_frames = 1;
-                                    ui.ctx().request_repaint_after(std::time::Duration::from_millis(30));
+                                    ui.ctx().request_repaint_after(
+                                        std::time::Duration::from_millis(30),
+                                    );
                                 }
                                 Ok(false) => {
-                                    ui.colored_label(egui::Color32::from_rgb(179, 38, 30), "The selected source no longer exists.");
+                                    ui.colored_label(
+                                        egui::Color32::from_rgb(179, 38, 30),
+                                        "The selected source no longer exists.",
+                                    );
                                 }
                                 Err(error) => {
-                                    ui.colored_label(egui::Color32::from_rgb(179, 38, 30), format!("Unable to update source: {error}"));
+                                    ui.colored_label(
+                                        egui::Color32::from_rgb(179, 38, 30),
+                                        format!("Unable to update source: {error}"),
+                                    );
                                 }
                             };
                         }
@@ -249,8 +337,7 @@ fn load(
     match tab {
         GuiTab::Search => {
             let filter = EventFilter {
-                query: (!filter_text.trim().is_empty())
-                    .then(|| filter_text.trim().to_string()),
+                query: (!filter_text.trim().is_empty()).then(|| filter_text.trim().to_string()),
                 limit: 500,
                 ..EventFilter::default()
             };
