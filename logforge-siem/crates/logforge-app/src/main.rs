@@ -676,7 +676,9 @@ fn main() {
             Commands::Export { format } => {
                 let events = service.search_events("", 500).expect("events");
                 match format {
-                    ExportFormat::Csv => println!("{}", logforge_core::export::export_events_csv(&events)),
+                    ExportFormat::Csv => {
+                        println!("{}", logforge_core::export::export_events_csv(&events))
+                    }
                     ExportFormat::Json => println!(
                         "{}",
                         logforge_core::export::export_events_json(&events).expect("json")
@@ -692,16 +694,17 @@ fn main() {
         || std::env::var_os("WAYLAND_DISPLAY").is_some()
         || cfg!(target_os = "windows")
         || cfg!(target_os = "macos");
-    let remembered = service
-        .db()
-        .get_setting("ui_mode")
-        .ok()
-        .flatten()
-        .and_then(|value| match value.as_str() {
-            "gui" => Some(UiMode::Gui),
-            "tui" => Some(UiMode::Tui),
-            _ => None,
-        });
+    let remembered =
+        service
+            .db()
+            .get_setting("ui_mode")
+            .ok()
+            .flatten()
+            .and_then(|value| match value.as_str() {
+                "gui" => Some(UiMode::Gui),
+                "tui" => Some(UiMode::Tui),
+                _ => None,
+            });
     let interactive = io::stdin().is_terminal() && io::stdout().is_terminal();
     let decision = decide_launch_mode(
         cli.ui,
@@ -729,7 +732,11 @@ fn main() {
             UiMode::Gui => "gui",
             UiMode::Tui => "tui",
         };
-        if let Err(error) = service.db().set_setting("ui_mode", value, &chrono::Utc::now().to_rfc3339()) {
+        if let Err(error) =
+            service
+                .db()
+                .set_setting("ui_mode", value, &chrono::Utc::now().to_rfc3339())
+        {
             eprintln!("Could not save UI preference: {error}");
         }
     }
@@ -745,7 +752,10 @@ fn prompt_ui_mode() -> io::Result<UiMode> {
         io::stdout().flush()?;
         let mut choice = String::new();
         if io::stdin().read_line(&mut choice)? == 0 {
-            return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "no interface selected"));
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "no interface selected",
+            ));
         }
         match choice.trim().to_ascii_lowercase().as_str() {
             "g" | "gui" => return Ok(UiMode::Gui),
