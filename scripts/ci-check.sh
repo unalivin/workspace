@@ -32,6 +32,6 @@ cat "$log_file"
 if [[ "$label" == "acceptance tests" ]]; then
   while IFS= read -r result; do
     result="${result#ACCEPTANCE_RESULT: }"
-    printf '::notice title=acceptance test::%s\n' "$(encode_annotation "$result")"
+    printf '::warning title=acceptance test result::%s\n' "$(encode_annotation "$result")"
   done < <(grep '^ACCEPTANCE_RESULT: ' "$log_file")
 fi

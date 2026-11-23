@@ -22,7 +22,7 @@ logforge-siem meets the floor.
 
 ## Eight acceptance criteria
 
-The requested `build-prompt-final.md` and its Appendix B are not present in the checkout or available project files. The authoritative eight criteria therefore cannot be reproduced verbatim, and passing status cannot be asserted. The following is a traceability index of the closest existing named integration tests, not a substitution for that missing acceptance table. The previous focused CI run passed in Windows and Ubuntu but did not publish the test output annotations; the runner now prints explicit per-test success markers after each successful exact test so outputs can be recorded on the next run.
+The requested `build-prompt-final.md` and its Appendix B are not present in the checkout or available project files. The authoritative eight criteria therefore cannot be reproduced verbatim, and passing status cannot be asserted. The following is a traceability index of the closest existing named integration tests, not a substitution for that missing acceptance table. The previous focused CI run passed in Windows and Ubuntu but did not publish the test output annotations; the runner prints explicit per-test success markers after each exact test, but `::notice` results were not exposed through the check-run annotations API. It now emits successful test lines as check-run warnings so every exact result is visible for audit.
 
 | # | Appendix B criterion | Named test / expected evidence | Output |
 |---|---|---|---|
