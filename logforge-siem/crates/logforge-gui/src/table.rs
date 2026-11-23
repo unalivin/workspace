@@ -182,7 +182,7 @@ impl TableState {
         output.push_str(
             &indices
                 .iter()
-                .map(|i| csv_cell(columns[i]))
+                .map(|i| csv_cell(columns[*i]))
                 .collect::<Vec<_>>()
                 .join(","),
         );

@@ -361,7 +361,7 @@ fn load(
         }
         _ => Ok((
             vec!["Setting", "Value", "Source"],
-            vec![vec!["Screen".into(), title.into(), "LogForge-SIEM".into()]],
+            vec![vec!["Screen".into(), tab.title().into(), "LogForge-SIEM".into()]],
         )),
     }
 }

@@ -18,7 +18,8 @@ if [[ $status -ne 0 ]]; then
   }
   first_encoded="$(encode_annotation "$first_excerpt")"
   last_encoded="$(encode_annotation "$last_excerpt")"
-  diagnostics="$(grep -E 'error\[[A-Z][0-9]+\]|error:|could not compile|^[[:space:]]*--> ' "$log_file" | tail -n 80 || true)"
+  clean_log="$(perl -pe 's/\e\[[0-9;]*[[:alpha:]]//g' "$log_file")"
+  diagnostics="$(printf '%s\n' "$clean_log" | grep -E 'error\[[A-Z][0-9]+\]|error:|could not compile|^[[:space:]]*--> ' | tail -n 120 || true)"
   diagnostics_encoded="$(encode_annotation "$diagnostics")"
   printf '::error title=%s (compiler diagnostics)::%s\n' "$label" "$diagnostics_encoded"
   printf '::error title=%s (beginning)::%s\n' "$label" "$first_encoded"
