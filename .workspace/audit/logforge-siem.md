@@ -7,7 +7,7 @@ Exact output of `scripts/measure.sh logforge-siem` at source audit:
 ```text
 Project logforge-siem, language rust, size class L
 
-production lines                 8616  (need >= 7000)  PASS
+production lines                 8626  (need >= 7000)  PASS
 test functions                    188  (need >= 60)  PASS
 screens in GUI and TUI             11  (need >= 9)  PASS
 migrations                          8  (need >= 2)  PASS

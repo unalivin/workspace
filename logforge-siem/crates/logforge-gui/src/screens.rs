@@ -526,7 +526,8 @@ fn load(
                     "Previous hash",
                     "Entry hash",
                 ],
-                service.query_audit_log(&filter)
+                service
+                    .query_audit_log(&filter)
                     .map_err(|e| e.to_string())?
                     .into_iter()
                     .map(|r| {
