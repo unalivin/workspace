@@ -54,6 +54,22 @@ impl SiemService {
         Ok(id)
     }
 
+    pub fn ingestion_stats(&self) -> Result<crate::stats::IngestionStats, DbError> {
+        crate::stats::ingestion_stats(&self.db)
+    }
+
+    pub fn source_health(&self) -> Result<Vec<crate::stats::SourceHealth>, DbError> {
+        crate::stats::source_health(&self.db)
+    }
+
+    pub fn source_liveness(
+        &self,
+        checked_at_utc: &str,
+        stale_after_seconds: i64,
+    ) -> Result<crate::stats::SourceLivenessReport, DbError> {
+        crate::stats::source_liveness(&self.db, checked_at_utc, stale_after_seconds)
+    }
+
     pub fn list_sources(&self) -> Result<Vec<Source>, DbError> {
         let mut stmt = self.db.conn().prepare(
             "SELECT id, name, kind, location, enabled, created_at FROM sources ORDER BY name ASC",

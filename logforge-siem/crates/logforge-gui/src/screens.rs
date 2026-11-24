@@ -22,7 +22,7 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
         return;
     }
     if tab == GuiTab::Health {
-        match logforge_core::stats::ingestion_stats(service.db()) {
+        match service.ingestion_stats() {
             Ok(metrics) => ui.label(format!(
                 "Ingestion health · received {} · accepted {} · duplicates {:.1}% · malformed {:.1}% · dropped {}",
                 metrics.received, metrics.accepted, metrics.duplicate_rate_percent,
@@ -30,11 +30,7 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
             )),
             Err(error) => ui.colored_label(egui::Color32::from_rgb(179, 38, 30), format!("Unable to load ingestion metrics: {error}")),
         };
-        match logforge_core::stats::source_liveness(
-            service.db(),
-            &chrono::Utc::now().to_rfc3339(),
-            300,
-        ) {
+        match service.source_liveness(&chrono::Utc::now().to_rfc3339(), 300) {
             Ok(liveness) => ui.label(format!(
                 "Source freshness · {} active · {} stale · {} never seen · {} disabled",
                 liveness.active, liveness.stale, liveness.never_seen, liveness.disabled
@@ -557,7 +553,7 @@ fn load(
                 "Last event UTC",
                 "Last received UTC",
             ],
-            logforge_core::stats::source_health(service.db())
+            service.source_health()
                 .map_err(|e| e.to_string())?
                 .into_iter()
                 .map(|r| {
