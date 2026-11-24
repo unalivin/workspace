@@ -472,39 +472,37 @@ fn load(
                 })
                 .collect(),
         )),
-        GuiTab::Cases => {
-            Ok((
-                vec![
-                    "ID",
-                    "Status",
-                    "Priority",
-                    "Title",
-                    "Assignee",
-                    "Alerts",
-                    "Updated UTC",
-                ],
-                service
-                    .list_cases(None)
-                    .map_err(|e| e.to_string())?
-                    .into_iter()
-                    .map(|r| {
-                        vec![
-                            r.id.to_string(),
-                            r.status,
-                            r.priority,
-                            r.title,
-                            if r.assignee.is_empty() {
-                                "unassigned".into()
-                            } else {
-                                r.assignee
-                            },
-                            r.alert_count.to_string(),
-                            r.updated_at,
-                        ]
-                    })
-                    .collect(),
-            ))
-        }
+        GuiTab::Cases => Ok((
+            vec![
+                "ID",
+                "Status",
+                "Priority",
+                "Title",
+                "Assignee",
+                "Alerts",
+                "Updated UTC",
+            ],
+            service
+                .list_cases(None)
+                .map_err(|e| e.to_string())?
+                .into_iter()
+                .map(|r| {
+                    vec![
+                        r.id.to_string(),
+                        r.status,
+                        r.priority,
+                        r.title,
+                        if r.assignee.is_empty() {
+                            "unassigned".into()
+                        } else {
+                            r.assignee
+                        },
+                        r.alert_count.to_string(),
+                        r.updated_at,
+                    ]
+                })
+                .collect(),
+        )),
         GuiTab::Audit => {
             let filter = logforge_core::audit_verify::AuditFilter {
                 limit: 500,
