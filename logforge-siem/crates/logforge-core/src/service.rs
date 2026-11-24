@@ -41,11 +41,7 @@ impl SiemService {
         now_utc: &str,
     ) -> Result<crate::retention::RetentionBreakdown, DbError> {
         crate::retention::plan_retention_with_reasons(
-            &self.db,
-            max_days,
-            max_events,
-            max_bytes,
-            now_utc,
+            &self.db, max_days, max_events, max_bytes, now_utc,
         )
     }
 
