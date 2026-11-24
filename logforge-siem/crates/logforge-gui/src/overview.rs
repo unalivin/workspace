@@ -128,23 +128,20 @@ pub fn render_overview_table(ui: &mut egui::Ui, service: &SiemService, table: &m
     }
     let now = chrono::Utc::now();
     let start = now - chrono::Duration::hours(24);
-    let buckets = match service.event_rate_series(
-        &start.to_rfc3339(),
-        &now.to_rfc3339(),
-        BucketSize::Hour,
-    ) {
-        Ok(buckets) => buckets,
-        Err(error) => {
-            ui.colored_label(
-                egui::Color32::from_rgb(179, 38, 30),
-                format!("Error loading overview records: {error}"),
-            );
-            if ui.button("Retry overview").clicked() {
-                table.loading_frames = 1;
+    let buckets =
+        match service.event_rate_series(&start.to_rfc3339(), &now.to_rfc3339(), BucketSize::Hour) {
+            Ok(buckets) => buckets,
+            Err(error) => {
+                ui.colored_label(
+                    egui::Color32::from_rgb(179, 38, 30),
+                    format!("Error loading overview records: {error}"),
+                );
+                if ui.button("Retry overview").clicked() {
+                    table.loading_frames = 1;
+                }
+                return;
             }
-            return;
-        }
-    };
+        };
     let rows = buckets
         .into_iter()
         .map(|bucket| {
