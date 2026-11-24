@@ -6,7 +6,7 @@
 
 | Project | Language | Destination | State | Next step |
 |---|---|---|---|---|
-| logforge-siem | rust | sonix-devs | In progress | Measure PASS: 8664 lines, 188 tests, 11 screens, 8 migrations, 20 SQL tables; comment scan empty; CI pending on current source; step 1 evidence pending, step 3 in progress |
+| logforge-siem | rust | sonix-devs | In progress | Measure PASS: 8664 lines, 188 tests, 11 screens, 8 migrations, 20 SQL tables; comment scan empty; CI `45430629438` passed all platforms; Appendix A/B acceptance evidence unavailable, so final acceptance remains unverified |
 | netauto | go | sonix-devs | In progress | production lines, tests, screens, migrations, icon assets, diagrams below floors; implement and retest |
 | vulntrack | go | sonix-devs | In progress | production lines, tests, screens, migrations, tables, icon assets, diagrams below floors; implement and retest |
 | forensicflow | rust | sonix-devs | Not started | Create requirements, acceptance criteria, and threat model |
