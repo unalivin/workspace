@@ -145,6 +145,17 @@ impl SiemService {
         Ok(id)
     }
 
+    pub fn list_correlation_rules(
+        &self,
+        enabled_only: bool,
+    ) -> Result<Vec<crate::correlation_admin::CorrelationRule>, DbError> {
+        crate::correlation_admin::list_rules(&self.db, enabled_only)
+    }
+
+    pub fn set_correlation_rule_enabled(&self, id: i64, enabled: bool) -> Result<bool, DbError> {
+        crate::correlation_admin::set_enabled(&self.db, id, enabled)
+    }
+
     pub fn list_rules(&self) -> Result<Vec<DetectionRule>, DbError> {
         let mut stmt = self.db.conn().prepare(
             "SELECT id, name, severity, pattern, enabled, created_at FROM detection_rules ORDER BY id ASC",

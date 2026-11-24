@@ -242,11 +242,7 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
                             let result = if kind == "Pattern" {
                                 service.set_rule_enabled(id, !enabled)
                             } else {
-                                logforge_core::correlation_admin::set_enabled(
-                                    service.db(),
-                                    id,
-                                    !enabled,
-                                )
+                                service.set_correlation_rule_enabled(id, !enabled)
                             };
                             match result {
                                 Ok(true) => {
@@ -428,7 +424,7 @@ fn load(
                 })
                 .collect::<Vec<_>>();
             rows.extend(
-                logforge_core::correlation_admin::list_rules(service.db(), false)
+                service.list_correlation_rules(false)
                     .map_err(|e| e.to_string())?
                     .into_iter()
                     .map(|r| {
