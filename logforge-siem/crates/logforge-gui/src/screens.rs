@@ -42,7 +42,7 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
         };
     }
     if tab == GuiTab::Audit {
-        match logforge_core::audit_verify::verify_audit_chain(service.db()) {
+        match service.verify_audit_chain() {
             Ok(result) => {
                 let message = format!(
                     "Audit chain {} · {} entries verified",
@@ -526,7 +526,7 @@ fn load(
                     "Previous hash",
                     "Entry hash",
                 ],
-                logforge_core::audit_verify::query_audit_log(service.db(), &filter)
+                service.query_audit_log(&filter)
                     .map_err(|e| e.to_string())?
                     .into_iter()
                     .map(|r| {

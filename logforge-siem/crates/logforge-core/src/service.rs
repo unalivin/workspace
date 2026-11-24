@@ -751,6 +751,17 @@ impl SiemService {
         rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
     }
 
+    pub fn verify_audit_chain(&self) -> Result<crate::audit_verify::AuditVerifyResult, DbError> {
+        crate::audit_verify::verify_audit_chain(&self.db)
+    }
+
+    pub fn query_audit_log(
+        &self,
+        filter: &crate::audit_verify::AuditFilter,
+    ) -> Result<Vec<crate::audit_verify::AuditEntry>, DbError> {
+        crate::audit_verify::query_audit_log(&self.db, filter)
+    }
+
     pub fn record_audit(&self, actor: &str, action: &str, target: &str) -> Result<(), DbError> {
         let now = Utc::now().to_rfc3339();
         let prev_hash: String = self
