@@ -29,6 +29,26 @@ impl SiemService {
         &self.db
     }
 
+    pub fn default_retention_policy(&self) -> Result<crate::retention::RetentionPolicy, DbError> {
+        crate::retention::get_default_policy(&self.db)
+    }
+
+    pub fn plan_retention_with_reasons(
+        &self,
+        max_days: i64,
+        max_events: i64,
+        max_bytes: i64,
+        now_utc: &str,
+    ) -> Result<crate::retention::RetentionBreakdown, DbError> {
+        crate::retention::plan_retention_with_reasons(
+            &self.db,
+            max_days,
+            max_events,
+            max_bytes,
+            now_utc,
+        )
+    }
+
     pub fn event_schema(&self) -> Result<Vec<EventSchemaField>, DbError> {
         let mut statement = self.db.conn().prepare("PRAGMA table_info(events)")?;
         let fields = statement.query_map([], |row| {

@@ -64,9 +64,8 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
         }
     }
     if tab == GuiTab::Retention {
-        match logforge_core::retention::get_default_policy(service.db()) {
-            Ok(policy) => match logforge_core::retention::plan_retention_with_reasons(
-                service.db(),
+        match service.default_retention_policy() {
+            Ok(policy) => match service.plan_retention_with_reasons(
                 policy.max_days,
                 policy.max_events,
                 policy.max_bytes,
@@ -569,16 +568,17 @@ fn load(
                 .collect(),
         )),
         GuiTab::Retention => {
-            let policy = logforge_core::retention::get_default_policy(service.db())
+            let policy = service
+                .default_retention_policy()
                 .map_err(|e| e.to_string())?;
-            let plan = logforge_core::retention::plan_retention_with_reasons(
-                service.db(),
-                policy.max_days,
-                policy.max_events,
-                policy.max_bytes,
-                &chrono::Utc::now().to_rfc3339(),
-            )
-            .map_err(|e| e.to_string())?;
+            let plan = service
+                .plan_retention_with_reasons(
+                    policy.max_days,
+                    policy.max_events,
+                    policy.max_bytes,
+                    &chrono::Utc::now().to_rfc3339(),
+                )
+                .map_err(|e| e.to_string())?;
             let rows = plan
                 .plan
                 .event_ids
