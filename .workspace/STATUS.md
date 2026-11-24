@@ -2,7 +2,7 @@
 
 - Date: 2026-11-21
 - Last commit: see `git log -1` on the active branch
-- LogForge-SIEM: strip committed (`dd0b7cb`); CI `45417504371` passed Ubuntu, Windows and macOS; post-strip Ubuntu smoke and shipped-only measurement passed. README search smoke is added for the next run.
+- LogForge-SIEM: strip committed (`dd0b7cb`); post-strip CI `45418548129` passed Ubuntu, Windows and macOS; Ubuntu README CLI smoke and shipped-only measurement passed.
 
 | Project | Language | Destination | State | Next step |
 |---|---|---|---|---|

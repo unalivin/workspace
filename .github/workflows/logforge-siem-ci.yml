@@ -9,6 +9,8 @@ on:
       - 'scripts/update-logforge-audit.sh'
       - 'scripts/strip-dev-files.sh'
       - '.github/workflows/logforge-siem-ci.yml'
+      - '.workspace/STATUS.md'
+      - '.workspace/audit/logforge-siem.md'
       - 'templates/workflows/rust-ci.yml'
   pull_request:
     paths:
@@ -18,6 +20,8 @@ on:
       - 'scripts/update-logforge-audit.sh'
       - 'scripts/strip-dev-files.sh'
       - '.github/workflows/logforge-siem-ci.yml'
+      - '.workspace/STATUS.md'
+      - '.workspace/audit/logforge-siem.md'
       - 'templates/workflows/rust-ci.yml'
 
 permissions:
