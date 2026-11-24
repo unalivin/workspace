@@ -26,8 +26,6 @@ pub enum GuiTab {
 pub struct LogForgeApp {
     service: SiemService,
     active_tab: GuiTab,
-    search_query: String,
-    search_host: String,
     last_data_version: i64,
     external_update_notice: bool,
     table: table::TableState,
@@ -70,8 +68,6 @@ impl LogForgeApp {
         Self {
             service,
             active_tab: GuiTab::Overview,
-            search_query: String::new(),
-            search_host: String::new(),
             last_data_version,
             external_update_notice: false,
             table: table::TableState::default(),
@@ -178,200 +174,6 @@ impl eframe::App for LogForgeApp {
                         }
                     }
                 }
-                GuiTab::Search => {
-                    ui.heading("Search (UTC)");
-                    ui.horizontal(|ui| {
-                        ui.label("Query:");
-                        ui.text_edit_singleline(&mut self.search_query);
-                        ui.label("Exact host:");
-                        ui.text_edit_singleline(&mut self.search_host);
-                    });
-                    ui.separator();
-                    let filter = logforge_core::event_query::EventFilter {
-                        query: (!self.search_query.trim().is_empty()).then(|| self.search_query.clone()),
-                        host: (!self.search_host.trim().is_empty()).then(|| self.search_host.clone()),
-                        limit: 100,
-                        ..logforge_core::event_query::EventFilter::default()
-                    };
-                    if let Ok(events) = self.service.search_events_filtered(&filter) {
-                        egui::ScrollArea::vertical().show(ui, |ui| {
-                            for ev in events {
-                                let badge = if ev.redacted { " [REDACTED]" } else { "" };
-                                ui.label(format!(
-                                    "{} [{}] {}: {}{}",
-                                    ev.timestamp_utc, ev.severity, ev.host, ev.message, badge
-                                ));
-                            }
-                        });
-                    }
-                }
-                GuiTab::SavedQueries => {
-                    ui.heading("Saved Queries");
-                    if let Ok(queries) = self.service.list_saved_queries() {
-                        for q in queries {
-                            ui.label(format!("{}: {}", q.name, q.query));
-                        }
-                    }
-                }
-                GuiTab::Schema => {
-                    ui.heading("Schema");
-                    ui.label("Normalized fields: timestamp_utc, severity, host, service, message, dedup_hash, redacted");
-                }
-                GuiTab::Detections => {
-                    ui.heading("Detection Rules");
-                    if let Ok(rules) = self.service.list_rules() {
-                        for r in rules {
-                            ui.label(format!("{} [{}] pattern={}", r.name, r.severity, r.pattern));
-                        }
-                    }
-                    ui.separator();
-                    ui.heading("Persistent Correlation Rules");
-                    for rule in logforge_core::correlation_admin::list_rules(self.service.db(), false).unwrap_or_default() {
-                        ui.horizontal(|ui| {
-                            let mut enabled = rule.enabled;
-                            if ui.checkbox(&mut enabled, format!("#{} {}", rule.id, rule.name)).changed() {
-                                let _ = logforge_core::correlation_admin::set_enabled(self.service.db(), rule.id, enabled);
-                            }
-                            ui.label(format!("[{}] {} on {} within {}s threshold={}", rule.severity, rule.kind, rule.entity_field, rule.window_seconds, rule.threshold));
-                        });
-                    }
-                }
-                GuiTab::Cases => {
-                    ui.heading("Investigation Cases");
-                    for case in logforge_core::cases::CaseManager::new(self.service.db()).list(None).unwrap_or_default() {
-                        ui.group(|ui| {
-                            ui.horizontal(|ui| {
-                                ui.strong(format!("#{} {}", case.id, case.title));
-                                ui.label(format!("{} · {} · {} alerts", case.status, case.priority, case.alert_count));
-                            });
-                            ui.label(format!("Assignee: {}", if case.assignee.is_empty() { "unassigned" } else { &case.assignee }));
-                            ui.label(&case.description);
-                            if let Ok(notes) = logforge_core::cases::CaseManager::new(self.service.db()).notes(case.id) {
-                                for note in notes { ui.label(format!("{}: {}", note.author, note.body)); }
-                            }
-                        });
-                    }
-                }
-                GuiTab::Retention => {
-                    ui.heading("Retention");
-                    if let Ok(p) = logforge_core::retention::get_default_policy(self.service.db()) {
-                        ui.label(format!("Policy: {} ({} days, max {} events, {} bytes)", p.name, p.max_days, p.max_events, p.max_bytes));
-                        if let Ok(breakdown) = logforge_core::retention::plan_retention_with_reasons(self.service.db(), p.max_days, p.max_events, p.max_bytes, &chrono::Utc::now().to_rfc3339()) {
-                            ui.label(format!("Dry run: {} events and {} bytes would be removed", breakdown.plan.count, breakdown.plan.bytes_to_free));
-                            ui.label(format!("Reasons: age={} · event limit={} · storage limit={}", breakdown.age_expired, breakdown.event_limit_exceeded, breakdown.byte_limit_exceeded));
-                            egui::ScrollArea::vertical().max_height(220.0).show(ui, |ui| {
-                                for id in breakdown.plan.event_ids { ui.label(format!("Candidate event #{id}")); }
-                            });
-                        }
-                    }
-                    if let Ok(m) = logforge_core::storage_metrics::collect_storage_metrics(self.service.db()) {
-                        ui.label(format!("Storage: {} bytes ({} events, {} alerts)", m.total_bytes, m.events_count, m.alerts_count));
-                    }
-                }
-                GuiTab::Audit => {
-                    ui.heading("Audit Log");
-                    if let Ok(res) = logforge_core::audit_verify::verify_audit_chain(self.service.db()) {
-                        ui.label(format!("Audit entries: {} | Chain valid: {}", res.total_entries, res.valid));
-                    }
-                    ui.separator();
-                    ui.heading("Recent audit activity");
-                    let filter = logforge_core::audit_verify::AuditFilter {
-                        limit: 50,
-                        ..logforge_core::audit_verify::AuditFilter::default()
-                    };
-                    if let Ok(entries) = logforge_core::audit_verify::query_audit_log(self.service.db(), &filter) {
-                        egui::ScrollArea::vertical().show(ui, |ui| {
-                            for entry in entries {
-                                ui.label(format!("{} · {} · {} · {}", entry.created_at, entry.actor, entry.action, entry.target));
-                            }
-                        });
-                    }
-                }
-                GuiTab::Alerts => {
-                    ui.heading("Alerts");
-                    if let Ok(alerts) = self.service.list_alerts(None) {
-                        for a in alerts {
-                            ui.label(format!("#{} [{}] {} ({})", a.id, a.severity, a.title, a.status));
-                        }
-                    }
-                }
-                GuiTab::Sources => {
-                    ui.heading("Sources");
-                    if let Ok(sources) = self.service.list_sources() {
-                        for s in sources {
-                            ui.label(format!("{} ({}) - {}", s.name, s.kind, s.location));
-                        }
-                    }
-                }
-                GuiTab::Health => {
-                    ui.heading("Operational Health");
-                    ui.label("Source activity and ingestion quality");
-                    if let Ok(liveness) = logforge_core::stats::source_liveness(
-                        self.service.db(),
-                        &chrono::Utc::now().to_rfc3339(),
-                        300,
-                    ) {
-                        ui.label(format!(
-                            "Freshness (<5m): {} active · {} stale · {} never seen · {} disabled",
-                            liveness.active, liveness.stale, liveness.never_seen, liveness.disabled
-                        ));
-                    }
-                    if let Ok(metrics) = logforge_core::stats::ingestion_stats(self.service.db()) {
-                        ui.label(format!(
-                            "Received {} · accepted {} · duplicate {:.1}% · malformed {:.1}% · dropped {}",
-                            metrics.received, metrics.accepted, metrics.duplicate_rate_percent,
-                            metrics.malformed_rate_percent, metrics.dropped
-                        ));
-                    }
-                    if let Ok(queue) = logforge_core::cases::case_queue_metrics(
-                        self.service.db(),
-                        &chrono::Utc::now().to_rfc3339(),
-                        24,
-                    ) {
-                        ui.label(format!(
-                            "Cases: {} open · {} in progress · {} closed · {} overdue · {} unassigned",
-                            queue.open_cases, queue.in_progress_cases, queue.closed_cases,
-                            queue.overdue_active, queue.unassigned_active
-                        ));
-                    }
-                    ui.separator();
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        if let Ok(sources) = logforge_core::stats::source_health(self.service.db()) {
-                            for source in sources {
-                                ui.group(|ui| {
-                                    ui.horizontal(|ui| {
-                                        ui.strong(&source.name);
-                                        ui.label(if source.enabled { "enabled" } else { "disabled" });
-                                        ui.label(format!("{} events", source.total_events));
-                                    });
-                                    ui.label(format!(
-                                        "last event: {} · critical: {} · errors: {}",
-                                        source.last_event_at.as_deref().unwrap_or("never"),
-                                        source.critical_events, source.error_events
-                                    ));
-                                    ui.label(format!("last received: {}", source.last_received_at.as_deref().unwrap_or("never")));
-                                });
-                            }
-                        }
-                        ui.separator();
-                        if let Ok(risk) = logforge_core::risk_scoring::score_host_risk(
-                        self.service.db(),
-                        "1970-01-01T00:00:00Z",
-                        20,
-                    ) {
-                        ui.heading("Host risk (all retained events)");
-                        for host in risk.hosts {
-                            ui.label(format!("{} · {} ({}) · {} events · {} alerts", host.host, host.score, host.band, host.total_events, host.open_alerts));
-                        }
-                    }
-                    if let Ok(alerts) = logforge_core::query_report::alert_counts_by_rule(self.service.db()) {
-                            ui.heading("Alert volume by rule");
-                            for rule in alerts {
-                                ui.label(format!("{}: {} total, {} open", rule.rule_name, rule.total_alerts, rule.open_alerts));
-                            }
-                        }
-                    });
-                }
                 GuiTab::About => {
                     ui.heading("About LogForge-SIEM");
                     ui.label("Version: 0.1.0-dev");
@@ -456,6 +258,7 @@ impl eframe::App for LogForgeApp {
                         ui.colored_label(egui::Color32::from_rgb(179, 38, 30), error);
                     }
                 }
+                _ => {}
             }
         });
     }
