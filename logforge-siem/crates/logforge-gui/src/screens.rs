@@ -424,7 +424,8 @@ fn load(
                 })
                 .collect::<Vec<_>>();
             rows.extend(
-                service.list_correlation_rules(false)
+                service
+                    .list_correlation_rules(false)
                     .map_err(|e| e.to_string())?
                     .into_iter()
                     .map(|r| {
