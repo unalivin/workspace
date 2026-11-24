@@ -161,6 +161,33 @@ impl SiemService {
         Ok(id)
     }
 
+    pub fn list_cases(
+        &self,
+        status: Option<&str>,
+    ) -> Result<Vec<crate::cases::CaseRecord>, DbError> {
+        crate::cases::CaseManager::new(&self.db).list(status)
+    }
+
+    pub fn get_case(&self, case_id: i64) -> Result<Option<crate::cases::CaseRecord>, DbError> {
+        crate::cases::CaseManager::new(&self.db).get(case_id)
+    }
+
+    pub fn case_notes(&self, case_id: i64) -> Result<Vec<crate::cases::CaseNote>, DbError> {
+        crate::cases::CaseManager::new(&self.db).notes(case_id)
+    }
+
+    pub fn case_alerts(&self, case_id: i64) -> Result<Vec<Alert>, DbError> {
+        crate::cases::CaseManager::new(&self.db).alerts(case_id)
+    }
+
+    pub fn set_case_status(
+        &self,
+        case_id: i64,
+        status: &str,
+    ) -> Result<bool, Box<dyn std::error::Error>> {
+        crate::cases::CaseManager::new(&self.db).set_status(case_id, status)
+    }
+
     pub fn list_correlation_rules(
         &self,
         enabled_only: bool,

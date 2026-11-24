@@ -128,8 +128,7 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
                     if let Some(case_id) =
                         record.first().and_then(|value| value.parse::<i64>().ok())
                     {
-                        let manager = logforge_core::cases::CaseManager::new(service.db());
-                        if let Ok(Some(case)) = manager.get(case_id) {
+                        if let Ok(Some(case)) = service.get_case(case_id) {
                             ui.collapsing(
                                 format!("Investigation details · case #{}", case.id),
                                 |ui| {
@@ -142,7 +141,7 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
                                             &case.assignee
                                         }
                                     ));
-                                    if let Ok(notes) = manager.notes(case_id) {
+                                    if let Ok(notes) = service.case_notes(case_id) {
                                         for note in notes {
                                             ui.label(format!(
                                                 "{} · {} · {}",
@@ -150,7 +149,7 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
                                             ));
                                         }
                                     }
-                                    if let Ok(alerts) = manager.alerts(case_id) {
+                                    if let Ok(alerts) = service.case_alerts(case_id) {
                                         for alert in alerts {
                                             ui.label(format!(
                                                 "Linked alert #{} · {} · {}",
@@ -164,7 +163,7 @@ pub fn render(ui: &mut egui::Ui, service: &SiemService, tab: GuiTab, table: &mut
                                         _ => "open",
                                     };
                                     if ui.button(format!("Move case to {next_status}")).clicked() {
-                                        match manager.set_status(case_id, next_status) {
+                                        match service.set_case_status(case_id, next_status) {
                                             Ok(true) => {
                                                 table.loading_frames = 1;
                                                 ui.ctx().request_repaint_after(
@@ -474,7 +473,6 @@ fn load(
                 .collect(),
         )),
         GuiTab::Cases => {
-            let manager = logforge_core::cases::CaseManager::new(service.db());
             Ok((
                 vec![
                     "ID",
@@ -485,8 +483,8 @@ fn load(
                     "Alerts",
                     "Updated UTC",
                 ],
-                manager
-                    .list(None)
+                service
+                    .list_cases(None)
                     .map_err(|e| e.to_string())?
                     .into_iter()
                     .map(|r| {
