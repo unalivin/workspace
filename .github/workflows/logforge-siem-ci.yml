@@ -85,6 +85,7 @@ jobs:
           ../scripts/ci-check.sh 'smoke version' cargo run -p logforge-app -- --version
           ../scripts/ci-check.sh 'smoke demo load' cargo run -p logforge-app -- --db "$db" demo load
           ../scripts/ci-check.sh 'smoke overview' cargo run -p logforge-app -- --db "$db" overview
+          ../scripts/ci-check.sh 'smoke README search' cargo run -p logforge-app -- --db "$db" search "Failed"
       - name: Shipped measurement
         if: runner.os == 'Linux' && hashFiles('logforge-siem/crates/logforge-core/tests/retention_plan_tests.rs') == ''
         run: ../scripts/ci-check.sh 'shipped measurement' bash -c 'cd .. && scripts/measure.sh --shipped logforge-siem'

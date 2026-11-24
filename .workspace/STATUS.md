@@ -2,11 +2,11 @@
 
 - Date: 2026-11-21
 - Last commit: see `git log -1` on the active branch
-- LogForge-SIEM current-revision CI: pending; focused acceptance results are being surfaced in check annotations; strip script dry-run verified; post-strip smoke awaits all-platform green.
+- LogForge-SIEM: strip committed (`dd0b7cb`); CI `45417504371` passed Ubuntu, Windows and macOS; post-strip Ubuntu smoke and shipped-only measurement passed. README search smoke is added for the next run.
 
 | Project | Language | Destination | State | Next step |
 |---|---|---|---|---|
-| logforge-siem | rust | sonix-devs | In progress | Measure PASS: 8608 lines, 188 tests, 11 screens, 8 migrations, 20 SQL tables; comment scan empty; CI pending on current source; step 1 evidence pending, step 3 in progress |
+| logforge-siem | rust | sonix-devs | In progress | Measure PASS: 8608 lines, 188 tests, 11 screens, 8 migrations, 20 SQL tables; requested comment scan empty; CI and post-strip smoke/shipped measurement PASS; Appendix B unavailable; 11-screen acceptance remains in progress |
 | netauto | go | sonix-devs | In progress | production lines, tests, screens, migrations, icon assets, diagrams below floors; implement and retest |
 | vulntrack | go | sonix-devs | In progress | production lines, tests, screens, migrations, tables, icon assets, diagrams below floors; implement and retest |
 | forensicflow | rust | sonix-devs | Not started | Create requirements, acceptance criteria, and threat model |
