@@ -627,6 +627,19 @@ impl SiemService {
         rows.collect::<Result<Vec<_>, _>>().map_err(DbError::from)
     }
 
+    pub fn event_rate_series(
+        &self,
+        start_utc: &str,
+        end_utc: &str,
+        bucket_size: crate::event_analytics::BucketSize,
+    ) -> Result<Vec<crate::event_analytics::TimeBucket>, DbError> {
+        crate::event_analytics::event_rate_series(&self.db, start_utc, end_utc, bucket_size)
+    }
+
+    pub fn count_events_in_range(&self, start_utc: &str, end_utc: &str) -> Result<i64, DbError> {
+        crate::stats::count_events_in_range(&self.db, start_utc, end_utc)
+    }
+
     pub fn overview_counts(&self) -> Result<OverviewCounts, DbError> {
         self.db
             .conn()

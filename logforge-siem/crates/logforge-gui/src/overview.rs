@@ -21,12 +21,7 @@ pub fn render_event_rate_chart(ui: &mut egui::Ui, service: &SiemService) {
         start.format("%H:%MZ"),
         end.format("%H:%MZ")
     ));
-    let buckets = match logforge_core::event_analytics::event_rate_series(
-        service.db(),
-        &start_text,
-        &end_text,
-        BucketSize::Hour,
-    ) {
+    let buckets = match service.event_rate_series(&start_text, &end_text, BucketSize::Hour) {
         Ok(data) => data,
         Err(error) => {
             ui.colored_label(
@@ -50,11 +45,7 @@ pub fn render_event_rate_chart(ui: &mut egui::Ui, service: &SiemService) {
         ui.label(format!("Events in range: {total}"));
         ui.label(format!("Peak hourly volume: {peak}"));
         let previous_start = start - chrono::Duration::hours(24);
-        let previous = logforge_core::stats::count_events_in_range(
-            service.db(),
-            &previous_start.to_rfc3339(),
-            &start_text,
-        );
+        let previous = service.count_events_in_range(&previous_start.to_rfc3339(), &start_text);
         if let Ok(previous) = previous {
             ui.label(format!("Previous 24 hours: {previous}"));
         }
@@ -137,8 +128,7 @@ pub fn render_overview_table(ui: &mut egui::Ui, service: &SiemService, table: &m
     }
     let now = chrono::Utc::now();
     let start = now - chrono::Duration::hours(24);
-    let buckets = match logforge_core::event_analytics::event_rate_series(
-        service.db(),
+    let buckets = match service.event_rate_series(
         &start.to_rfc3339(),
         &now.to_rfc3339(),
         BucketSize::Hour,
