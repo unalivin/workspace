@@ -553,7 +553,8 @@ fn load(
                 "Last event UTC",
                 "Last received UTC",
             ],
-            service.source_health()
+            service
+                .source_health()
                 .map_err(|e| e.to_string())?
                 .into_iter()
                 .map(|r| {
