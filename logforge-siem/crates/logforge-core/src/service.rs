@@ -159,9 +159,7 @@ impl SiemService {
         crate::stats::alert_status_counts(&self.db)
     }
 
-    pub fn alert_severity_matrix(
-        &self,
-    ) -> Result<Vec<crate::stats::AlertSeverityCount>, DbError> {
+    pub fn alert_severity_matrix(&self) -> Result<Vec<crate::stats::AlertSeverityCount>, DbError> {
         crate::stats::alert_severity_matrix(&self.db)
     }
 
@@ -338,12 +336,7 @@ impl SiemService {
         crate::cases::CaseManager::new(&self.db).assign(case_id, assignee)
     }
 
-    pub fn add_case_note(
-        &self,
-        case_id: i64,
-        author: &str,
-        body: &str,
-    ) -> Result<i64, DbError> {
+    pub fn add_case_note(&self, case_id: i64, author: &str, body: &str) -> Result<i64, DbError> {
         crate::cases::CaseManager::new(&self.db).add_note(case_id, author, body)
     }
 

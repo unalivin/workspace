@@ -336,9 +336,7 @@ fn main() {
                 println!("{}", serde_json::to_string_pretty(&stats).expect("json"));
             }
             Commands::Risk { since, limit } => {
-                let report =
-                    service.host_risk(&since, limit)
-                        .expect("host risk report");
+                let report = service.host_risk(&since, limit).expect("host risk report");
                 println!("{}", serde_json::to_string_pretty(&report).expect("json"));
             }
             Commands::Report {
@@ -347,16 +345,17 @@ fn main() {
                 to,
                 limit,
             } => {
-                let report = service.event_volume_report(
-                    dimension.into(),
-                    &logforge_core::query_report::EventReportFilter {
-                        from_utc: from,
-                        to_utc: to,
-                        limit,
-                        ..logforge_core::query_report::EventReportFilter::default()
-                    },
-                )
-                .expect("event report");
+                let report = service
+                    .event_volume_report(
+                        dimension.into(),
+                        &logforge_core::query_report::EventReportFilter {
+                            from_utc: from,
+                            to_utc: to,
+                            limit,
+                            ..logforge_core::query_report::EventReportFilter::default()
+                        },
+                    )
+                    .expect("event report");
                 println!("{}", serde_json::to_string_pretty(&report).expect("json"));
             }
             Commands::Demo {
@@ -373,78 +372,75 @@ fn main() {
                 let alerts = service.list_alerts(status.as_deref()).expect("alerts");
                 println!("{}", serde_json::to_string_pretty(&alerts).expect("json"));
             }
-            Commands::Case { action } => {
-                match action {
-                    CaseAction::List { status } => {
-                        for case in service.list_cases(status.as_deref()).expect("cases") {
-                            println!(
-                                "#{} [{}] {} | priority={} assignee={} alerts={}",
-                                case.id,
-                                case.status,
-                                case.title,
-                                case.priority,
-                                case.assignee,
-                                case.alert_count
-                            );
-                        }
-                    }
-                    CaseAction::Show { id } => {
-                        let case = service.get_case(id).expect("case").expect("case not found");
+            Commands::Case { action } => match action {
+                CaseAction::List { status } => {
+                    for case in service.list_cases(status.as_deref()).expect("cases") {
                         println!(
-                            "#{} {}\\nstatus={} priority={} assignee={} alerts={}\\n{}",
+                            "#{} [{}] {} | priority={} assignee={} alerts={}",
                             case.id,
-                            case.title,
                             case.status,
+                            case.title,
                             case.priority,
                             case.assignee,
-                            case.alert_count,
-                            case.description
+                            case.alert_count
                         );
-                        for note in service.case_notes(id).expect("notes") {
-                            println!("[{}] {}: {}", note.created_at, note.author, note.body);
-                        }
                     }
-                    CaseAction::Create {
-                        title,
-                        description,
-                        priority,
-                        assignee,
-                    } => {
-                        let id = service
-                            .create_case(&title, &description, &priority, &assignee)
-                            .expect("create case");
-                        println!("case_id={id}");
-                    }
-                    CaseAction::Status { id, status } => println!(
-                        "updated={}",
-                        service.set_case_status(id, &status).expect("update status")
-                    ),
-                    CaseAction::Assign { id, assignee } => println!(
-                        "updated={}",
-                        service.assign_case(id, &assignee).expect("assign case")
-                    ),
-                    CaseAction::Note { id, author, body } => println!(
-                        "note_id={}",
-                        service.add_case_note(id, &author, &body).expect("add note")
-                    ),
-                    CaseAction::LinkAlert { id, alert_id } => {
-                        service.link_case_alert(id, alert_id).expect("link alert");
-                        println!("linked=true");
-                    }
-                    CaseAction::UnlinkAlert { id, alert_id } => println!(
-                        "unlinked={}",
-                        service.unlink_case_alert(id, alert_id).expect("unlink alert")
-                    ),
                 }
-            }
+                CaseAction::Show { id } => {
+                    let case = service.get_case(id).expect("case").expect("case not found");
+                    println!(
+                        "#{} {}\\nstatus={} priority={} assignee={} alerts={}\\n{}",
+                        case.id,
+                        case.title,
+                        case.status,
+                        case.priority,
+                        case.assignee,
+                        case.alert_count,
+                        case.description
+                    );
+                    for note in service.case_notes(id).expect("notes") {
+                        println!("[{}] {}: {}", note.created_at, note.author, note.body);
+                    }
+                }
+                CaseAction::Create {
+                    title,
+                    description,
+                    priority,
+                    assignee,
+                } => {
+                    let id = service
+                        .create_case(&title, &description, &priority, &assignee)
+                        .expect("create case");
+                    println!("case_id={id}");
+                }
+                CaseAction::Status { id, status } => println!(
+                    "updated={}",
+                    service.set_case_status(id, &status).expect("update status")
+                ),
+                CaseAction::Assign { id, assignee } => println!(
+                    "updated={}",
+                    service.assign_case(id, &assignee).expect("assign case")
+                ),
+                CaseAction::Note { id, author, body } => println!(
+                    "note_id={}",
+                    service.add_case_note(id, &author, &body).expect("add note")
+                ),
+                CaseAction::LinkAlert { id, alert_id } => {
+                    service.link_case_alert(id, alert_id).expect("link alert");
+                    println!("linked=true");
+                }
+                CaseAction::UnlinkAlert { id, alert_id } => println!(
+                    "unlinked={}",
+                    service
+                        .unlink_case_alert(id, alert_id)
+                        .expect("unlink alert")
+                ),
+            },
             Commands::CaseMetrics { overdue_hours } => {
-                let metrics = service.case_queue_metrics(
-                    &chrono::Utc::now().to_rfc3339(),
-                    overdue_hours,
-                )
-                .expect("case metrics");
-                let workload = service.case_workload_by_assignee()
-                    .expect("case workload");
+                let metrics = service
+                    .case_queue_metrics(&chrono::Utc::now().to_rfc3339(), overdue_hours)
+                    .expect("case metrics");
+                let workload = service.case_workload_by_assignee().expect("case workload");
                 println!(
                     "{}",
                     serde_json::to_string_pretty(&serde_json::json!({
@@ -550,15 +546,13 @@ fn main() {
             },
             Commands::Notifier { action } => match action {
                 NotifierAction::Status => {
-                    let counts =
-                        service.notification_outbox_counts().expect("outbox");
+                    let counts = service.notification_outbox_counts().expect("outbox");
                     println!("{}", serde_json::to_string_pretty(&counts).expect("json"));
                 }
                 NotifierAction::Install => println!("notifier: per-user autostart installed"),
                 NotifierAction::Uninstall => println!("notifier: per-user autostart removed"),
                 NotifierAction::Run => {
-                    let counts =
-                        service.notification_outbox_counts().expect("outbox");
+                    let counts = service.notification_outbox_counts().expect("outbox");
                     println!(
                         "delivery adapter not configured; queued={} claimed={} dead={}",
                         counts.queued, counts.claimed, counts.dead
@@ -570,17 +564,13 @@ fn main() {
                 limit,
                 before_id,
             } => {
-                let records = service.notification_records(
-                    state.as_deref(),
-                    before_id,
-                    limit,
-                )
-                .expect("outbox records");
+                let records = service
+                    .notification_records(state.as_deref(), before_id, limit)
+                    .expect("outbox records");
                 println!("{}", serde_json::to_string_pretty(&records).expect("json"));
             }
             Commands::AuditVerify => {
-                let res = service.verify_audit_chain()
-                    .expect("verify audit");
+                let res = service.verify_audit_chain().expect("verify audit");
                 println!("entries={} valid={}", res.total_entries, res.valid);
             }
             Commands::AuditLog {
@@ -588,20 +578,18 @@ fn main() {
                 action,
                 limit,
             } => {
-                let entries = service.query_audit_log(
-                    &logforge_core::audit_verify::AuditFilter {
+                let entries = service
+                    .query_audit_log(&logforge_core::audit_verify::AuditFilter {
                         actor,
                         action,
                         limit,
                         ..logforge_core::audit_verify::AuditFilter::default()
-                    },
-                )
-                .expect("audit log");
+                    })
+                    .expect("audit log");
                 println!("{}", serde_json::to_string_pretty(&entries).expect("json"));
             }
             Commands::Diagnostics => {
-                let diag = service.diagnostics()
-                    .expect("diagnostics");
+                let diag = service.diagnostics().expect("diagnostics");
                 println!("{}", serde_json::to_string_pretty(&diag).expect("json"));
             }
             Commands::RetentionSet {
@@ -611,15 +599,16 @@ fn main() {
                 bytes,
                 disabled,
             } => {
-                let changed = service.retention_policy_update(
-                    &name,
-                    days,
-                    events,
-                    bytes,
-                    !disabled,
-                    &chrono::Utc::now().to_rfc3339(),
-                )
-                .expect("update retention policy");
+                let changed = service
+                    .retention_policy_update(
+                        &name,
+                        days,
+                        events,
+                        bytes,
+                        !disabled,
+                        &chrono::Utc::now().to_rfc3339(),
+                    )
+                    .expect("update retention policy");
                 println!("updated={changed}");
             }
             Commands::Retention {
@@ -627,17 +616,17 @@ fn main() {
                 max_bytes,
                 dry_run,
             } => {
-                let pol =
-                    service.default_retention_policy().expect("policy");
+                let pol = service.default_retention_policy().expect("policy");
                 let max_events = prune.unwrap_or(pol.max_events);
                 let max_bytes = max_bytes.unwrap_or(pol.max_bytes);
-                let breakdown = service.plan_retention_with_reasons(
-                    pol.max_days,
-                    max_events,
-                    max_bytes,
-                    &chrono::Utc::now().to_rfc3339(),
-                )
-                .expect("plan");
+                let breakdown = service
+                    .plan_retention_with_reasons(
+                        pol.max_days,
+                        max_events,
+                        max_bytes,
+                        &chrono::Utc::now().to_rfc3339(),
+                    )
+                    .expect("plan");
                 let plan = breakdown.plan;
                 println!(
                     "policy={} max_days={} max_events={} max_bytes={} candidates={} bytes_to_free={} age_expired={} count_exceeded={} byte_exceeded={}",
@@ -650,9 +639,7 @@ fn main() {
                 if dry_run {
                     println!("dry_run=true");
                 } else {
-                    let deleted =
-                        service.apply_retention_plan(&plan)
-                            .expect("prune");
+                    let deleted = service.apply_retention_plan(&plan).expect("prune");
                     println!("pruned={deleted}");
                 }
             }
@@ -678,14 +665,14 @@ fn main() {
         || cfg!(target_os = "windows")
         || cfg!(target_os = "macos");
     let remembered = service
-            .get_setting("ui_mode")
-            .ok()
-            .flatten()
-            .and_then(|value| match value.as_str() {
-                "gui" => Some(UiMode::Gui),
-                "tui" => Some(UiMode::Tui),
-                _ => None,
-            });
+        .get_setting("ui_mode")
+        .ok()
+        .flatten()
+        .and_then(|value| match value.as_str() {
+            "gui" => Some(UiMode::Gui),
+            "tui" => Some(UiMode::Tui),
+            _ => None,
+        });
     let interactive = io::stdin().is_terminal() && io::stdout().is_terminal();
     let decision = decide_launch_mode(
         cli.ui,
@@ -713,9 +700,7 @@ fn main() {
             UiMode::Gui => "gui",
             UiMode::Tui => "tui",
         };
-        if let Err(error) =
-            service
-                .set_setting("ui_mode", value, &chrono::Utc::now().to_rfc3339())
+        if let Err(error) = service.set_setting("ui_mode", value, &chrono::Utc::now().to_rfc3339())
         {
             eprintln!("Could not save UI preference: {error}");
         }
