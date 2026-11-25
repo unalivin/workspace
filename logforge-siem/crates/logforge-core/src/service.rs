@@ -25,24 +25,19 @@ impl SiemService {
         Self { db }
     }
 
-    /// Access to the underlying database for advanced integrations.
-    /// Prefer the service methods for application operations.
     #[deprecated(note = "prefer SiemService methods over direct database access")]
     pub fn db(&self) -> &Database {
         &self.db
     }
 
-    /// Returns the SQLite change counter used to detect writes from another connection.
     pub fn data_version(&self) -> Result<i64, DbError> {
         self.db.data_version()
     }
 
-    /// Loads a persisted application preference by key.
     pub fn get_setting(&self, key: &str) -> Result<Option<String>, DbError> {
         self.db.get_setting(key)
     }
 
-    /// Persists an application preference with its UTC update timestamp.
     pub fn set_setting(&self, key: &str, value: &str, now_utc: &str) -> Result<(), DbError> {
         self.db.set_setting(key, value, now_utc)
     }
