@@ -71,6 +71,12 @@ jobs:
           fi
       - name: Format check
         run: ../scripts/ci-check.sh 'cargo fmt check' cargo fmt --all -- --check
+      - name: Enforce application service boundary
+        run: |
+          if grep -RInF '.db()' crates/logforge-app/src crates/logforge-gui/src crates/logforge-tui/src; then
+            echo 'Application front ends must use SiemService APIs instead of accessing the database directly.' >&2
+            exit 1
+          fi
       - name: Clippy
         run: ../scripts/ci-check.sh clippy cargo clippy --workspace --all-targets -- -D warnings
       - name: Build

@@ -112,7 +112,7 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
             });
         let alerts = service.list_alerts(Some("open")).unwrap_or_default();
         let events = service.search_events("", 25).unwrap_or_default();
-        let analytics = logforge_core::event_analytics::analytics_snapshot(service.db(), 5).ok();
+        let analytics = service.analytics_snapshot(5).ok();
 
         terminal.draw(|frame| {
             let chunks = Layout::default()
@@ -179,24 +179,26 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                     let mut lines: Vec<String> = service.list_rules().unwrap_or_default().iter()
                         .map(|rule| format!("{} [{}] pattern={}", rule.name, rule.severity, rule.pattern))
                         .collect();
-                    lines.extend(logforge_core::correlation_admin::list_rules(service.db(), false).unwrap_or_default().iter()
+                    lines.extend(service.list_correlation_rules(false).unwrap_or_default().iter()
                         .map(|rule| format!("Correlation #{}: {} [{}] {} on {} window={}s threshold={} enabled={}", rule.id, rule.name, rule.severity, rule.kind, rule.entity_field, rule.window_seconds, rule.threshold, rule.enabled)));
                     lines.join("\n")
                 },
-                TuiTab::Cases => logforge_core::cases::CaseManager::new(service.db())
-                    .list(None)
+                TuiTab::Cases => service
+                    .list_cases(None)
                     .unwrap_or_default()
                     .iter()
                     .map(|case| format!("#{} [{}] {} — {} alerts, {}", case.id, case.status, case.title, case.alert_count, case.assignee))
                     .collect::<Vec<_>>()
                     .join("\n"),
                 TuiTab::Retention => {
-                    let pol = logforge_core::retention::get_default_policy(service.db());
-                    let metrics = logforge_core::storage_metrics::collect_storage_metrics(service.db());
+                    let pol = service.default_retention_policy();
+                    let metrics = service.storage_metrics();
                     match (pol, metrics) {
                         (Ok(p), Ok(m)) => {
-                            let plan = logforge_core::retention::plan_retention_with_reasons(
-                                service.db(), p.max_days, p.max_events, p.max_bytes,
+                            let plan = service.plan_retention_with_reasons(
+                                p.max_days,
+                                p.max_events,
+                                p.max_bytes,
                                 &chrono::Utc::now().to_rfc3339(),
                             );
                             match plan {
@@ -212,9 +214,8 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                     }
                 }
                 TuiTab::Audit => {
-                    let verification = logforge_core::audit_verify::verify_audit_chain(service.db());
-                    let entries = logforge_core::audit_verify::query_audit_log(
-                        service.db(),
+                    let verification = service.verify_audit_chain();
+                    let entries = service.query_audit_log(
                         &logforge_core::audit_verify::AuditFilter {
                             limit: 25,
                             ..logforge_core::audit_verify::AuditFilter::default()
@@ -231,12 +232,11 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                     lines.join("\\n")
                 },
                 TuiTab::Health => {
-                    let ingestion = logforge_core::stats::ingestion_stats(service.db());
-                    let sources = logforge_core::stats::source_health(service.db()).unwrap_or_default();
-                    let rules = logforge_core::query_report::alert_counts_by_rule(service.db()).unwrap_or_default();
+                    let ingestion = service.ingestion_stats();
+                    let sources = service.source_health().unwrap_or_default();
+                    let rules = service.alert_counts_by_rule().unwrap_or_default();
                     let mut lines = vec!["Operational health".to_string()];
-                    if let Ok(liveness) = logforge_core::stats::source_liveness(
-                        service.db(),
+                    if let Ok(liveness) = service.source_liveness(
                         &chrono::Utc::now().to_rfc3339(),
                         300,
                     ) {
@@ -249,8 +249,7 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                         lines.push(format!("Received {} · accepted {} · duplicate {:.1}% · malformed {:.1}% · dropped {}", metrics.received, metrics.accepted, metrics.duplicate_rate_percent, metrics.malformed_rate_percent, metrics.dropped));
                     }
                     lines.extend(sources.iter().map(|source| format!("{} [{}] events={} critical={} errors={} last={}", source.name, if source.enabled { "enabled" } else { "disabled" }, source.total_events, source.critical_events, source.error_events, source.last_event_at.as_deref().unwrap_or("never"))));
-                    if let Ok(queue) = logforge_core::cases::case_queue_metrics(
-                        service.db(),
+                    if let Ok(queue) = service.case_queue_metrics(
                         &chrono::Utc::now().to_rfc3339(),
                         24,
                     ) {
@@ -260,8 +259,7 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                             queue.overdue_active, queue.unassigned_active
                         ));
                     }
-                    if let Ok(risk) = logforge_core::risk_scoring::score_host_risk(
-                        service.db(),
+                    if let Ok(risk) = service.host_risk(
                         "1970-01-01T00:00:00Z",
                         20,
                     ) {
@@ -271,7 +269,7 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                             host.host, host.score, host.band, host.total_events, host.open_alerts
                         )));
                     }
-                    if let Ok(workload) = logforge_core::cases::case_workload_by_assignee(service.db()) {
+                    if let Ok(workload) = service.case_workload_by_assignee() {
                         lines.push("Active case workload:".to_string());
                         lines.extend(workload.iter().map(|item| format!(
                             "{} active={} critical={} oldest={}",
@@ -285,10 +283,10 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                 }
                 TuiTab::About => "LogForge-SIEM v0.1.0-dev\nCopyright (c) 2026 Sonix Devs\nRepository: https://github.com/sonix-devs/logforge-siem".to_string(),
                 TuiTab::Settings => {
-                    let theme = service.db().get_setting("theme").ok().flatten().unwrap_or_else(|| "dark".into());
-                    let accent = service.db().get_setting("accent").ok().flatten().unwrap_or_else(|| "amber".into());
-                    let density = service.db().get_setting("density").ok().flatten().unwrap_or_else(|| "compact".into());
-                    let scale = service.db().get_setting("text_scale").ok().flatten().unwrap_or_else(|| "100".into());
+                    let theme = service.get_setting("theme").ok().flatten().unwrap_or_else(|| "dark".into());
+                    let accent = service.get_setting("accent").ok().flatten().unwrap_or_else(|| "amber".into());
+                    let density = service.get_setting("density").ok().flatten().unwrap_or_else(|| "compact".into());
+                    let scale = service.get_setting("text_scale").ok().flatten().unwrap_or_else(|| "100".into());
                     format!("Appearance settings\nTheme: {theme} (default: dark)\nAccent: {accent} (default: amber)\nDensity: {density} (default: compact)\nText scale: {scale}% (default: 100%)\nNetwork: disabled by default; no remote destination configured\nNotifications: local outbox; no delivery adapter configured\n\nPress t to switch dark/light, a to cycle accent, +/- to scale text.")
                 }
             };
@@ -400,13 +398,12 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                     match key.code {
                         KeyCode::Char('t') if active_tab == TuiTab::Settings => {
                             let current = service
-                                .db()
                                 .get_setting("theme")
                                 .ok()
                                 .flatten()
                                 .unwrap_or_else(|| "dark".into());
                             let next = if current == "dark" { "light" } else { "dark" };
-                            let _ = service.db().set_setting(
+                            let _ = service.set_setting(
                                 "theme",
                                 next,
                                 &chrono::Utc::now().to_rfc3339(),
@@ -414,7 +411,6 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                         }
                         KeyCode::Char('a') if active_tab == TuiTab::Settings => {
                             let current = service
-                                .db()
                                 .get_setting("accent")
                                 .ok()
                                 .flatten()
@@ -424,7 +420,7 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                                 "blue" => "teal",
                                 _ => "amber",
                             };
-                            let _ = service.db().set_setting(
+                            let _ = service.set_setting(
                                 "accent",
                                 next,
                                 &chrono::Utc::now().to_rfc3339(),
@@ -434,14 +430,13 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                             if active_tab == TuiTab::Settings =>
                         {
                             let current = service
-                                .db()
                                 .get_setting("text_scale")
                                 .ok()
                                 .flatten()
                                 .and_then(|value| value.parse::<u8>().ok())
                                 .unwrap_or(100);
                             let next = current.saturating_add(10).min(150);
-                            let _ = service.db().set_setting(
+                            let _ = service.set_setting(
                                 "text_scale",
                                 &next.to_string(),
                                 &chrono::Utc::now().to_rfc3339(),
@@ -449,14 +444,13 @@ pub fn run_tui(service: &SiemService) -> io::Result<()> {
                         }
                         KeyCode::Char('-') if active_tab == TuiTab::Settings => {
                             let current = service
-                                .db()
                                 .get_setting("text_scale")
                                 .ok()
                                 .flatten()
                                 .and_then(|value| value.parse::<u8>().ok())
                                 .unwrap_or(100);
                             let next = current.saturating_sub(10).max(80);
-                            let _ = service.db().set_setting(
+                            let _ = service.set_setting(
                                 "text_scale",
                                 &next.to_string(),
                                 &chrono::Utc::now().to_rfc3339(),

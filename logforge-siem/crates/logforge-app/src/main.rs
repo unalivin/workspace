@@ -325,23 +325,19 @@ fn main() {
             }
             Commands::Stats => {
                 let stats = serde_json::json!({
-                    "ingestion": logforge_core::stats::ingestion_stats(service.db()).expect("ingestion stats"),
-                    "sources": logforge_core::stats::source_health(service.db()).expect("source health"),
-                    "source_liveness": logforge_core::stats::source_liveness(
-                        service.db(), &chrono::Utc::now().to_rfc3339(), 300
-                    ).expect("source liveness"),
-                    "notification_outbox": logforge_core::notifier::outbox_health(
-                        service.db(), &chrono::Utc::now().to_rfc3339()
-                    ).expect("outbox health"),
-                    "event_severity": logforge_core::stats::events_by_severity(service.db()).expect("event severity"),
-                    "alert_status": logforge_core::stats::alert_status_counts(service.db()).expect("alert status"),
-                    "alert_severity": logforge_core::stats::alert_severity_matrix(service.db()).expect("alert severity"),
+                    "ingestion": service.ingestion_stats().expect("ingestion stats"),
+                    "sources": service.source_health().expect("source health"),
+                    "source_liveness": service.source_liveness(&chrono::Utc::now().to_rfc3339(), 300).expect("source liveness"),
+                    "notification_outbox": service.notification_outbox_health(&chrono::Utc::now().to_rfc3339()).expect("outbox health"),
+                    "event_severity": service.events_by_severity().expect("event severity"),
+                    "alert_status": service.alert_status_counts().expect("alert status"),
+                    "alert_severity": service.alert_severity_matrix().expect("alert severity"),
                 });
                 println!("{}", serde_json::to_string_pretty(&stats).expect("json"));
             }
             Commands::Risk { since, limit } => {
                 let report =
-                    logforge_core::risk_scoring::score_host_risk(service.db(), &since, limit)
+                    service.host_risk(&since, limit)
                         .expect("host risk report");
                 println!("{}", serde_json::to_string_pretty(&report).expect("json"));
             }
@@ -351,8 +347,7 @@ fn main() {
                 to,
                 limit,
             } => {
-                let report = logforge_core::query_report::event_volume_report(
-                    service.db(),
+                let report = service.event_volume_report(
                     dimension.into(),
                     &logforge_core::query_report::EventReportFilter {
                         from_utc: from,
@@ -379,10 +374,9 @@ fn main() {
                 println!("{}", serde_json::to_string_pretty(&alerts).expect("json"));
             }
             Commands::Case { action } => {
-                let manager = logforge_core::cases::CaseManager::new(service.db());
                 match action {
                     CaseAction::List { status } => {
-                        for case in manager.list(status.as_deref()).expect("cases") {
+                        for case in service.list_cases(status.as_deref()).expect("cases") {
                             println!(
                                 "#{} [{}] {} | priority={} assignee={} alerts={}",
                                 case.id,
@@ -395,7 +389,7 @@ fn main() {
                         }
                     }
                     CaseAction::Show { id } => {
-                        let case = manager.get(id).expect("case").expect("case not found");
+                        let case = service.get_case(id).expect("case").expect("case not found");
                         println!(
                             "#{} {}\\nstatus={} priority={} assignee={} alerts={}\\n{}",
                             case.id,
@@ -406,7 +400,7 @@ fn main() {
                             case.alert_count,
                             case.description
                         );
-                        for note in manager.notes(id).expect("notes") {
+                        for note in service.case_notes(id).expect("notes") {
                             println!("[{}] {}: {}", note.created_at, note.author, note.body);
                         }
                     }
@@ -416,41 +410,40 @@ fn main() {
                         priority,
                         assignee,
                     } => {
-                        let id = manager
-                            .create(&title, &description, &priority, &assignee)
+                        let id = service
+                            .create_case(&title, &description, &priority, &assignee)
                             .expect("create case");
                         println!("case_id={id}");
                     }
                     CaseAction::Status { id, status } => println!(
                         "updated={}",
-                        manager.set_status(id, &status).expect("update status")
+                        service.set_case_status(id, &status).expect("update status")
                     ),
                     CaseAction::Assign { id, assignee } => println!(
                         "updated={}",
-                        manager.assign(id, &assignee).expect("assign case")
+                        service.assign_case(id, &assignee).expect("assign case")
                     ),
                     CaseAction::Note { id, author, body } => println!(
                         "note_id={}",
-                        manager.add_note(id, &author, &body).expect("add note")
+                        service.add_case_note(id, &author, &body).expect("add note")
                     ),
                     CaseAction::LinkAlert { id, alert_id } => {
-                        manager.link_alert(id, alert_id).expect("link alert");
+                        service.link_case_alert(id, alert_id).expect("link alert");
                         println!("linked=true");
                     }
                     CaseAction::UnlinkAlert { id, alert_id } => println!(
                         "unlinked={}",
-                        manager.unlink_alert(id, alert_id).expect("unlink alert")
+                        service.unlink_case_alert(id, alert_id).expect("unlink alert")
                     ),
                 }
             }
             Commands::CaseMetrics { overdue_hours } => {
-                let metrics = logforge_core::cases::case_queue_metrics(
-                    service.db(),
+                let metrics = service.case_queue_metrics(
                     &chrono::Utc::now().to_rfc3339(),
                     overdue_hours,
                 )
                 .expect("case metrics");
-                let workload = logforge_core::cases::case_workload_by_assignee(service.db())
+                let workload = service.case_workload_by_assignee()
                     .expect("case workload");
                 println!(
                     "{}",
@@ -462,11 +455,7 @@ fn main() {
                 );
             }
             Commands::CaseExport { id, redacted } => {
-                let result = if redacted {
-                    logforge_core::case_export::export_case_bundle_redacted(service.db(), id)
-                } else {
-                    logforge_core::case_export::export_case_bundle(service.db(), id)
-                };
+                let result = service.export_case_bundle(id, redacted);
                 let bundle = result.expect("export case").expect("case not found");
                 println!("{}", serde_json::to_string_pretty(&bundle).expect("json"));
             }
@@ -546,7 +535,6 @@ fn main() {
                     }
                     ThemeAction::Show => {
                         let val = service
-                            .db()
                             .get_setting("theme")
                             .expect("get theme")
                             .unwrap_or_else(|| "dark".to_string());
@@ -554,7 +542,6 @@ fn main() {
                     }
                     ThemeAction::Set { name } => {
                         service
-                            .db()
                             .set_setting("theme", &name, &chrono::Utc::now().to_rfc3339())
                             .expect("set theme");
                         println!("Theme set to {name}");
@@ -564,14 +551,14 @@ fn main() {
             Commands::Notifier { action } => match action {
                 NotifierAction::Status => {
                     let counts =
-                        logforge_core::notifier::outbox_counts(service.db()).expect("outbox");
+                        service.notification_outbox_counts().expect("outbox");
                     println!("{}", serde_json::to_string_pretty(&counts).expect("json"));
                 }
                 NotifierAction::Install => println!("notifier: per-user autostart installed"),
                 NotifierAction::Uninstall => println!("notifier: per-user autostart removed"),
                 NotifierAction::Run => {
                     let counts =
-                        logforge_core::notifier::outbox_counts(service.db()).expect("outbox");
+                        service.notification_outbox_counts().expect("outbox");
                     println!(
                         "delivery adapter not configured; queued={} claimed={} dead={}",
                         counts.queued, counts.claimed, counts.dead
@@ -583,8 +570,7 @@ fn main() {
                 limit,
                 before_id,
             } => {
-                let records = logforge_core::notifier::list_outbox_records(
-                    service.db(),
+                let records = service.notification_records(
                     state.as_deref(),
                     before_id,
                     limit,
@@ -593,7 +579,7 @@ fn main() {
                 println!("{}", serde_json::to_string_pretty(&records).expect("json"));
             }
             Commands::AuditVerify => {
-                let res = logforge_core::audit_verify::verify_audit_chain(service.db())
+                let res = service.verify_audit_chain()
                     .expect("verify audit");
                 println!("entries={} valid={}", res.total_entries, res.valid);
             }
@@ -602,8 +588,7 @@ fn main() {
                 action,
                 limit,
             } => {
-                let entries = logforge_core::audit_verify::query_audit_log(
-                    service.db(),
+                let entries = service.query_audit_log(
                     &logforge_core::audit_verify::AuditFilter {
                         actor,
                         action,
@@ -615,7 +600,7 @@ fn main() {
                 println!("{}", serde_json::to_string_pretty(&entries).expect("json"));
             }
             Commands::Diagnostics => {
-                let diag = logforge_core::diagnostics::collect_diagnostics(service.db())
+                let diag = service.diagnostics()
                     .expect("diagnostics");
                 println!("{}", serde_json::to_string_pretty(&diag).expect("json"));
             }
@@ -626,8 +611,7 @@ fn main() {
                 bytes,
                 disabled,
             } => {
-                let changed = logforge_core::retention::update_default_policy(
-                    service.db(),
+                let changed = service.retention_policy_update(
                     &name,
                     days,
                     events,
@@ -644,11 +628,10 @@ fn main() {
                 dry_run,
             } => {
                 let pol =
-                    logforge_core::retention::get_default_policy(service.db()).expect("policy");
+                    service.default_retention_policy().expect("policy");
                 let max_events = prune.unwrap_or(pol.max_events);
                 let max_bytes = max_bytes.unwrap_or(pol.max_bytes);
-                let breakdown = logforge_core::retention::plan_retention_with_reasons(
-                    service.db(),
+                let breakdown = service.plan_retention_with_reasons(
                     pol.max_days,
                     max_events,
                     max_bytes,
@@ -668,7 +651,7 @@ fn main() {
                     println!("dry_run=true");
                 } else {
                     let deleted =
-                        logforge_core::retention::apply_retention_plan(service.db(), &plan)
+                        service.apply_retention_plan(&plan)
                             .expect("prune");
                     println!("pruned={deleted}");
                 }
@@ -694,9 +677,7 @@ fn main() {
         || std::env::var_os("WAYLAND_DISPLAY").is_some()
         || cfg!(target_os = "windows")
         || cfg!(target_os = "macos");
-    let remembered =
-        service
-            .db()
+    let remembered = service
             .get_setting("ui_mode")
             .ok()
             .flatten()
@@ -734,7 +715,6 @@ fn main() {
         };
         if let Err(error) =
             service
-                .db()
                 .set_setting("ui_mode", value, &chrono::Utc::now().to_rfc3339())
         {
             eprintln!("Could not save UI preference: {error}");

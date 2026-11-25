@@ -25,8 +25,26 @@ impl SiemService {
         Self { db }
     }
 
+    /// Access to the underlying database for advanced integrations.
+    /// Prefer the service methods for application operations.
+    #[deprecated(note = "prefer SiemService methods over direct database access")]
     pub fn db(&self) -> &Database {
         &self.db
+    }
+
+    /// Returns the SQLite change counter used to detect writes from another connection.
+    pub fn data_version(&self) -> Result<i64, DbError> {
+        self.db.data_version()
+    }
+
+    /// Loads a persisted application preference by key.
+    pub fn get_setting(&self, key: &str) -> Result<Option<String>, DbError> {
+        self.db.get_setting(key)
+    }
+
+    /// Persists an application preference with its UTC update timestamp.
+    pub fn set_setting(&self, key: &str, value: &str, now_utc: &str) -> Result<(), DbError> {
+        self.db.set_setting(key, value, now_utc)
     }
 
     pub fn default_retention_policy(&self) -> Result<crate::retention::RetentionPolicy, DbError> {
@@ -84,6 +102,124 @@ impl SiemService {
         stale_after_seconds: i64,
     ) -> Result<crate::stats::SourceLivenessReport, DbError> {
         crate::stats::source_liveness(&self.db, checked_at_utc, stale_after_seconds)
+    }
+
+    pub fn analytics_snapshot(
+        &self,
+        limit: usize,
+    ) -> Result<crate::event_analytics::AnalyticsSnapshot, DbError> {
+        crate::event_analytics::analytics_snapshot(&self.db, limit)
+    }
+
+    pub fn storage_metrics(&self) -> Result<crate::storage_metrics::StorageMetrics, DbError> {
+        crate::storage_metrics::collect_storage_metrics(&self.db)
+    }
+
+    pub fn alert_counts_by_rule(
+        &self,
+    ) -> Result<Vec<crate::query_report::RuleAlertCount>, DbError> {
+        crate::query_report::alert_counts_by_rule(&self.db)
+    }
+
+    pub fn case_queue_metrics(
+        &self,
+        as_of_utc: &str,
+        overdue_after_hours: i64,
+    ) -> Result<crate::cases::CaseQueueMetrics, Box<dyn std::error::Error>> {
+        crate::cases::case_queue_metrics(&self.db, as_of_utc, overdue_after_hours)
+    }
+
+    pub fn case_workload_by_assignee(
+        &self,
+    ) -> Result<Vec<crate::cases::AssigneeWorkload>, DbError> {
+        crate::cases::case_workload_by_assignee(&self.db)
+    }
+
+    pub fn host_risk(
+        &self,
+        since_utc: &str,
+        limit: usize,
+    ) -> Result<crate::risk_scoring::HostRiskReport, DbError> {
+        crate::risk_scoring::score_host_risk(&self.db, since_utc, limit)
+    }
+
+    pub fn event_volume_report(
+        &self,
+        dimension: crate::query_report::EventDimension,
+        filter: &crate::query_report::EventReportFilter,
+    ) -> Result<crate::query_report::EventVolumeReport, DbError> {
+        crate::query_report::event_volume_report(&self.db, dimension, filter)
+    }
+
+    pub fn events_by_severity(&self) -> Result<Vec<crate::stats::SeverityCount>, DbError> {
+        crate::stats::events_by_severity(&self.db)
+    }
+
+    pub fn alert_status_counts(&self) -> Result<Vec<crate::stats::AlertStatusCount>, DbError> {
+        crate::stats::alert_status_counts(&self.db)
+    }
+
+    pub fn alert_severity_matrix(
+        &self,
+    ) -> Result<Vec<crate::stats::AlertSeverityCount>, DbError> {
+        crate::stats::alert_severity_matrix(&self.db)
+    }
+
+    pub fn notification_outbox_counts(&self) -> Result<crate::notifier::OutboxCounts, DbError> {
+        crate::notifier::outbox_counts(&self.db)
+    }
+
+    pub fn notification_outbox_health(
+        &self,
+        now_utc: &str,
+    ) -> Result<crate::notifier::NotificationOutboxHealth, DbError> {
+        crate::notifier::outbox_health(&self.db, now_utc)
+    }
+
+    pub fn notification_records(
+        &self,
+        state: Option<&str>,
+        before_id: Option<i64>,
+        limit: usize,
+    ) -> Result<Vec<crate::notifier::NotificationRecord>, DbError> {
+        crate::notifier::list_outbox_records(&self.db, state, before_id, limit)
+    }
+
+    pub fn retention_policy_update(
+        &self,
+        name: &str,
+        max_days: i64,
+        max_events: i64,
+        max_bytes: i64,
+        enabled: bool,
+        now_utc: &str,
+    ) -> Result<bool, Box<dyn std::error::Error>> {
+        crate::retention::update_default_policy(
+            &self.db, name, max_days, max_events, max_bytes, enabled, now_utc,
+        )
+    }
+
+    pub fn apply_retention_plan(
+        &self,
+        plan: &crate::retention::RetentionPlan,
+    ) -> Result<usize, DbError> {
+        crate::retention::apply_retention_plan(&self.db, plan)
+    }
+
+    pub fn diagnostics(&self) -> Result<crate::diagnostics::DiagnosticsReport, DbError> {
+        crate::diagnostics::collect_diagnostics(&self.db)
+    }
+
+    pub fn export_case_bundle(
+        &self,
+        case_id: i64,
+        redacted: bool,
+    ) -> Result<Option<crate::case_export::CaseExportBundle>, DbError> {
+        if redacted {
+            crate::case_export::export_case_bundle_redacted(&self.db, case_id)
+        } else {
+            crate::case_export::export_case_bundle(&self.db, case_id)
+        }
     }
 
     pub fn list_sources(&self) -> Result<Vec<Source>, DbError> {
@@ -186,6 +322,37 @@ impl SiemService {
         status: &str,
     ) -> Result<bool, Box<dyn std::error::Error>> {
         crate::cases::CaseManager::new(&self.db).set_status(case_id, status)
+    }
+
+    pub fn create_case(
+        &self,
+        title: &str,
+        description: &str,
+        priority: &str,
+        assignee: &str,
+    ) -> Result<i64, Box<dyn std::error::Error>> {
+        crate::cases::CaseManager::new(&self.db).create(title, description, priority, assignee)
+    }
+
+    pub fn assign_case(&self, case_id: i64, assignee: &str) -> Result<bool, DbError> {
+        crate::cases::CaseManager::new(&self.db).assign(case_id, assignee)
+    }
+
+    pub fn add_case_note(
+        &self,
+        case_id: i64,
+        author: &str,
+        body: &str,
+    ) -> Result<i64, DbError> {
+        crate::cases::CaseManager::new(&self.db).add_note(case_id, author, body)
+    }
+
+    pub fn link_case_alert(&self, case_id: i64, alert_id: i64) -> Result<(), DbError> {
+        crate::cases::CaseManager::new(&self.db).link_alert(case_id, alert_id)
+    }
+
+    pub fn unlink_case_alert(&self, case_id: i64, alert_id: i64) -> Result<bool, DbError> {
+        crate::cases::CaseManager::new(&self.db).unlink_alert(case_id, alert_id)
     }
 
     pub fn list_correlation_rules(

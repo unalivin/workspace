@@ -38,27 +38,23 @@ pub struct LogForgeApp {
 
 impl LogForgeApp {
     pub fn new(service: SiemService) -> Self {
-        let last_data_version = service.db().data_version().unwrap_or(0);
+        let last_data_version = service.data_version().unwrap_or(0);
         let theme = service
-            .db()
             .get_setting("theme")
             .ok()
             .flatten()
             .unwrap_or_else(|| "dark".into());
         let accent = service
-            .db()
             .get_setting("accent")
             .ok()
             .flatten()
             .unwrap_or_else(|| "amber".into());
         let density = service
-            .db()
             .get_setting("density")
             .ok()
             .flatten()
             .unwrap_or_else(|| "compact".into());
         let text_scale = service
-            .db()
             .get_setting("text_scale")
             .ok()
             .flatten()
@@ -82,7 +78,6 @@ impl LogForgeApp {
     fn save_setting(&mut self, key: &str, value: &str) {
         self.settings_error = self
             .service
-            .db()
             .set_setting(key, value, &chrono::Utc::now().to_rfc3339())
             .err()
             .map(|error| error.to_string());
@@ -93,7 +88,7 @@ impl eframe::App for LogForgeApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         identity::apply_theme(ctx, &self.theme, &self.accent);
         ctx.set_zoom_factor(self.text_scale as f32 / 100.0);
-        if let Ok(ver) = self.service.db().data_version() {
+        if let Ok(ver) = self.service.data_version() {
             if ver != self.last_data_version {
                 self.last_data_version = ver;
                 self.external_update_notice = true;
